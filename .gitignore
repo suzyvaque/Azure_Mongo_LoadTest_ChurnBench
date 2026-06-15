@@ -427,3 +427,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Handoff of previous test environment
+handoff/
+connection-strings.json

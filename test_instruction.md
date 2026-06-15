@@ -14,6 +14,10 @@ This benchmark intentionally does **not** model a long-lived connection-pool app
 
 **Pre-stage (one-time setup)**
 1. Load 100,000 documents into the **Input Collection** (`calc_input`).
+2. Create a **`ReqId` index** on **both** `calc_input` and `calc_output` (e.g. `{ ReqId: 1 }`,
+   `unique` on `calc_input`). Every Task op keys on `ReqId`, so without this index each op is a full
+   collection scan over 100,000 docs — invalidating the latency/RU comparison. Apply identically on
+   all three targets (`cosmos-ru`, `documentdb`, `mongo-vm`).
 
 **Job stage (Wrapper)**
 1. Fetch Request IDs from `calc_input` in batches of **up to 500** (500 is the batch cap, not a fixed count — see Section 6.2).
@@ -60,8 +64,24 @@ The official driver's `MongoClient` always owns an internal connection pool, so 
 ## 3. Dataset
 
 Load **100,000 documents** into `calc_input` during the prepare-data stage.
-- Individual document sizes ≈ **6 KB, 16 KB, 50 KB, 58 KB** (including response metadata).
-- Estimated `calc_input` total ≈ **4 GB** (derived from logs: observed average response size ≈ 44 KB/doc × 100,000).
+- Four size buckets (including response metadata), with the mix below chosen so the mean matches the
+  production trace:
+
+  | Bucket | Doc size | Share | Doc count | Contribution to mean |
+  |---|---|---|---|---|
+  | Small  | **6 KB**  | **10 %** | 10,000 | 0.6 KB |
+  | Medium | **16 KB** | **15 %** | 15,000 | 2.4 KB |
+  | Large  | **50 KB** | **35 %** | 35,000 | 17.5 KB |
+  | XL     | **58 KB** | **40 %** | 40,000 | 23.2 KB |
+  | **Total** | — | **100 %** | **100,000** | **≈ 43.7 KB/doc** |
+
+- Weighted mean ≈ **43.7 KB/doc** (≈ 44 KB), so the `calc_input` total ≈ **43.7 KB × 100,000 ≈ 4.37 GB ≈ 4 GB** —
+  consistent with the production-trace observation of ≈ 44 KB/doc. Seed the exact bucket counts above
+  (use a fixed RNG seed so the mix is byte-identical across all three targets).
+
+> **Indexing:** create a `ReqId` index on **both** `calc_input` and `calc_output` during `prepare-data`
+> (see Sections 2.1 and 5). All Task ops query the `ReqId` field, so the index is mandatory on every
+> target before any timed run.
 
 > **Identifier semantics:** the document `_id` is just a **sequential** value (row counter) and is **not** used to drive operations. All Task operations (`find` / `remove` / `insert` / `find`) are keyed by **`ReqId`**, which is the logical Request ID passed from the Job. Use `ReqId` — not `_id` — for all reads and writes.
 
@@ -139,6 +159,11 @@ dotnet run -- test --config config.json --target mongo-vm
 dotnet run -- report --input results/ --output report.html
 ```
 
+> **`prepare-data` MUST**: (1) load exactly 100,000 documents into `calc_input`, and (2) create the
+> `ReqId` index on **both** `calc_input` and `calc_output` (see Sections 2.1, 3). It must be safe to
+> re-run idempotently (creating an existing index is a no-op). The `test` command's preflight
+> (Section 6.3) verifies both the count and the indexes before any timed run.
+
 ---
 
 ## 6. Workload Targets (derived from production measurements)
@@ -209,14 +234,15 @@ Before starting a load test against any `--target`, the tool MUST run an automat
 
 **Required checks:**
 1. **Dataset present & complete** — `calc_input` exists and contains **exactly 100,000 documents** (`countDocuments` == 100,000, and the collection is non-empty). Fail with `DataSetMissing` if absent, empty, or count mismatched. Optionally spot-check that a sample document has the expected `ReqId`/`Input` fields and is queryable by `ReqId`.
-2. **Network path is private** — connectivity to the DB/VM is over a **private or peered** path (Private Endpoint / VNet peering / private DNS), **not** the public internet. Verify the resolved endpoint is a private IP (RFC1918) or the expected private-endpoint FQDN, and fail if it resolves to a public address. This keeps latency results free of internet-path noise and matches the prod topology.
-3. **Connectivity & auth smoke test** — open one connection, run a single `find` by `ReqId`, and close it cleanly. Confirms credentials, TLS, server selection, and the `ReqId` query path all work before load begins.
-4. **`calc_output` writable** — the output collection exists (or auto-creates) and a `remove`+`insert`+`find` round-trip on a throwaway `ReqId` succeeds; clean up the probe document afterward.
-5. **Server/throughput config matches the target spec** — e.g., Cosmos is at the **fixed 40,000 RU/s** (and must not be changed); DocumentDB is the M80 tier; `mongo-vm` mongod is up with the intended `maxIncomingConnections`. Record these in the report's config summary.
-6. **Client host headroom** — the test host's **ephemeral port range and `TcpTimedWaitDelay`** are tuned for the expected churn (see Section 7.3), and the process **file-descriptor / handle limit** is high enough for the target concurrent-connection level. Warn (or fail) if the configured headroom is below the scenario's concurrent-connection target.
-7. **Clock & time sync** — client clock is NTP-synced (latency and per-second-rate metrics depend on accurate timestamps).
-8. **Clean starting state** — no leftover connections from a prior aborted run; results directory writable; sufficient local disk for raw JSON/CSV output.
-9. **Data-cache warm-up completed** — the untimed warm-up pass (Section 6.5) has run so the working set is hot before measurement, keeping the comparison apples-to-apples.
+2. **`ReqId` indexes present** — a `ReqId` index exists on **both** `calc_input` and `calc_output` (e.g. `{ ReqId: 1 }`, `unique` on `calc_input`). Verify via the index catalog and fail with `IndexMissing` if either is absent. Without it every `find`/`remove` by `ReqId` is a full collection scan, which inflates latency and (on `cosmos-ru`) burns large RU per op — making the cross-backend comparison invalid.
+3. **Network path is private** — connectivity to the DB/VM is over a **private or peered** path (Private Endpoint / VNet peering / private DNS), **not** the public internet. Verify the resolved endpoint is a private IP (RFC1918) or the expected private-endpoint FQDN, and fail if it resolves to a public address. This keeps latency results free of internet-path noise and matches the prod topology.
+4. **Connectivity & auth smoke test** — open one connection, run a single `find` by `ReqId`, and close it cleanly. Confirms credentials, TLS, server selection, and the `ReqId` query path all work before load begins.
+5. **`calc_output` writable** — the output collection exists (or auto-creates) and a `remove`+`insert`+`find` round-trip on a throwaway `ReqId` succeeds; clean up the probe document afterward.
+6. **Server/throughput config matches the target spec** — e.g., Cosmos is at the **fixed 40,000 RU/s** (and must not be changed); DocumentDB is the M80 tier; `mongo-vm` mongod is up with the intended `maxIncomingConnections`. Record these in the report's config summary.
+7. **Client host headroom** — the test host's **ephemeral port range and `TcpTimedWaitDelay`** are tuned for the expected churn (see Section 7.3), and the process **file-descriptor / handle limit** is high enough for the target concurrent-connection level. Warn (or fail) if the configured headroom is below the scenario's concurrent-connection target.
+8. **Clock & time sync** — client clock is NTP-synced (latency and per-second-rate metrics depend on accurate timestamps).
+9. **Clean starting state** — no leftover connections from a prior aborted run; results directory writable; sufficient local disk for raw JSON/CSV output.
+10. **Data-cache warm-up completed** — the untimed warm-up pass (Section 6.5) has run so the working set is hot before measurement, keeping the comparison apples-to-apples.
 
 ### 6.4 Test execution plan (phased)
 
@@ -315,6 +341,7 @@ Classify every exception by type:
 - `QueryFailure`
 - `ClientPortExhaustion`
 - `DataSetMissing`
+- `IndexMissing` (required `ReqId` index absent on `calc_input` or `calc_output`; preflight failure, do not run the timed test)
 - `Unknown`
 
 ---
@@ -359,6 +386,7 @@ The README MUST explain:
 - How **Cosmos RU throttling** affects results.
 - How to interpret **DocumentDB Mongo compatibility** limitations.
 - Cautions when comparing **Mongo-on-VM vs. managed-service** results.
+- **Index assumption:** results assume a `ReqId` index is present on **both** `calc_input` and `calc_output` on every target (created by `prepare-data`, verified by preflight). An unindexed run forces full scans and is **not** a valid comparison — the Cosmos RU figures in particular become meaningless.
 - **Starting-state assumptions and their limits:** results reflect a **warm data cache + cold connection state** under **Model A (immutable input)**. Explain that (a) Mongo's **post-load cold start** (first wave after the daily load) and (b) **mid-day input updates (Model B append-only / Model C mutable-in-place)** are **not modeled**, and that both could make real `mongo-vm` behavior worse than the steady-warm benchmark suggests. Managed services are effectively always warm, so the warm-cache comparison is fair for the majority of the day but does not capture Mongo's daily cold-edge.
 - That this benchmark **does NOT represent typical long-lived connection-pool application performance**.
 
