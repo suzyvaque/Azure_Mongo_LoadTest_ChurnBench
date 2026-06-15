@@ -136,7 +136,7 @@ public sealed class PreflightRunner
     private async Task<PreflightCheckResult> CheckDatasetAsync(IMongoDatabase db, PreflightReport report, CancellationToken ct)
     {
         var input = db.GetCollection<CalcInputDoc>(BmtConstants.CalcInputCollection);
-        var count = await input.CountDocumentsAsync(FilterDefinition<CalcInputDoc>.Empty, cancellationToken: ct).ConfigureAwait(false);
+        var count = await CosmosAware(() => input.CountDocumentsAsync(FilterDefinition<CalcInputDoc>.Empty, cancellationToken: ct), ct).ConfigureAwait(false);
         report.InputDocumentCount = count;
 
         if (count == 0)
@@ -153,15 +153,15 @@ public sealed class PreflightRunner
                 BmtErrorType.DataSetMissing);
         }
 
-        var sample = await input.Find(FilterDefinition<CalcInputDoc>.Empty).Limit(1).FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        var sample = await CosmosAware(() => input.Find(FilterDefinition<CalcInputDoc>.Empty).Limit(1).FirstOrDefaultAsync(ct), ct).ConfigureAwait(false);
         if (sample is null || string.IsNullOrEmpty(sample.ReqId) || string.IsNullOrEmpty(sample.Input))
         {
             return PreflightCheckResult.Fail(1, "Dataset present & complete",
                 "Sample document missing required ReqId/Input fields.", BmtErrorType.DataSetMissing);
         }
 
-        var byReqId = await input.Find(Builders<CalcInputDoc>.Filter.Eq(x => x.ReqId, sample.ReqId)).Limit(1)
-            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        var byReqId = await CosmosAware(() => input.Find(Builders<CalcInputDoc>.Filter.Eq(x => x.ReqId, sample.ReqId)).Limit(1)
+            .FirstOrDefaultAsync(ct), ct).ConfigureAwait(false);
         if (byReqId is null)
         {
             return PreflightCheckResult.Fail(1, "Dataset present & complete",
@@ -293,12 +293,12 @@ public sealed class PreflightRunner
         {
             var factory = new TaskConnectionFactory(_target, _connectionString);
             using var conn = factory.Create();
-            var doc = await conn.CalcInput.Find(FilterDefinition<CalcInputDoc>.Empty).Limit(1).FirstOrDefaultAsync(ct)
+            var doc = await CosmosAware(() => conn.CalcInput.Find(FilterDefinition<CalcInputDoc>.Empty).Limit(1).FirstOrDefaultAsync(ct), ct)
                 .ConfigureAwait(false);
 
             var reqId = doc?.ReqId ?? "__preflight_no_doc__";
-            await conn.CalcInput.Find(Builders<CalcInputDoc>.Filter.Eq(x => x.ReqId, reqId)).Limit(1)
-                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            await CosmosAware(() => conn.CalcInput.Find(Builders<CalcInputDoc>.Filter.Eq(x => x.ReqId, reqId)).Limit(1)
+                .FirstOrDefaultAsync(ct), ct).ConfigureAwait(false);
 
             return PreflightCheckResult.Pass(4, "Connectivity & auth smoke test",
                 $"Opened a fresh per-Task connection, ran find by ReqId ('{reqId}'), and closed cleanly.");
@@ -577,14 +577,17 @@ public sealed class PreflightRunner
     {
         var input = db.GetCollection<CalcInputDoc>(BmtConstants.CalcInputCollection);
         var limit = _config.Preflight.SampleSize;
-        var read = 0L;
-        using var cursor = await input.Find(FilterDefinition<CalcInputDoc>.Empty).Limit(limit).ToCursorAsync(ct).ConfigureAwait(false);
-        while (await cursor.MoveNextAsync(ct).ConfigureAwait(false))
+        return await CosmosAware(async () =>
         {
-            read += cursor.Current.Count();
-        }
+            var read = 0L;
+            using var cursor = await input.Find(FilterDefinition<CalcInputDoc>.Empty).Limit(limit).ToCursorAsync(ct).ConfigureAwait(false);
+            while (await cursor.MoveNextAsync(ct).ConfigureAwait(false))
+            {
+                read += cursor.Current.Count();
+            }
 
-        return read;
+            return read;
+        }, ct).ConfigureAwait(false);
     }
 
     private static async Task<List<BsonDocument>> ListIndexesAsync(IMongoDatabase db, string collection, CancellationToken ct)
@@ -598,10 +601,10 @@ public sealed class PreflightRunner
     {
         var input = db.GetCollection<CalcInputDoc>(BmtConstants.CalcInputCollection);
         var projection = Builders<CalcInputDoc>.Projection.Include(x => x.Id).Include(x => x.ReqId);
-        var docs = await input.Find(FilterDefinition<CalcInputDoc>.Empty)
+        var docs = await CosmosAware(() => input.Find(FilterDefinition<CalcInputDoc>.Empty)
             .Project<CalcInputDoc>(projection)
             .Limit(_config.Preflight.SampleSize)
-            .ToListAsync(ct)
+            .ToListAsync(ct), ct)
             .ConfigureAwait(false);
 
         var mismatches = docs.Count(d => !string.Equals(d.ReqId, d.Id, StringComparison.Ordinal));
@@ -611,15 +614,18 @@ public sealed class PreflightRunner
     private async Task<(long distinct, long total)> CountDistinctReqIdAsync(IMongoDatabase db, CancellationToken ct)
     {
         var input = db.GetCollection<CalcInputDoc>(BmtConstants.CalcInputCollection);
-        var total = await input.CountDocumentsAsync(FilterDefinition<CalcInputDoc>.Empty, cancellationToken: ct).ConfigureAwait(false);
+        var total = await CosmosAware(() => input.CountDocumentsAsync(FilterDefinition<CalcInputDoc>.Empty, cancellationToken: ct), ct).ConfigureAwait(false);
         var pipeline = new[]
         {
             new BsonDocument("$group", new BsonDocument("_id", "$ReqId")),
             new BsonDocument("$count", "distinct"),
         };
-        using var cursor = await input.AggregateAsync<BsonDocument>(pipeline, cancellationToken: ct).ConfigureAwait(false);
-        var result = await cursor.FirstOrDefaultAsync(ct).ConfigureAwait(false);
-        var distinct = result is null ? 0L : result.GetValue("distinct", 0).ToInt64();
+        var distinct = await CosmosAware(async () =>
+        {
+            using var cursor = await input.AggregateAsync<BsonDocument>(pipeline, cancellationToken: ct).ConfigureAwait(false);
+            var result = await cursor.FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            return result is null ? 0L : result.GetValue("distinct", 0).ToInt64();
+        }, ct).ConfigureAwait(false);
         return (distinct, total);
     }
 
@@ -645,5 +651,10 @@ public sealed class PreflightRunner
     }
 
     private Task CosmosAware(Func<Task> op, CancellationToken ct) =>
+        _target == TargetKey.CosmosRu ? CosmosRetry.ExecuteAsync(op, cancellationToken: ct) : op();
+
+    // Read variant: on cosmos-ru, transient 429/RetryAfterMs throttling (common right after a heavy
+    // seed) must not falsely fail a data-touching preflight check. Other targets execute the op as-is.
+    private Task<T> CosmosAware<T>(Func<Task<T>> op, CancellationToken ct) =>
         _target == TargetKey.CosmosRu ? CosmosRetry.ExecuteAsync(op, cancellationToken: ct) : op();
 }
