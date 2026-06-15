@@ -109,6 +109,18 @@ Load **100,000 documents** into `calc_input` during the prepare-data stage.
 | `cosmos-ru`     | Azure Cosmos DB for MongoDB — **fixed 40,000 RU/s. DO NOT change RU/s.** |
 | `mongo-vm`      | MongoDB on Azure VM (Windows Server Datacenter 2025, 32 vCore, 256 GB RAM, 512 GB data disk SSD) |
 
+> **Versions:** MongoDB **Server 7.0** and **wire/API 7.0** for all three targets. Build/run the benchmark tool on **.NET 8 (LTS)** with the **MongoDB C# Driver 2.30** (Core API).
+
+### 4.1 Test topology
+
+| Host | Role |
+|------|------|
+| **VM1** (Windows Server 2025) | **The single load-generating client.** Runs the benchmark tool (`prepare-data` / `test` / `report`) against **all three** targets, **one target at a time (sequential, never in parallel)**, so the generator's full capacity is available to each and the comparison stays apples-to-apples. |
+| **VM2** (Windows Server 2025) | Hosts the **`mongo-vm`** MongoDB Server 7.0 instance. VM1 reaches it over the **private VNet**. |
+| `cosmos-ru`, `documentdb` | Managed PaaS — no dedicated VM. VM1 reaches them via **Private Endpoint** in the same region/VNet (see Section 6.3 check 2). |
+
+> **Single-client rule:** using the *same* VM1 host (identical CPU, ephemeral-port range, TCP tuning, egress path) for every target ensures any observed difference is the database, not the client. VM1 must be sized and TCP-tuned (Section 7.3) so it never becomes the bottleneck at ~1,200 conn/sec and ~11K concurrent connections.
+
 ---
 
 ## 5. CLI Requirements
