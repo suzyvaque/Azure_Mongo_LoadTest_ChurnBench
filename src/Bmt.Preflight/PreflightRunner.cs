@@ -20,7 +20,7 @@ namespace Bmt.Preflight;
 /// timed run MUST NOT start. The unique-vs-non-unique ReqId-index divergence (cosmos-ru) and the
 /// distinct-ReqId guarantee are recorded explicitly in the report (check 2).
 /// </summary>
-internal sealed class PreflightRunner
+public sealed class PreflightRunner
 {
     private readonly BmtConfig _config;
     private readonly TargetKey _target;

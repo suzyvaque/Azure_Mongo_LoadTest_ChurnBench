@@ -26,6 +26,26 @@
     "DeleteBatchSize": 500
   },
 
+  // Load scenarios (§6.2). Steady = Scenario A peak-hour; Burst = Scenario B Poisson spikes.
+  // MaxConcurrentTasks caps in-flight Tasks (each owns one fresh connection) — set at/above the
+  // §6.2 concurrent target (≥ 11,000). Durations are overridable per-run via --duration-sec.
+  "Scenario": {
+    "MaxConcurrentTasks": 15000,
+    "ResourceSampleIntervalMs": 1000,
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 135,
+      "DurationSeconds": 3600
+    },
+    "Burst": {
+      "Enabled": true,
+      "JobsPerSecondLambda": 0.57,
+      "MaxTasksPerJob": 500,
+      "MinTasksPerJob": 14,
+      "DurationSeconds": 600
+    }
+  },
+
   // Preflight gate (§6.3). All optional with sane defaults; thresholds drive warn/fail verdicts.
   // Expected server values (check 6) are recorded verbatim in the preflight JSON + HTML report.
   "Preflight": {

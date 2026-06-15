@@ -15,6 +15,8 @@ public sealed class BmtConfig
 
     public PreflightConfig Preflight { get; set; } = new();
 
+    public ScenarioConfig Scenario { get; set; } = new();
+
     /// <summary>Per-Task calc-time substitute sleep (test_instruction.md §6.6). Default 10,000 ms.</summary>
     public int TaskSleepMs { get; set; } = 10_000;
 
@@ -51,6 +53,7 @@ public sealed class BmtConfig
         Dataset.Validate();
         Seeder.Validate();
         Preflight.Validate();
+        Scenario.Validate();
         if (TaskSleepMs < 0)
         {
             throw new InvalidOperationException("TaskSleepMs must be >= 0.");
