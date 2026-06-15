@@ -41,7 +41,24 @@ public static class ReqIdIndex
     /// True if the given index catalog (from <c>listIndexes</c>) contains a single-field ascending
     /// index on <c>ReqId</c>. Used by preflight check 2 (fail with IndexMissing otherwise).
     /// </summary>
-    public static bool ExistsIn(IEnumerable<BsonDocument> indexes)
+    public static bool ExistsIn(IEnumerable<BsonDocument> indexes) => FindReqIdIndex(indexes) is not null;
+
+    /// <summary>
+    /// True if the <c>ReqId</c> index in the given catalog is declared <c>unique</c>. Used by preflight
+    /// check 2 to record the unique-vs-non-unique divergence (unique on mongo-vm/documentdb,
+    /// non-unique on cosmos-ru). Returns false if the index is absent or non-unique.
+    /// </summary>
+    public static bool IsUniqueIn(IEnumerable<BsonDocument> indexes)
+    {
+        var ix = FindReqIdIndex(indexes);
+        return ix is not null &&
+               ix.TryGetValue("unique", out var unique) &&
+               unique.IsBoolean &&
+               unique.AsBoolean;
+    }
+
+    /// <summary>Returns the single-field ascending <c>{ ReqId: 1 }</c> index document, or null.</summary>
+    private static BsonDocument? FindReqIdIndex(IEnumerable<BsonDocument> indexes)
     {
         ArgumentNullException.ThrowIfNull(indexes);
         foreach (var ix in indexes)
@@ -56,10 +73,10 @@ public static class ReqIdIndex
                 dir.IsNumeric &&
                 dir.ToDouble() == 1.0)
             {
-                return true;
+                return ix;
             }
         }
 
-        return false;
+        return null;
     }
 }

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bmt.Core", "src\Bmt.Core\Bm
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bmt.Seeder", "src\Bmt.Seeder\Bmt.Seeder.csproj", "{99CE4C18-8820-4518-BCAA-887654DD1793}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bmt.Preflight", "src\Bmt.Preflight\Bmt.Preflight.csproj", "{6C4BFE23-D56E-4857-8CE4-4047ED164C12}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,9 +28,14 @@ Global
 		{99CE4C18-8820-4518-BCAA-887654DD1793}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99CE4C18-8820-4518-BCAA-887654DD1793}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{99CE4C18-8820-4518-BCAA-887654DD1793}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C4BFE23-D56E-4857-8CE4-4047ED164C12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C4BFE23-D56E-4857-8CE4-4047ED164C12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C4BFE23-D56E-4857-8CE4-4047ED164C12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C4BFE23-D56E-4857-8CE4-4047ED164C12}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{74310251-5D1D-4242-9946-D153017F05E9} = {76375754-C6B4-4D76-918B-48795FA66640}
 		{99CE4C18-8820-4518-BCAA-887654DD1793} = {76375754-C6B4-4D76-918B-48795FA66640}
+		{6C4BFE23-D56E-4857-8CE4-4047ED164C12} = {76375754-C6B4-4D76-918B-48795FA66640}
 	EndGlobalSection
 EndGlobal

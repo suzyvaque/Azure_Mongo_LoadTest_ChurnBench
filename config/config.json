@@ -24,5 +24,20 @@
     "InsertBatchSize": 1000,
     "CosmosInsertBatchSize": 100,
     "DeleteBatchSize": 500
+  },
+
+  // Preflight gate (§6.3). All optional with sane defaults; thresholds drive warn/fail verdicts.
+  // Expected server values (check 6) are recorded verbatim in the preflight JSON + HTML report.
+  "Preflight": {
+    "ResultsDirectory": "artifacts",
+    "MinFreeDiskBytes": 1073741824,
+    "ConcurrentConnectionTarget": 11000,
+    "ConnectionChurnPerSecTarget": 1200,
+    "RequirePrivateNetwork": true,
+    "SampleSize": 1000,
+    "WarmupMaxAgeMinutes": 360,
+    "CosmosExpectedRuPerSec": 40000,
+    "DocumentDbExpectedTier": "M80",
+    "MongoExpectedMaxIncomingConnections": null
   }
 }

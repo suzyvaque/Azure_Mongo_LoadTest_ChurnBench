@@ -16,11 +16,11 @@ namespace Bmt.Core.Connections;
 /// registry entry and disposes the cluster). If that internal API ever changes, it falls back to
 /// disposing the cluster directly.
 ///
-/// Because <see cref="TaskConnectionFactory"/> gives every client a distinct
+/// because <see cref="TaskConnectionFactory"/> gives every client a distinct
 /// <c>ClusterConfigurator</c>, each Task gets its own cluster — so unregistering one never affects
-/// another Task's connection.
+/// another Task's connection. Also used by the seeder/preflight to release their admin clients.
 /// </summary>
-internal static class MongoClientReleaser
+public static class MongoClientReleaser
 {
     private static readonly object? RegistryInstance;
     private static readonly MethodInfo? UnregisterMethod;

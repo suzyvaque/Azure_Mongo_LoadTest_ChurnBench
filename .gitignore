@@ -431,3 +431,5 @@ FodyWeavers.xsd
 # Handoff of previous test environment
 handoff/
 connection-strings.json
+# Benchmark run artifacts (preflight JSON, raw run output)
+artifacts/
