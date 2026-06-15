@@ -89,17 +89,14 @@ Load **100,000 documents** into `calc_input` during the prepare-data stage.
 
 ```jsonc
 {
-  "results": [
-    { "_id": "ReqId",             "value": "string" },
-    { "_id": "_id",               "value": "string" },
-    { "_id": "CalculatorFileNm",  "value": "string" },
-    { "_id": "CalculatorVersion", "value": "string" },
-    { "_id": "SkipCalculation",   "value": "boolean" },
-    { "_id": "Input",             "value": "string" },
-    { "_id": "SuccessExitCodeList","value": "object" },
-    { "_id": "ReqClass",          "value": "string" }
-  ],
-  "ok": 1
+  "_id": "1653",                    // GENERATED per doc — sequential "1".."100000" (string)
+  "ReqId": "1653",                  // GENERATED per doc — == _id; INDEXED (unique), all ops key on this
+  "CalculatorFileNm": "PricingEngine.dll",  // RANDOMIZED per doc from a fixed list (seed 42)
+  "CalculatorVersion": "2.3.1",     // RANDOMIZED per doc (seed 42)
+  "SkipCalculation": false,         // FIXED — keep as-is
+  "Input": "<base64>",              // COMPUTED per doc — length sized so WHOLE doc hits its 6/16/50/58 KB bucket
+  "SuccessExitCodeList": [0],       // FIXED — keep as-is (real array)
+  "ReqClass": "A"                   // RANDOMIZED per doc from a fixed list (seed 42)
 }
 ```
 
@@ -107,15 +104,12 @@ Load **100,000 documents** into `calc_input` during the prepare-data stage.
 
 ```jsonc
 {
-  "results": [
-    { "_id": "ReqId",         "value": "string" },
-    { "_id": "StartTime",     "value": "string" },
-    { "_id": "EndTime",       "value": "string" },
-    { "_id": "Output",        "value": "string" },
-    { "_id": "_id",           "value": "string" },
-    { "_id": "OutputFormatCd","value": "object" }
-  ],
-  "ok": 1
+  "_id": "1653",                    // RUNTIME — == ReqId of the Task
+  "ReqId": "1653",                  // RUNTIME — INDEXED (non-unique)
+  "StartTime": "2026-06-15T09:00:00Z",  // RUNTIME — Task start timestamp (ISO or BSON date)
+  "EndTime":   "2026-06-15T09:00:10Z",  // RUNTIME — Task end timestamp
+  "Output": "<base64>",             // RUNTIME — result payload produced by the Task
+  "OutputFormatCd": { "fmt": "b64" }    // RUNTIME — real object (any shape)
 }
 ```
 
