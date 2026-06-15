@@ -1,0 +1,20 @@
+{
+  // SMOKE-TEST config only — 40 docs (10 per bucket) to validate connectivity, whole-doc sizing,
+  // index creation and verification against live backends. NOT the real dataset. Delete after use.
+  "TaskSleepMs": 10000,
+  "Dataset": {
+    "DocumentCount": 40,
+    "Seed": 42,
+    "Buckets": [
+      { "Name": "Small",  "SizeBytes": 6144,  "Count": 10 },
+      { "Name": "Medium", "SizeBytes": 16384, "Count": 10 },
+      { "Name": "Large",  "SizeBytes": 51200, "Count": 10 },
+      { "Name": "XL",     "SizeBytes": 59392, "Count": 10 }
+    ]
+  },
+  "Seeder": {
+    "InsertBatchSize": 20,
+    "CosmosInsertBatchSize": 10,
+    "DeleteBatchSize": 50
+  }
+}

@@ -1,0 +1,28 @@
+{
+  // Sample config for the MongoDB connection-churn benchmark.
+  // Secrets are NOT stored here — connection strings are read at runtime from env vars:
+  //   cosmos-ru -> BMT_CONN_COSMOS,  documentdb -> BMT_CONN,  mongo-vm -> BMT_CONN_MONGO
+
+  // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6). Default 10,000 (10 s).
+  "TaskSleepMs": 10000,
+
+  // Dataset: exactly 100,000 docs, fixed seed 42, four whole-document size buckets.
+  // SizeBytes is the WHOLE-document target (Input is padded so total BSON == SizeBytes).
+  "Dataset": {
+    "DocumentCount": 100000,
+    "Seed": 42,
+    "Buckets": [
+      { "Name": "Small",  "SizeBytes": 6144,  "Count": 10000 },
+      { "Name": "Medium", "SizeBytes": 16384, "Count": 15000 },
+      { "Name": "Large",  "SizeBytes": 51200, "Count": 35000 },
+      { "Name": "XL",     "SizeBytes": 59392, "Count": 40000 }
+    ]
+  },
+
+  // Seeder tuning. Cosmos uses smaller insert batches to ease RU throttling; RU/s is never changed.
+  "Seeder": {
+    "InsertBatchSize": 1000,
+    "CosmosInsertBatchSize": 100,
+    "DeleteBatchSize": 500
+  }
+}
