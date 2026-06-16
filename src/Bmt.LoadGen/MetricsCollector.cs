@@ -191,27 +191,30 @@ public sealed class MetricsCollector : IConnectionEventObserver
         };
 
         // No-reuse verification (§2.2/§7.2): the constraint is that no connection is reused ACROSS
-        // Tasks — i.e. every Task opens its OWN new connection and closes it. The correct invariant is
-        // therefore created >= tasks (at least one fresh connection per Task) AND created ≈ closed (no
-        // leak). created < tasks is the ONLY reuse signal (connections shared across Tasks). created >
-        // tasks is NOT reuse: under burst stress a single Task may open a replacement connection if its
-        // socket is reset mid-cycle, and failed Tasks may open+close a connection that never completed —
-        // both legitimately push created above tasks. Within a Task the four ops share that Task's one
+        // Tasks — every Task that runs opens its OWN new connection and closes it. The correct floor is
+        // the number of SUCCESSFUL Tasks (each completed a full 4-op cycle, so each definitely needed
+        // its own connection): no-reuse holds when created >= successfulTasks (no connection was shared
+        // among completed Tasks) AND created ≈ closed (no leak / no lingering reusable connection).
+        // Comparing against TOTAL tasks is wrong: a Task that fails at server-selection never opens a
+        // connection, so created < totalTasks is expected under failures and is NOT reuse. Reuse would
+        // instead show created << successfulTasks. Within a Task the four ops share that Task's one
         // pooled connection (pool check-outs ≈ 4×tasks), which is also expected and not reuse.
-        var noReuseHolds = totalTasks == 0 || created >= (long)Math.Floor(totalTasks * 0.99);
+        var successfulTasks = Interlocked.Read(ref _successTasks);
+        var noReuseHolds = successfulTasks == 0 || created >= (long)Math.Floor(successfulTasks * 0.99);
         var closedMatchesCreated = Math.Abs(created - closed) <= Math.Max(1, created * 0.01);
-        var reuseEvents = Math.Max(0, totalTasks - created);
-        var extraFromStress = Math.Max(0, created - totalTasks);
+        var reuseEvents = Math.Max(0, successfulTasks - created);
+        var failedBeforeConnect = Math.Max(0, totalTasks - created);
         result.ReuseCheck = new ReuseVerification
         {
             NoReuseConfirmed = noReuseHolds && closedMatchesCreated,
             SuspectedReuseEvents = reuseEvents,
-            Detail = $"tasks={totalTasks}, created={created}, ready={connCounters.Ready}, closed={closed}, " +
-                     $"checkedOut={connCounters.CheckedOut}. No-reuse holds when created>=tasks (one fresh " +
-                     $"connection per Task) and created≈closed (no leak). created<tasks is reuse " +
-                     $"(suspectedReuseEvents={reuseEvents}); created>tasks ({extraFromStress} extra) is " +
-                     $"replacement/failed-handshake connections under stress, not reuse. Per-Task pool " +
-                     $"check-outs (≈4×tasks) are normal within a Task.",
+            Detail = $"tasks={totalTasks} (successful={successfulTasks}), created={created}, " +
+                     $"ready={connCounters.Ready}, closed={closed}, checkedOut={connCounters.CheckedOut}. " +
+                     $"No-reuse holds when created>=successfulTasks (one fresh connection per completed " +
+                     $"Task) and created≈closed (no leak). created<successfulTasks is reuse " +
+                     $"(suspectedReuseEvents={reuseEvents}); created<totalTasks here is " +
+                     $"{failedBeforeConnect} Tasks that failed at server-selection BEFORE opening a " +
+                     $"connection, not reuse. Per-Task pool check-outs (≈4×tasks) are normal within a Task.",
         };
 
         result.Throughput = _seconds
