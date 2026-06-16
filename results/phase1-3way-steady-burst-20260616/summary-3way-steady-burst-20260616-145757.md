@@ -18,8 +18,14 @@
 | Total p99.9 | **29,553 ms** | 55,011 ms | 187,499 ms |
 | connectionOpen p50 | **8.9 ms** | 20.8 ms | 40,421 ms |
 | findExecution p50 | **15.1 ms** | 41.2 ms | 83,736 ms |
+| findExecution p90 | **3,672.9 ms** | 19,961.5 ms | 104,194.6 ms |
+| findExecution p99 | **10,712.5 ms** | 28,448.7 ms | 115,284.1 ms |
 | removeExecution p50 | 3.9 ms | **3.4 ms** | 13.8 ms |
+| removeExecution p90 | 7.5 ms | **6.7 ms** | 205.1 ms |
+| removeExecution p99 | **117.5 ms** | 161.5 ms | 527.8 ms |
 | insertExecution p50 | 4.2 ms | **3.5 ms** | 29.8 ms |
+| insertExecution p90 | 10.0 ms | **9.3 ms** | 216.2 ms |
+| insertExecution p99 | **117.3 ms** | 166.2 ms | 498.0 ms |
 
 > **Notes on formatting rules.** Total latency = full Task cycle, which includes a fixed **10,000 ms** `taskSleepMs`; it is therefore **not** `≈ find` and is not annotated as such. No pooled variant exists — every connection is cold by design (the churn test's purpose) — so `0 ms (pool reuse)` is never applicable. All metrics were available from the run artifacts; none were substituted.
 
