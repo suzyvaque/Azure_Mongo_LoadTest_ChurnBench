@@ -46,6 +46,17 @@
     }
   },
 
+  // Per-Task MongoClient tuning (applied uniformly; does NOT relax the no-reuse model).
+  // Fail-fast timeouts stop a saturated generator host from masking backend latency; directConnection
+  // is applied ONLY to the single-node mongo-vm so each fresh per-Task client skips replica-set
+  // topology discovery + its per-client heartbeat monitor (the bottleneck at thousands of clients).
+  "Client": {
+    "ServerSelectionTimeoutMs": 5000,
+    "ConnectTimeoutMs": 5000,
+    "SocketTimeoutMs": 0,
+    "DirectConnectionForSingleNode": true
+  },
+
   // Preflight gate (§6.3). All optional with sane defaults; thresholds drive warn/fail verdicts.
   // Expected server values (check 6) are recorded verbatim in the preflight JSON + HTML report.
   "Preflight": {

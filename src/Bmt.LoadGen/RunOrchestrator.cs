@@ -86,7 +86,7 @@ public sealed class RunOrchestrator
         var counters = new ConnectionEventCounters();
         var metrics = new MetricsCollector();
         var observer = new CompositeConnectionObserver(counters, metrics);
-        var factory = new TaskConnectionFactory(target, _connectionString, observer);
+        var factory = new TaskConnectionFactory(target, _connectionString, observer, _config.Client);
         var runner = new TaskRunner(factory, metrics, target, _config.TaskSleepMs);
 
         var reqIdRng = new Random(BmtConstants.DatasetSeed);
@@ -161,7 +161,7 @@ public sealed class RunOrchestrator
 
     private async Task<long> CountInputAsync(CancellationToken ct)
     {
-        using var conn = new TaskConnectionFactory(_options.Target, _connectionString).Create();
+        using var conn = new TaskConnectionFactory(_options.Target, _connectionString, tuning: _config.Client).Create();
         return await conn.CalcInput.CountDocumentsAsync(FilterDefinition<CalcInputDoc>.Empty, cancellationToken: ct)
             .ConfigureAwait(false);
     }
@@ -175,7 +175,7 @@ public sealed class RunOrchestrator
     {
         var sample = (int)Math.Min(datasetCount, _config.Preflight.SampleSize);
         ConsoleLog.Info($"Warming data cache (untimed): reading {sample} input docs by ReqId...");
-        using var conn = new TaskConnectionFactory(_options.Target, _connectionString).Create();
+        using var conn = new TaskConnectionFactory(_options.Target, _connectionString, tuning: _config.Client).Create();
         var step = Math.Max(1, datasetCount / Math.Max(1, sample));
         var read = 0;
         for (long id = 1; id <= datasetCount && read < sample; id += step, read++)

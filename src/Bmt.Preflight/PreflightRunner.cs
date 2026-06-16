@@ -291,7 +291,7 @@ public sealed class PreflightRunner
     {
         try
         {
-            var factory = new TaskConnectionFactory(_target, _connectionString);
+            var factory = new TaskConnectionFactory(_target, _connectionString, tuning: _config.Client);
             using var conn = factory.Create();
             var doc = await CosmosAware(() => conn.CalcInput.Find(FilterDefinition<CalcInputDoc>.Empty).Limit(1).FirstOrDefaultAsync(ct), ct)
                 .ConfigureAwait(false);

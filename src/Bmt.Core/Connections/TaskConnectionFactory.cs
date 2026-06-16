@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Events;
+using Bmt.Core.Configuration;
 
 namespace Bmt.Core.Connections;
 
@@ -23,11 +24,13 @@ public sealed class TaskConnectionFactory
     private readonly string _connectionString;
     private readonly bool _disableRetryWrites;
     private readonly IConnectionEventObserver? _observer;
+    private readonly ClientConfig _tuning;
 
     public TaskConnectionFactory(
         TargetKey target,
         string connectionString,
-        IConnectionEventObserver? observer = null)
+        IConnectionEventObserver? observer = null,
+        ClientConfig? tuning = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -38,6 +41,7 @@ public sealed class TaskConnectionFactory
         _connectionString = connectionString;
         _disableRetryWrites = TargetConnection.RequiresRetryWritesDisabled(target);
         _observer = observer;
+        _tuning = tuning ?? new ClientConfig();
     }
 
     public TargetKey Target { get; }
@@ -45,8 +49,9 @@ public sealed class TaskConnectionFactory
     /// <summary>Build a factory that resolves the connection string from the target's env var at runtime.</summary>
     public static TaskConnectionFactory FromEnvironment(
         TargetKey target,
-        IConnectionEventObserver? observer = null) =>
-        new(target, TargetConnection.ResolveConnectionString(target), observer);
+        IConnectionEventObserver? observer = null,
+        ClientConfig? tuning = null) =>
+        new(target, TargetConnection.ResolveConnectionString(target), observer, tuning);
 
     /// <summary>
     /// Create a fresh single-use connection for one Task. The caller MUST dispose the returned
@@ -71,6 +76,27 @@ public sealed class TaskConnectionFactory
         // Hard no-reuse constraints (§2.3): pool of exactly one, never pre-warmed.
         settings.MaxConnectionPoolSize = 1;
         settings.MinConnectionPoolSize = 0;
+
+        // Fail-fast timeouts (applied uniformly to every target). Under the no-reuse model a Task that
+        // cannot get a server otherwise holds its slot for the driver default 30 s, snowballing into
+        // runaway concurrency that saturates the generator host and masks backend latency.
+        settings.ServerSelectionTimeout = TimeSpan.FromMilliseconds(_tuning.ServerSelectionTimeoutMs);
+        settings.ConnectTimeout = TimeSpan.FromMilliseconds(_tuning.ConnectTimeoutMs);
+        if (_tuning.SocketTimeoutMs > 0)
+        {
+            settings.SocketTimeout = TimeSpan.FromMilliseconds(_tuning.SocketTimeoutMs);
+        }
+
+        // Single-node mongo-vm only: connect directly to the one node so each fresh per-Task client
+        // skips replica-set topology discovery + its background heartbeat monitor. At thousands of
+        // concurrent clients that per-client monitor (not the DB) becomes the bottleneck. The no-reuse
+        // model is unchanged; we just avoid paying topology-discovery overhead per Task on a single
+        // node. Managed targets (SRV / gateway) are left exactly as their connection string specifies.
+        if (_tuning.DirectConnectionForSingleNode && Target == TargetKey.MongoVm)
+        {
+            settings.DirectConnection = true;
+            settings.ReplicaSetName = null;
+        }
 
         // Cosmos RU does not support retryable writes (handoff §3).
         if (_disableRetryWrites)
