@@ -433,3 +433,5 @@ handoff/
 connection-strings.json
 # Benchmark run artifacts (preflight JSON, raw run output)
 artifacts/
+# Timed-run results (per-target JSON + CSV + run logs) are large run outputs, not source
+results/
