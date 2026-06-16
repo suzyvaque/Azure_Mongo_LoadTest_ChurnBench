@@ -59,7 +59,7 @@ config/
   smoke.json       # tiny 40-doc config for connectivity smoke tests
 scripts/
   tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
-results/           # per-run JSON + CSV artifacts (git-ignored)
+results/           # per-run JSON + CSV artifacts, grouped one folder per run (git-ignored)
 artifacts/         # preflight JSON artifacts (git-ignored)
 ```
 
@@ -115,7 +115,7 @@ duration for short smoke runs), `--results <dir>`, `--no-preflight` (NOT recomme
 ### 4. `report` — self-contained HTML (Bmt.Report)
 
 ```powershell
-dotnet run --project src/Bmt.Report -- report --input results/ --output report.html
+dotnet run --project src/Bmt.Report -- report --input results/ --output comparison-3way-both-<ts>.html
 ```
 
 Consumes one or more target result sets from `results/` (plus any preflight JSON) and produces a single
@@ -156,13 +156,23 @@ released after each Task.
 
 ## Output artifacts
 
-- `results/<target>-<scenario>-<ts>.json` — the full machine-readable `RunResult` (totals, per-op +
+Run artifacts are grouped **one subfolder per run** under `results/`, each named with the run
+identifier `<target>-both-<yyyyMMdd-HHmmss>` (matching the run log title format). See
+`results/INDEX.md` for a manifest of completed runs.
+
+- `results/<run-id>/<run-id>.json` — the full machine-readable `RunResult` (totals, per-op +
   cycle + connection-open + client-create latency percentiles, connection counters, reuse verification,
   error taxonomy, per-second throughput, client-host resource samples).
-- `results/<...>-timeseries.csv` — one row per second (connection open/close rates, per-op QPS, in-flight
-  Tasks, ephemeral ports, TIME_WAIT, handles, CPU%, working set).
-- `results/<...>-latency.csv` — per-op + cycle + connection latency percentiles.
-- `report.html` — the self-contained comparison report.
+- `results/<run-id>/<run-id>-timeseries.csv` — one row per second (connection open/close rates, per-op QPS,
+  in-flight Tasks, ephemeral ports, TIME_WAIT, handles, CPU%, working set).
+- `results/<run-id>/<run-id>-latency.csv` — per-op + cycle + connection latency percentiles.
+- `results/<run-id>/<run-id>.log` — captured console log for that run.
+- `<report-id>.html` — the self-contained comparison report. Pass `--output <name>.html`; the report's
+  title carries that identifier, so use the same `<...>-both-<ts>` convention (e.g.
+  `comparison-3way-both-20260616-145757.html`). A matching `.md` summary may accompany it.
+
+The `report` loader scans `results/` recursively, so the per-run grouping does not change how reports
+are generated.
 
 ---
 
@@ -229,5 +239,5 @@ dotnet run --project src/Bmt.Preflight -- preflight    --config config/config.js
 dotnet run --project src/Bmt.LoadGen   -- test         --config config/config.json --target <key> --scenario both
 
 # After all three targets have run:
-dotnet run --project src/Bmt.Report    -- report --input results/ --output report.html
+dotnet run --project src/Bmt.Report    -- report --input results/ --output comparison-3way-both-<ts>.html
 ```
