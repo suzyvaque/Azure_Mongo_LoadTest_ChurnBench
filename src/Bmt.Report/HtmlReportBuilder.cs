@@ -29,17 +29,19 @@ public static class HtmlReportBuilder
     private const string CP99 = "#ef4444";
     private const string CP999 = "#7c3aed";
 
-    public static string Build(IReadOnlyList<LoadedTarget> targets)
+    public static string Build(IReadOnlyList<LoadedTarget> targets, string? reportId = null)
     {
         ArgumentNullException.ThrowIfNull(targets);
+        var hasId = !string.IsNullOrWhiteSpace(reportId);
+        var titleSuffix = hasId ? $" \u2014 {reportId}" : string.Empty;
         var sb = new StringBuilder();
         sb.Append("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">");
         sb.Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-        sb.Append("<title>MongoDB Connection-Churn Benchmark Report</title>");
+        sb.Append(CultureInfo.InvariantCulture, $"<title>MongoDB Connection-Churn Benchmark Report{(hasId ? " - " + Svg.Esc(reportId!) : string.Empty)}</title>");
         sb.Append("<style>").Append(Css()).Append("</style></head><body>");
 
-        sb.Append("<h1>MongoDB Connection-Churn Benchmark Report</h1>");
-        sb.Append(CultureInfo.InvariantCulture, $"<p class=\"muted\">Generated {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC &middot; {targets.Count} run(s) loaded.</p>");
+        sb.Append(CultureInfo.InvariantCulture, $"<h1>MongoDB Connection-Churn Benchmark Report{(hasId ? " &mdash; <span class=\"rid\">" + Svg.Esc(reportId!) + "</span>" : string.Empty)}</h1>");
+        sb.Append(CultureInfo.InvariantCulture, $"<p class=\"muted\">Generated {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC &middot; {targets.Count} run(s) loaded.{(hasId ? " &middot; report id <code>" + Svg.Esc(reportId!) + "</code>" : string.Empty)}</p>");
 
         AppendDisclosure(sb);
 
@@ -415,6 +417,7 @@ public static class HtmlReportBuilder
         h1{font-size:24px;margin:0 0 4px} h2{font-size:20px;margin:32px 0 8px;border-bottom:2px solid var(--line);padding-bottom:4px}
         h3{font-size:15px;margin:18px 0 6px}
         .muted{color:var(--muted);font-size:13px} code{background:var(--bg);padding:1px 4px;border-radius:3px;font-size:12px}
+        .rid{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.7em;color:var(--muted);font-weight:600}
         table{border-collapse:collapse;width:100%;margin:6px 0;font-size:13px}
         th,td{border:1px solid var(--line);padding:5px 8px;text-align:left} th{background:var(--bg)}
         table.kv td:first-child{color:var(--muted);width:46%}

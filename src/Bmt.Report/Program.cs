@@ -26,7 +26,8 @@ internal static class Program
                                 string.Join(", ", targets.Select(t => $"{t.Run.Target}/{t.Run.Scenario}")));
             }
 
-            var html = HtmlReportBuilder.Build(targets);
+            var reportId = Path.GetFileNameWithoutExtension(options.OutputPath);
+            var html = HtmlReportBuilder.Build(targets, reportId);
             var outPath = Path.GetFullPath(options.OutputPath);
             Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
             File.WriteAllText(outPath, html);
