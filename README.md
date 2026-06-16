@@ -17,7 +17,7 @@ Task cycle under steady + bursty load, and produces a self-contained HTML compar
 | CLI `--target` | Backend | Env var (connection string) | Notes |
 |---|---|---|---|
 | `mongo-vm` | MongoDB on a VM (single-node `rs0`) | `BMT_CONN_MONGO` | `authSource=admin`; only `_id` index by default, so `prepare-data` adds the `ReqId` index. |
-| `cosmos-ru` | Azure Cosmos DB for MongoDB (RU) | `BMT_CONN_COSMOS` | `RetryWrites=false`; **shared 40,000 RU/s (never changed)**; 429/`RetryAfterMs` backoff; `ReqId` index is **non-unique** (platform constraint). |
+| `cosmos-ru` | Azure Cosmos DB for MongoDB (RU) | `BMT_CONN_COSMOS` | `RetryWrites=false`; **fixed provisioned RU/s** (held constant within a campaign, never auto-raised); 429/`RetryAfterMs` backoff; `ReqId` index is **non-unique** (platform constraint). |
 | `documentdb` | Azure DocumentDB / Cosmos vCore | `BMT_CONN` | `mongodb+srv://` SRV resolution; `retrywrites=false` in URI. |
 
 **Secrets never live in the repo.** Connection strings are read at runtime from the env vars above. On
@@ -215,13 +215,13 @@ gap between created and closed means connections leaked or were not released. Th
 but no pooling/reuse occurs between requests; within a single Task the four ops legitimately share that
 Task's one connection.)
 
-**How Cosmos RU throttling affects results.** `cosmos-ru` shares a fixed **40,000 RU/s** budget (never
-raised, even for seeding). When the workload exceeds it, the server returns **429 / `RetryAfterMs`**.
-During the **timed run** these are **classified and recorded as `CosmosRuThrottling`** (a separate error
-bucket) rather than silently retried, so throttling shows up as failures/latency in the report instead
-of being hidden. High `CosmosRuThrottling` counts mean the workload is RU-bound, not latency-bound —
-compare Cosmos against the others with that in mind, and note that adding RU/s (not done here) would
-change the picture.
+**How Cosmos RU throttling affects results.** `cosmos-ru` runs at a **fixed provisioned RU/s** budget
+(held constant within a campaign, never auto-raised — even for seeding). When the workload exceeds it, the
+server returns **429 / `RetryAfterMs`**. During the **timed run** these are **classified and recorded as
+`CosmosRuThrottling`** (a separate error bucket) rather than silently retried, so throttling shows up as
+failures/latency in the report instead of being hidden. High `CosmosRuThrottling` counts mean the workload
+is RU-bound, not latency-bound — compare Cosmos against the others with that in mind. The exact RU/s in
+force for any given run is recorded in that campaign's `results/<campaign>/INDEX.md`, not here.
 
 **How to read DocumentDB Mongo-compatibility limits.** `documentdb` (Cosmos vCore) is Mongo-compatible
 but not identical. Unsupported commands/features surface as the **`DocumentDbCompatibility`** error

@@ -7,6 +7,22 @@ One **benchmark campaign** = one higher folder under `results/`, holding every t
 Scenario token **`steady-burst`** = Scenario A steady (135 Tasks/s) + Scenario B Poisson burst
 (λ=0.57) applied together in one 1-hour window (formerly labelled "both").
 
+## Resource specs (as used for this campaign)
+
+These are the backend tiers in effect **for these runs**. They may change in later campaigns — each
+campaign records its own specs here (the top-level README intentionally does not pin them).
+
+| Target | Resource spec (this campaign) |
+|---|---|
+| `mongo-vm` | Multi-AZ MongoDB on Azure VM — Windows Server 2025, 32 vCore, 256 GB RAM, 512 GB SSD; **single node**, `directConnection=true` |
+| `documentdb` | Azure DocumentDB — **M80** (32 vCore, 128 GB RAM, 512 GB SSD), **HA enabled** |
+| `cosmos-ru` | Azure Cosmos DB for MongoDB (RU) — **fixed 40,000 RU/s** |
+
+Common stack (all three): **MongoDB Server 7.0 / wire 7.0**, **.NET 8 (LTS)**, **MongoDB C# Driver 2.30**.
+
+> Note: a later campaign raises Cosmos to **100,000 RU/s** (fixed) — this `40,000 RU/s` figure applies to
+> *this* campaign only, which is why throughput here is RU-bound (see the summary's CosmosRuThrottling).
+
 ## Run groups
 
 | Run identifier | Target | Finished (UTC) | Duration | Total | OK | Fail | Success | No-reuse |
