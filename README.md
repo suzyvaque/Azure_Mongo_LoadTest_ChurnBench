@@ -175,6 +175,20 @@ group together. See each campaign's `INDEX.md` for a manifest.
   Its title carries the identifier from `--output`, so name it `comparison-3way-<scenario>-<ts>.html`.
 - `results/<campaign>/summary-3way-<scenario>-<ts>.md` — a concise metrics summary.
 
+**Summary template (keep for every campaign).** The `summary-3way-*.md` follows a fixed layout so
+comparisons stay consistent across runs:
+- A grouped, colour-banded **HTML** comparison table (`<tr style="background:...">`), one colour band per
+  metric family (Headline, Total cycle, connectionOpen, find-cold-socket, find-warm-socket, remove, insert)
+  using a merged `Group` column via `rowspan`.
+- `find` is always split into **cold socket** (op1 `find_input`, new connection — pays TCP+TLS+auth) and
+  **warm socket** (op4 `find_output`, same query on the open connection) so the connection tax is isolated.
+- In every row, the **best-performing value is `<u><b>…</b></u>` (bold + underlined)**.
+- A **cost-component table** stating what the op timer does/does not include (data-cache miss removed via
+  §6.5 warm-up; cold connection setup kept as the variable under test; `taskSleepMs` excluded from op
+  timers; pure query cost visible on the warm socket).
+- A `## Key Findings` section (3-5 bullets) and a `> Migration decision guide` callout.
+  Note: inline `<tr>` colours render in VS Code/most viewers but GitHub.com strips them (table still renders).
+
 **Confidentiality / publishing.** Results are committed to the repo **except `*.log`**. Connection
 strings in the published JSON/CSV/HTML are masked for credentials **and** host/IP/`appName` (internal
 Azure hostnames and private IPs are redacted to `****`). Raw `.log` files are git-ignored because

@@ -11,33 +11,33 @@
 
 Rows are grouped and colour-banded by metric family; each find is split into **cold socket** (op1 `find_input`,
 on a brand-new connection — pays TCP+TLS+auth) and **warm socket** (op4 `find_output`, same query on the
-now-open connection). Best value per row is underlined.
+now-open connection). The best value per row is **bold + underlined**.
 
 <table>
   <thead>
     <tr><th>Group</th><th>Metric</th><th>mongo-vm</th><th>documentdb</th><th>cosmos-ru</th></tr>
   </thead>
   <tbody>
-    <tr style="background:#e8eef7"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td>514.7</td><td><u>532.4</u></td><td>204.4</td></tr>
-    <tr style="background:#e8eef7"><td>Error rate</td><td>11.20%</td><td><u>5.07%</u></td><td>58.51%</td></tr>
-    <tr style="background:#f3e8f7"><td rowspan="3"><b>Total cycle</b><br>(incl. 10 s sleep)</td><td>p50</td><td><u>10,040 ms</u></td><td>10,091 ms</td><td>115,496 ms</td></tr>
-    <tr style="background:#f3e8f7"><td>p99</td><td><u>24,003 ms</u></td><td>51,249 ms</td><td>183,231 ms</td></tr>
-    <tr style="background:#f3e8f7"><td>p99.9</td><td><u>29,553 ms</u></td><td>55,011 ms</td><td>187,499 ms</td></tr>
-    <tr style="background:#fff4e0"><td rowspan="3"><b>connectionOpen</b><br>(TCP+TLS+auth)</td><td>p50</td><td><u>8.9 ms</u></td><td>20.8 ms</td><td>40,421 ms</td></tr>
-    <tr style="background:#fff4e0"><td>p90</td><td><u>25.9 ms</u></td><td>8,952.97 ms</td><td>54,910.6 ms</td></tr>
-    <tr style="background:#fff4e0"><td>p99</td><td><u>164.3 ms</u></td><td>14,598.6 ms</td><td>65,131.2 ms</td></tr>
-    <tr style="background:#fde8e8"><td rowspan="3"><b>find — cold socket</b><br>(op1, new connection)</td><td>p50</td><td><u>15.1 ms</u></td><td>41.2 ms</td><td>83,735.9 ms</td></tr>
-    <tr style="background:#fde8e8"><td>p90</td><td><u>3,672.9 ms</u></td><td>19,961.5 ms</td><td>104,194.6 ms</td></tr>
-    <tr style="background:#fde8e8"><td>p99</td><td><u>10,712.5 ms</u></td><td>28,448.7 ms</td><td>115,284.1 ms</td></tr>
-    <tr style="background:#e8f7ee"><td rowspan="3"><b>find — warm socket</b><br>(op4, same query)</td><td>p50</td><td><u>0.6 ms</u></td><td>1.4 ms</td><td>14.6 ms</td></tr>
-    <tr style="background:#e8f7ee"><td>p90</td><td>8.7 ms</td><td><u>6.9 ms</u></td><td>174.8 ms</td></tr>
-    <tr style="background:#e8f7ee"><td>p99</td><td><u>79.9 ms</u></td><td>155.9 ms</td><td>516.9 ms</td></tr>
-    <tr style="background:#eef7e8"><td rowspan="3"><b>remove</b><br>(write, op2)</td><td>p50</td><td>3.9 ms</td><td><u>3.4 ms</u></td><td>13.8 ms</td></tr>
-    <tr style="background:#eef7e8"><td>p90</td><td>7.5 ms</td><td><u>6.7 ms</u></td><td>205.1 ms</td></tr>
-    <tr style="background:#eef7e8"><td>p99</td><td><u>117.5 ms</u></td><td>161.5 ms</td><td>527.8 ms</td></tr>
-    <tr style="background:#e8f3f7"><td rowspan="3"><b>insert</b><br>(write, op3)</td><td>p50</td><td>4.2 ms</td><td><u>3.5 ms</u></td><td>29.8 ms</td></tr>
-    <tr style="background:#e8f3f7"><td>p90</td><td>10.0 ms</td><td><u>9.3 ms</u></td><td>216.2 ms</td></tr>
-    <tr style="background:#e8f3f7"><td>p99</td><td><u>117.3 ms</u></td><td>166.2 ms</td><td>498.0 ms</td></tr>
+    <tr style="background:#e8eef7"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td>514.7</td><td><u><b>532.4</b></u></td><td>204.4</td></tr>
+    <tr style="background:#e8eef7"><td>Error rate</td><td>11.20%</td><td><u><b>5.07%</b></u></td><td>58.51%</td></tr>
+    <tr style="background:#f3e8f7"><td rowspan="3"><b>Total cycle</b><br>(incl. 10 s sleep)</td><td>p50</td><td><u><b>10,040 ms</b></u></td><td>10,091 ms</td><td>115,496 ms</td></tr>
+    <tr style="background:#f3e8f7"><td>p99</td><td><u><b>24,003 ms</b></u></td><td>51,249 ms</td><td>183,231 ms</td></tr>
+    <tr style="background:#f3e8f7"><td>p99.9</td><td><u><b>29,553 ms</b></u></td><td>55,011 ms</td><td>187,499 ms</td></tr>
+    <tr style="background:#fff4e0"><td rowspan="3"><b>connectionOpen</b><br>(TCP+TLS+auth)</td><td>p50</td><td><u><b>8.9 ms</b></u></td><td>20.8 ms</td><td>40,421 ms</td></tr>
+    <tr style="background:#fff4e0"><td>p90</td><td><u><b>25.9 ms</b></u></td><td>8,952.97 ms</td><td>54,910.6 ms</td></tr>
+    <tr style="background:#fff4e0"><td>p99</td><td><u><b>164.3 ms</b></u></td><td>14,598.6 ms</td><td>65,131.2 ms</td></tr>
+    <tr style="background:#fde8e8"><td rowspan="3"><b>find — cold socket</b><br>(op1, new connection)</td><td>p50</td><td><u><b>15.1 ms</b></u></td><td>41.2 ms</td><td>83,735.9 ms</td></tr>
+    <tr style="background:#fde8e8"><td>p90</td><td><u><b>3,672.9 ms</b></u></td><td>19,961.5 ms</td><td>104,194.6 ms</td></tr>
+    <tr style="background:#fde8e8"><td>p99</td><td><u><b>10,712.5 ms</b></u></td><td>28,448.7 ms</td><td>115,284.1 ms</td></tr>
+    <tr style="background:#e8f7ee"><td rowspan="3"><b>find — warm socket</b><br>(op4, same query)</td><td>p50</td><td><u><b>0.6 ms</b></u></td><td>1.4 ms</td><td>14.6 ms</td></tr>
+    <tr style="background:#e8f7ee"><td>p90</td><td>8.7 ms</td><td><u><b>6.9 ms</b></u></td><td>174.8 ms</td></tr>
+    <tr style="background:#e8f7ee"><td>p99</td><td><u><b>79.9 ms</b></u></td><td>155.9 ms</td><td>516.9 ms</td></tr>
+    <tr style="background:#eef7e8"><td rowspan="3"><b>remove</b><br>(write, op2)</td><td>p50</td><td>3.9 ms</td><td><u><b>3.4 ms</b></u></td><td>13.8 ms</td></tr>
+    <tr style="background:#eef7e8"><td>p90</td><td>7.5 ms</td><td><u><b>6.7 ms</b></u></td><td>205.1 ms</td></tr>
+    <tr style="background:#eef7e8"><td>p99</td><td><u><b>117.5 ms</b></u></td><td>161.5 ms</td><td>527.8 ms</td></tr>
+    <tr style="background:#e8f3f7"><td rowspan="3"><b>insert</b><br>(write, op3)</td><td>p50</td><td>4.2 ms</td><td><u><b>3.5 ms</b></u></td><td>29.8 ms</td></tr>
+    <tr style="background:#e8f3f7"><td>p90</td><td>10.0 ms</td><td><u><b>9.3 ms</b></u></td><td>216.2 ms</td></tr>
+    <tr style="background:#e8f3f7"><td>p99</td><td><u><b>117.3 ms</b></u></td><td>166.2 ms</td><td>498.0 ms</td></tr>
   </tbody>
 </table>
 
