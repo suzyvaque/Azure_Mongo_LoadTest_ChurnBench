@@ -190,14 +190,17 @@ public sealed class RunOrchestrator
 
     private async Task WriteArtifactsAsync(RunResult result, CancellationToken ct)
     {
-        var dir = _options.ResultsDirectory;
-        Directory.CreateDirectory(dir);
         var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-        var baseName = $"{result.Target}-{result.Scenario.ToLowerInvariant()}-{stamp}";
+        var runId = $"{result.Target}-{ScenarioLabel(result.Scenario)}-{stamp}";
 
-        var jsonPath = Path.Combine(dir, baseName + ".json");
-        var tsPath = Path.Combine(dir, baseName + "-timeseries.csv");
-        var latPath = Path.Combine(dir, baseName + "-latency.csv");
+        // Each run writes its artifacts into its own subfolder (results/<run-id>/) so a benchmark
+        // campaign can group several target runs (plus the comparison report) under one parent dir.
+        var dir = Path.Combine(_options.ResultsDirectory, runId);
+        Directory.CreateDirectory(dir);
+
+        var jsonPath = Path.Combine(dir, runId + ".json");
+        var tsPath = Path.Combine(dir, runId + "-timeseries.csv");
+        var latPath = Path.Combine(dir, runId + "-latency.csv");
 
         await File.WriteAllTextAsync(jsonPath, result.ToJson(), ct).ConfigureAwait(false);
         await CsvWriter.WriteTimeSeriesAsync(result, tsPath, ct).ConfigureAwait(false);
@@ -207,6 +210,13 @@ public sealed class RunOrchestrator
         ConsoleLog.Info($"Wrote: {tsPath}");
         ConsoleLog.Info($"Wrote: {latPath}");
     }
+
+    // Human-readable scenario token for filenames: "Both" -> "steady-burst" (Scenario A steady +
+    // Scenario B burst run together in one window), else the lowercased scenario name.
+    private static string ScenarioLabel(string scenario) =>
+        scenario.Equals("Both", StringComparison.OrdinalIgnoreCase)
+            ? "steady-burst"
+            : scenario.ToLowerInvariant();
 
     private static void PrintSummary(RunResult r)
     {

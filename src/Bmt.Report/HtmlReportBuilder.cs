@@ -153,7 +153,7 @@ public static class HtmlReportBuilder
         sb.Append("<table class=\"kv\"><tbody>");
         Kv(sb, "Target", r.Target);
         Kv(sb, "Scenario", r.Scenario);
-        Kv(sb, "Connection string (masked)", r.MaskedConnectionString);
+        Kv(sb, "Connection string (masked)", Bmt.Core.ConnectionStringMasker.Mask(r.MaskedConnectionString));
         Kv(sb, "Started (UTC)", r.StartedUtc);
         Kv(sb, "Finished (UTC)", r.FinishedUtc);
         Kv(sb, "Duration (s)", r.DurationSeconds.ToString("F1", Inv));
