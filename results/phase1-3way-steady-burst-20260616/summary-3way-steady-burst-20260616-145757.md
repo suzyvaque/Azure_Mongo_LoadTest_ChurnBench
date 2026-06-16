@@ -18,12 +18,14 @@
 | Total p99.9 | **29,553 ms** | 55,011 ms | 187,499 ms |
 | connectionOpen p50 | **8.9 ms** | 20.8 ms | 40,421 ms |
 | findExecution p50 | **15.1 ms** | 41.2 ms | 83,736 ms |
+| removeExecution p50 | 3.9 ms | **3.4 ms** | 13.8 ms |
+| insertExecution p50 | 4.2 ms | **3.5 ms** | 29.8 ms |
 
 > **Notes on formatting rules.** Total latency = full Task cycle, which includes a fixed **10,000 ms** `taskSleepMs`; it is therefore **not** `≈ find` and is not annotated as such. No pooled variant exists — every connection is cold by design (the churn test's purpose) — so `0 ms (pool reuse)` is never applicable. All metrics were available from the run artifacts; none were substituted.
 
 ## Key Findings
 
-- **Query execution is not the bottleneck on the healthy backends.** With cold connections, `find` p50 is 15 ms (mongo-vm) / 41 ms (documentdb) — the dominant per-cycle cost is the deliberate 10 s think-time, not the database. cosmos-ru is the exception: `find` p50 balloons to **83.7 s** as requests queue behind the RU budget rather than executing slowly.
+- **Query execution is not the bottleneck on the healthy backends.** With cold connections, `find` p50 is 15 ms (mongo-vm) / 41 ms (documentdb) and the keyed `remove`/`insert` writes are cheaper still (3-4 ms each) — the dominant per-cycle cost is the deliberate 10 s think-time, not the database. cosmos-ru is the exception: `find` p50 balloons to **83.7 s** as requests queue behind the RU budget rather than executing slowly (its writes stay single-digit-to-30 ms because reads absorb the throttling).
 - **Connection establishment (TCP + TLS + auth) is cheap when the backend has headroom.** connectionOpen p50 is **8.9 ms** direct-to-node (mongo-vm) and 20.8 ms over TLS/SRV (documentdb). On cosmos-ru it explodes to **40.4 s** — a ~4,500× degradation where connection setup itself is being throttled, signalling the tier (not the network) is the limiter.
 - **Pooling would mostly remove that setup cost and lift tail latency**, but was intentionally disabled. Comparing the throttled vs healthy backends shows the headroom at stake: documentdb sustains **2.6× higher throughput** (532 vs 204 req/s) and **~6× lower p99.9** (55,011 vs 187,499 ms) than cosmos-ru under identical churn. On the VM-hosted node, fixing client-side churn pressure (directConnection + 5 s fail-fast) earlier raised success from 14.2% → 88.8% — a ~6× drop in failed work.
 - **Error behaviour under high churn differs by failure mode.** documentdb degraded gracefully (**5.07%**, mostly ServerSelectionTimeout on burst spikes). mongo-vm's 11.20% is client-side churn pressure (ServerSelectionTimeout 54,015; ConnectionFailure 4,076). cosmos-ru's **58.51%** is overwhelmingly **CosmosRuThrottling (110,276 / 196,917 failures)** — a provisioning ceiling, not a connection-handling defect.
