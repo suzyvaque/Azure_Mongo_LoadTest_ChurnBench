@@ -182,7 +182,7 @@ comparisons stay consistent across runs:
   using a merged `Group` column via `rowspan`.
 - `find` is always split into **cold socket** (op1 `find_input`, new connection — pays TCP+TLS+auth) and
   **warm socket** (op4 `find_output`, same query on the open connection) so the connection tax is isolated.
-- In every row, the **best-performing value is `<u><b>…</b></u>` (bold + underlined)**.
+- In every row, the **best-performing value is bold + underlined + green** (`<u><b style="color:#1a7f37">…</b></u>`); the underline is the fallback for viewers that ignore the colour.
 - A **cost-component table** stating what the op timer does/does not include (data-cache miss removed via
   §6.5 warm-up; cold connection setup kept as the variable under test; `taskSleepMs` excluded from op
   timers; pure query cost visible on the warm socket).
