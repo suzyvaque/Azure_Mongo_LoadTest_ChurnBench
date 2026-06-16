@@ -57,6 +57,8 @@ src/
 config/
   config.json      # sample config (dataset, seeder, preflight, scenario)
   smoke.json       # tiny 40-doc config for connectivity smoke tests
+scripts/
+  tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
 results/           # per-run JSON + CSV artifacts (git-ignored)
 artifacts/         # preflight JSON artifacts (git-ignored)
 ```
@@ -90,6 +92,13 @@ dotnet run --project src/Bmt.Preflight -- preflight --config config/config.json 
 Runs the 10 §6.3 checks and writes a JSON artifact to `artifacts/`. Exit `0` = may proceed (pass/warn),
 `3` = abort (a check failed). `--warmup` performs the untimed data-cache pre-read; `--verify-distinct`
 runs a full distinct-ReqId aggregation (RU-heavy on `cosmos-ru`).
+
+> **Host tuning (§7.3) — required for the burst scenario.** The churn workload opens a fresh connection
+> per Task; each closed socket holds an ephemeral port in `TIME_WAIT`, so sustainable churn ≈
+> `ephemeral_port_count / TcpTimedWaitDelay`. Windows defaults (16,384 ports / 120 s ≈ **137 conn/s**) are
+> far below the Scenario B target of **≥ 1,200 conn/s** and preflight check 7 will WARN. Run
+> `scripts\tune-vm1.ps1` (elevated) on VM1 before a real run — it widens the ephemeral range to
+> 10000–65534 and sets `TcpTimedWaitDelay=30 s` (≈ 1,851 conn/s); `-Revert` restores defaults.
 
 ### 3. `test` — the timed churn run (Bmt.LoadGen)
 
