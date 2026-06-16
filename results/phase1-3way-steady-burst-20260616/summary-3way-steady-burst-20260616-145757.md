@@ -1,13 +1,13 @@
-# MongoDB Connection-Churn Benchmark — comparison-3way-both-20260616-145757
+# MongoDB Connection-Churn Benchmark — comparison-3way-steady-burst-20260616-145757
 
-**Run identifier:** `comparison-3way-both-20260616-145757`
-**Phase 1** · sequential one-target-at-a-time on VM1 · 1-hour window each · Scenario A steady (135 Tasks/s) + Scenario B Poisson burst (λ=0.57) in one window.
+**Campaign:** `phase1-3way-steady-burst-20260616`
+**Phase 1** · sequential one-target-at-a-time on VM1 · 1-hour window each · Scenario A steady (135 Tasks/s) + Scenario B Poisson burst (λ=0.57) run together in one window ("steady-burst").
 **Workload:** new `MongoClient` per Task (no reuse; `maxPoolSize=1`/`minPoolSize=0`), 4 ops/Task (`find`→`remove`→`insert`→`find`) keyed by `ReqId`. Latency in ms; throughput counts individual DB ops (req).
 
-**Source runs (grouped under `results/`):**
-- `mongo-vm-both-20260616-031555`
-- `documentdb-both-20260616-042846`
-- `cosmos-ru-both-20260616-053319`
+**Source runs (grouped in this campaign folder):**
+- `mongo-vm-steady-burst-20260616-031555`
+- `documentdb-steady-burst-20260616-042846`
+- `cosmos-ru-steady-burst-20260616-053319`
 
 | Metric | mongo-vm | documentdb | cosmos-ru |
 |---|---|---|---|
@@ -19,7 +19,7 @@
 | connectionOpen p50 | **8.9 ms** | 20.8 ms | 40,421 ms |
 | findExecution p50 | **15.1 ms** | 41.2 ms | 83,736 ms |
 
-> **Notes on formatting rules.** Total latency = full Task cycle, which includes a fixed **10,000 ms** `taskSleepMs`; it is therefore **not** `≈ find` and is not annotated as such. No pooled variant exists — every connection is cold by design (the churn test's purpose) — so `0 ms (pool reuse)` is never applicable. All metrics below were available from the run artifacts; none were substituted.
+> **Notes on formatting rules.** Total latency = full Task cycle, which includes a fixed **10,000 ms** `taskSleepMs`; it is therefore **not** `≈ find` and is not annotated as such. No pooled variant exists — every connection is cold by design (the churn test's purpose) — so `0 ms (pool reuse)` is never applicable. All metrics were available from the run artifacts; none were substituted.
 
 ## Key Findings
 

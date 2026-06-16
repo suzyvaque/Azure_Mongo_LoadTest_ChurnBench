@@ -59,7 +59,8 @@ config/
   smoke.json       # tiny 40-doc config for connectivity smoke tests
 scripts/
   tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
-results/           # per-run JSON + CSV artifacts, grouped one folder per run (git-ignored)
+results/           # benchmark campaigns: results/<campaign>/<target-run>/ + comparison HTML + summary
+                   #   published, EXCEPT *.log (raw console logs may echo private IPs) which are ignored
 artifacts/         # preflight JSON artifacts (git-ignored)
 ```
 
@@ -115,12 +116,12 @@ duration for short smoke runs), `--results <dir>`, `--no-preflight` (NOT recomme
 ### 4. `report` — self-contained HTML (Bmt.Report)
 
 ```powershell
-dotnet run --project src/Bmt.Report -- report --input results/ --output comparison-3way-both-<ts>.html
+dotnet run --project src/Bmt.Report -- report --input results/<campaign>/ --output results/<campaign>/comparison-3way-steady-burst-<ts>.html
 ```
 
-Consumes one or more target result sets from `results/` (plus any preflight JSON) and produces a single
-self-contained HTML report. To compare all three candidates, run `test` once per `--target`, then run
-`report` over the combined `results/` directory.
+Consumes one or more target result sets from the campaign folder (plus any preflight JSON) and produces a
+single self-contained HTML report. To compare all three candidates, run `test` once per `--target` (with
+`--results results/<campaign>`), then run `report` over that campaign directory.
 
 ---
 
@@ -156,23 +157,32 @@ released after each Task.
 
 ## Output artifacts
 
-Run artifacts are grouped **one subfolder per run** under `results/`, each named with the run
-identifier `<target>-both-<yyyyMMdd-HHmmss>` (matching the run log title format). See
-`results/INDEX.md` for a manifest of completed runs.
+Run artifacts are organised as **campaigns**: one folder per benchmark campaign under `results/`
+(e.g. `results/phase1-3way-steady-burst-20260616/`) holding one **per-target run subfolder** plus the
+comparison report and summary. Each `test` run writes its own `results/<run-id>/` subfolder, where the
+run id is `<target>-<scenario>-<yyyyMMdd-HHmmss>` — the scenario token `steady-burst` means Scenario A
+steady + Scenario B burst in one window. Point `--results` at the campaign folder so a campaign's runs
+group together. See each campaign's `INDEX.md` for a manifest.
 
-- `results/<run-id>/<run-id>.json` — the full machine-readable `RunResult` (totals, per-op +
+- `results/<campaign>/<run-id>/<run-id>.json` — the full machine-readable `RunResult` (totals, per-op +
   cycle + connection-open + client-create latency percentiles, connection counters, reuse verification,
   error taxonomy, per-second throughput, client-host resource samples).
-- `results/<run-id>/<run-id>-timeseries.csv` — one row per second (connection open/close rates, per-op QPS,
-  in-flight Tasks, ephemeral ports, TIME_WAIT, handles, CPU%, working set).
-- `results/<run-id>/<run-id>-latency.csv` — per-op + cycle + connection latency percentiles.
-- `results/<run-id>/<run-id>.log` — captured console log for that run.
-- `<report-id>.html` — the self-contained comparison report. Pass `--output <name>.html`; the report's
-  title carries that identifier, so use the same `<...>-both-<ts>` convention (e.g.
-  `comparison-3way-both-20260616-145757.html`). A matching `.md` summary may accompany it.
+- `results/<campaign>/<run-id>/<run-id>-timeseries.csv` — one row per second (connection open/close rates,
+  per-op QPS, in-flight Tasks, ephemeral ports, TIME_WAIT, handles, CPU%, working set).
+- `results/<campaign>/<run-id>/<run-id>-latency.csv` — per-op + cycle + connection latency percentiles.
+- `results/<campaign>/<run-id>/<run-id>.log` — captured console log (**git-ignored**; see below).
+- `results/<campaign>/comparison-3way-<scenario>-<ts>.html` — the self-contained comparison report.
+  Its title carries the identifier from `--output`, so name it `comparison-3way-<scenario>-<ts>.html`.
+- `results/<campaign>/summary-3way-<scenario>-<ts>.md` — a concise metrics summary.
 
-The `report` loader scans `results/` recursively, so the per-run grouping does not change how reports
-are generated.
+**Confidentiality / publishing.** Results are committed to the repo **except `*.log`**. Connection
+strings in the published JSON/CSV/HTML are masked for credentials **and** host/IP/`appName` (internal
+Azure hostnames and private IPs are redacted to `****`). Raw `.log` files are git-ignored because
+preflight check-3 prints the resolved **private IPs** verbatim (to prove the path is private); the same
+information, masked, survives in the published artifacts.
+
+The `report` loader scans the campaign directory recursively, so the per-run grouping does not change how
+reports are generated.
 
 ---
 
@@ -233,11 +243,11 @@ backend tolerates connection storms. Do not extrapolate these numbers to a poole
 ## Typical Phase-1 workflow
 
 ```powershell
-# Per target (one at a time on VM1):
+# Per target (one at a time on VM1); --results points every run at the same campaign folder:
 dotnet run --project src/Bmt.Seeder    -- prepare-data --config config/config.json --target <key>
 dotnet run --project src/Bmt.Preflight -- preflight    --config config/config.json --target <key> --warmup
-dotnet run --project src/Bmt.LoadGen   -- test         --config config/config.json --target <key> --scenario both
+dotnet run --project src/Bmt.LoadGen   -- test         --config config/config.json --target <key> --scenario both --results results/<campaign>
 
 # After all three targets have run:
-dotnet run --project src/Bmt.Report    -- report --input results/ --output comparison-3way-both-<ts>.html
+dotnet run --project src/Bmt.Report    -- report --input results/<campaign>/ --output results/<campaign>/comparison-3way-steady-burst-<ts>.html
 ```

@@ -433,5 +433,7 @@ handoff/
 connection-strings.json
 # Benchmark run artifacts (preflight JSON, raw run output)
 artifacts/
-# Timed-run results (per-target JSON + CSV + run logs) are large run outputs, not source
-results/
+# Timed-run console logs may echo internal hostnames / private IPs (preflight check-3 prints the
+# resolved private endpoints) -> keep raw logs out of the repo. The same info, masked, is preserved
+# in the published JSON/CSV/HTML/MD results.
+results/**/*.log
