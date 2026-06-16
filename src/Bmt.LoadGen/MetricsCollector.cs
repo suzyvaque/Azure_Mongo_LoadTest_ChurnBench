@@ -191,19 +191,27 @@ public sealed class MetricsCollector : IConnectionEventObserver
         };
 
         // No-reuse verification (§2.2/§7.2): the constraint is that no connection is reused ACROSS
-        // Tasks — i.e. every Task opens exactly one NEW connection and closes it (created ≈ closed ≈
-        // tasks). Within a single Task the four ops legitimately reuse that Task's one pooled
-        // connection, so pool check-outs (≈ 4 × tasks) are EXPECTED and are not a reuse violation.
-        var createdMatchesTasks = totalTasks == 0 || Math.Abs(created - totalTasks) <= Math.Max(1, totalTasks * 0.01);
+        // Tasks — i.e. every Task opens its OWN new connection and closes it. The correct invariant is
+        // therefore created >= tasks (at least one fresh connection per Task) AND created ≈ closed (no
+        // leak). created < tasks is the ONLY reuse signal (connections shared across Tasks). created >
+        // tasks is NOT reuse: under burst stress a single Task may open a replacement connection if its
+        // socket is reset mid-cycle, and failed Tasks may open+close a connection that never completed —
+        // both legitimately push created above tasks. Within a Task the four ops share that Task's one
+        // pooled connection (pool check-outs ≈ 4×tasks), which is also expected and not reuse.
+        var noReuseHolds = totalTasks == 0 || created >= (long)Math.Floor(totalTasks * 0.99);
         var closedMatchesCreated = Math.Abs(created - closed) <= Math.Max(1, created * 0.01);
         var reuseEvents = Math.Max(0, totalTasks - created);
+        var extraFromStress = Math.Max(0, created - totalTasks);
         result.ReuseCheck = new ReuseVerification
         {
-            NoReuseConfirmed = createdMatchesTasks && closedMatchesCreated,
+            NoReuseConfirmed = noReuseHolds && closedMatchesCreated,
             SuspectedReuseEvents = reuseEvents,
             Detail = $"tasks={totalTasks}, created={created}, ready={connCounters.Ready}, closed={closed}, " +
-                     $"checkedOut={connCounters.CheckedOut}. Expected created≈closed≈tasks " +
-                     $"(per-Task pool check-outs ≈ 4×tasks are normal within a Task and not reuse).",
+                     $"checkedOut={connCounters.CheckedOut}. No-reuse holds when created>=tasks (one fresh " +
+                     $"connection per Task) and created≈closed (no leak). created<tasks is reuse " +
+                     $"(suspectedReuseEvents={reuseEvents}); created>tasks ({extraFromStress} extra) is " +
+                     $"replacement/failed-handshake connections under stress, not reuse. Per-Task pool " +
+                     $"check-outs (≈4×tasks) are normal within a Task.",
         };
 
         result.Throughput = _seconds

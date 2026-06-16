@@ -109,19 +109,25 @@ public sealed class RunOrchestrator
         var startedUtc = DateTime.UtcNow;
 
         // ---- Execute the selected scenario(s) ----
+        // §6.4 Phase 1: a single 1-hour window HOLDS Scenario A (steady) while Scenario B (Poisson
+        // burst) is applied WITHIN the same window. For --scenario both the two arrival generators run
+        // CONCURRENTLY against one launcher (one shared no-reuse Task population), not as separate passes.
         try
         {
+            var generators = new List<Task>();
             if (_options.Scenario is RunScenario.Steady or RunScenario.Both)
             {
                 var steady = new SteadyScenario(_config.Scenario.Steady, _options.DurationSecondsOverride);
-                await steady.RunAsync(launcher, ct).ConfigureAwait(false);
+                generators.Add(steady.RunAsync(launcher, ct));
             }
 
             if (_options.Scenario is RunScenario.Burst or RunScenario.Both)
             {
                 var burst = new BurstScenario(_config.Scenario.Burst, _options.DurationSecondsOverride, BmtConstants.DatasetSeed);
-                await burst.RunAsync(launcher, ct).ConfigureAwait(false);
+                generators.Add(burst.RunAsync(launcher, ct));
             }
+
+            await Task.WhenAll(generators).ConfigureAwait(false);
 
             ConsoleLog.Info("Arrival generation complete; draining in-flight Tasks...");
             await launcher.DrainAsync().ConfigureAwait(false);
