@@ -84,46 +84,72 @@ Write-Host "Build result: $LASTEXITCODE  (must be 0)" -ForegroundColor Cyan
 # ---------------------------------------------------------------------------
 # STEP 4 – SET CONNECTION STRING
 # ---------------------------------------------------------------------------
-# Set the DocumentDB connection string for this session.
-# Replace the placeholder below with the real value (get it from the shared
-# key vault or from whoever manages the DocumentDB credentials).
+# The DocumentDB connection string uses the same credential as on VM1.
+# Copy the value of BMT_CONN from VM1 (it is already set there as an env var).
+# URI form (mongodb+srv, TLS, SCRAM-SHA-256, retrywrites=false):
 #
-# The connection string MUST contain:
-#   retrywrites=false   (DocumentDB does not support retryable writes)
-#   authSource=admin    (or whichever auth DB the user lives in)
-#   NO SRV if the SRV record does not resolve from this VNet — use explicit host:port instead.
+#   mongodb+srv://<user>:<pass>@docdb-dbtest-hpc-0.global.mongocluster.cosmos.azure.com/
+#     ?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000
 #
-# Example form:
-#   mongodb://user:pass@<docdb-private-endpoint>:27017/bmt_db?replicaSet=rs0&authSource=admin&retrywrites=false
+# IMPORTANT: Once DNS resolves inside this VNet (after STEP 0b), the hostname
+#   docdb-dbtest-hpc-0.global.mongocluster.cosmos.azure.com
+# will resolve to the private endpoint IP 10.2.0.7 — NOT a public IP.
+# The SRV target is fc-d3df9fb90605-000.global.mongocluster.cosmos.azure.com on port 10260.
+# Make sure that hostname also resolves to a private IP (same DNS zone covers it).
 
-$env:BMT_CONN = "REPLACE_WITH_DOCUMENTDB_CONNECTION_STRING"
+$env:BMT_CONN = "REPLACE_WITH_BMT_CONN_VALUE_FROM_VM1"   # copy from VM1: $env:BMT_CONN
 
 # (Optional) persist across reboots / new sessions:
 # [System.Environment]::SetEnvironmentVariable("BMT_CONN", $env:BMT_CONN, "Machine")
 
-# Mask-check — should print mongodb://****:****@...
+# Mask-check — should print mongodb+srv://****:****@docdb-dbtest-hpc-0...
 $env:BMT_CONN -replace '//[^:]+:[^@]+@', '//****:****@'
 
 # ---------------------------------------------------------------------------
 # STEP 5 – VERIFY PRIVATE NETWORK REACHABILITY
 # ---------------------------------------------------------------------------
-# Extract the hostname from the connection string (edit if your format differs).
-# This checks TCP-level reachability before spending 90 min on a broken run.
+# Private endpoint for DocumentDB vCore: IP 10.2.0.7, lives in vm-dbtest-hpc-0-vnet.
+# The private DNS zone "privatelink.mongocluster.cosmos.azure.com" is currently linked
+# ONLY to vm-dbtest-hpc-0-vnet (VM1's VNet).
+#
+# Before this step will succeed you MUST (STEP 0b):
+#   Azure portal → Private DNS zones → privatelink.mongocluster.cosmos.azure.com
+#   → Virtual network links → + Add → link to VM1-az2's VNet
+#   (same for privatelink.mongo.cosmos.azure.com if it also has records for this cluster)
+#
+# Once the DNS link is in place AND VNet peering routes 10.2.0.7 to VM1's VNet,
+# both the hostname and TCP test below should succeed.
 
-# Replace with the actual DocumentDB private endpoint hostname or IP:
-$DocDbHost = "REPLACE_WITH_DOCUMENTDB_PRIVATE_HOSTNAME_OR_IP"
+$DocDbHost = "docdb-dbtest-hpc-0.global.mongocluster.cosmos.azure.com"
+$DocDbPrivateIP = "10.2.0.7"   # DocumentDB private endpoint IP (confirmed on VM1)
 $DocDbPort = 27017
 
-$result = Test-NetConnection -ComputerName $DocDbHost -Port $DocDbPort
-if ($result.TcpTestSucceeded) {
-    Write-Host "TCP reachability: OK  ($DocDbHost`:$DocDbPort)" -ForegroundColor Green
+# DNS resolution check (should resolve to 10.2.0.7 when DNS zone is linked)
+Write-Host "=== DNS resolution ==="
+try {
+    Resolve-DnsName $DocDbHost -ErrorAction Stop | Format-Table Name,Type,IPAddress,NameHost -AutoSize
+} catch {
+    Write-Host "DNS resolution FAILED for $DocDbHost — add DNS zone link first (STEP 0b)" -ForegroundColor Red
+}
+
+# TCP check via private IP (bypasses DNS — useful to test routing independently)
+Write-Host "=== TCP via private IP (10.2.0.7:27017) ==="
+$r = Test-NetConnection -ComputerName $DocDbPrivateIP -Port $DocDbPort -WarningAction SilentlyContinue
+if ($r.TcpTestSucceeded) {
+    Write-Host "TCP reachability via IP: OK" -ForegroundColor Green
 } else {
-    Write-Host "TCP reachability: FAILED. Check VNet peering, NSG rules, and private DNS zone link." -ForegroundColor Red
+    Write-Host "TCP reachability via IP: FAILED. Check VNet peering and NSG rules." -ForegroundColor Red
     Write-Host "Do NOT proceed to STEP 6 until this is green." -ForegroundColor Red
 }
 
-# Also verify SRV / DNS resolution (important for mongodb+srv:// URIs):
-# Resolve-DnsName _mongodb._tcp.<your-docdb-cluster-hostname>
+# TCP check via hostname (requires DNS zone link)
+Write-Host "=== TCP via hostname ==="
+$r2 = Test-NetConnection -ComputerName $DocDbHost -Port $DocDbPort -WarningAction SilentlyContinue
+if ($r2.TcpTestSucceeded) {
+    Write-Host "TCP reachability via hostname: OK  (resolved to $($r2.RemoteAddress))" -ForegroundColor Green
+} else {
+    Write-Host "TCP reachability via hostname: FAILED. DNS zone link may be missing." -ForegroundColor Red
+}
 
 # ---------------------------------------------------------------------------
 # STEP 6 – RUN DOCUMENTDB TESTS  (full-workload, 3 x 30 min = 90 min total)
