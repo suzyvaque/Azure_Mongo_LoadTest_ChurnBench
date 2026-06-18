@@ -1,0 +1,777 @@
+{
+  "Target": "mongo-vm",
+  "Scenario": "Steady",
+  "WorkloadMode": "full-workload",
+  "IterationNumber": 1,
+  "IterationCount": 1,
+  "StartedUtc": "2026-06-18T08:08:05.9727555Z",
+  "FinishedUtc": "2026-06-18T08:08:36.0761973Z",
+  "DurationSeconds": 30.106,
+  "MaskedConnectionString": "mongodb://****:****@****:27017/bmt_db?replicaSet=rs0\u0026authSource=admin",
+  "TaskSleepMs": 0,
+  "DatasetDocumentCount": 100000,
+  "Preflight": {
+    "Ran": false,
+    "Passed": false,
+    "Outcome": "skipped",
+    "InputIndexUnique": false,
+    "IndexUniquenessDiverges": false,
+    "DistinctReqIdGuarantee": ""
+  },
+  "Totals": {
+    "TotalTasks": 301,
+    "SuccessfulTasks": 301,
+    "FailedTasks": 0,
+    "TotalOps": 1204,
+    "SuccessfulOps": 1204,
+    "FailedOps": 0
+  },
+  "OperationLatencyMs": {
+    "find_input": {
+      "Count": 301,
+      "MinMs": 8.5267,
+      "MaxMs": 45.5434,
+      "MeanMs": 12.217209966777414,
+      "P50Ms": 10.6656,
+      "P90Ms": 17.7977,
+      "P95Ms": 21.6987,
+      "P99Ms": 24.8142,
+      "P999Ms": 45.5434
+    },
+    "remove": {
+      "Count": 301,
+      "MinMs": 2.1179,
+      "MaxMs": 45.1313,
+      "MeanMs": 3.8731511627906974,
+      "P50Ms": 3.6977,
+      "P90Ms": 4.4254,
+      "P95Ms": 4.7928,
+      "P99Ms": 6.3034,
+      "P999Ms": 45.1313
+    },
+    "insert": {
+      "Count": 301,
+      "MinMs": 2.0689,
+      "MaxMs": 11.6802,
+      "MeanMs": 3.8676388704318914,
+      "P50Ms": 3.8401,
+      "P90Ms": 4.5207,
+      "P95Ms": 4.7639,
+      "P99Ms": 5.9025,
+      "P999Ms": 11.6802
+    },
+    "find_output": {
+      "Count": 301,
+      "MinMs": 0.3922,
+      "MaxMs": 3.9452,
+      "MeanMs": 0.498755149501661,
+      "P50Ms": 0.4508,
+      "P90Ms": 0.5968,
+      "P95Ms": 0.7052,
+      "P99Ms": 0.9609,
+      "P999Ms": 3.9452
+    }
+  },
+  "TaskCycleLatencyMs": {
+    "Count": 301,
+    "MinMs": 16.2736,
+    "MaxMs": 81.3194,
+    "MeanMs": 21.553286046511612,
+    "P50Ms": 19.6986,
+    "P90Ms": 27.8577,
+    "P95Ms": 31.1609,
+    "P99Ms": 35.5997,
+    "P999Ms": 81.3194
+  },
+  "ConnectionOpenMs": {
+    "Count": 301,
+    "MinMs": 5.1215,
+    "MaxMs": 40.4314,
+    "MeanMs": 7.272112956810628,
+    "P50Ms": 6.1244,
+    "P90Ms": 9.2037,
+    "P95Ms": 14.3751,
+    "P99Ms": 19.7059,
+    "P999Ms": 40.4314
+  },
+  "ClientCreateMs": {
+    "Count": 301,
+    "MinMs": 0.549,
+    "MaxMs": 14.9289,
+    "MeanMs": 0.7583205980066444,
+    "P50Ms": 0.6052,
+    "P90Ms": 0.9159,
+    "P95Ms": 1.0239,
+    "P99Ms": 2.3428,
+    "P999Ms": 14.9289
+  },
+  "Connections": {
+    "Created": 301,
+    "Ready": 301,
+    "Closed": 301,
+    "Failed": 0,
+    "CheckedOut": 1204,
+    "CreatedToTaskRatio": 1,
+    "ClosedToTaskRatio": 1
+  },
+  "ReuseCheck": {
+    "NoReuseConfirmed": true,
+    "SuspectedReuseEvents": 0,
+    "Detail": "tasks=301 (successful=301), created=301, ready=301, closed=301, checkedOut=1204. No-reuse holds when created\u003E=successfulTasks (one fresh connection per completed Task) and created\u2248closed (no leak). created\u003CsuccessfulTasks is reuse (suspectedReuseEvents=0); created\u003CtotalTasks here is 0 Tasks that failed at server-selection BEFORE opening a connection, not reuse. Per-Task pool check-outs (\u22484\u00D7tasks) are normal within a Task."
+  },
+  "ErrorsByType": {},
+  "Throughput": [
+    {
+      "Second": 0,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 1,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 2,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 3,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 4,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 5,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 6,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 7,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 8,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 9,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 10,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 11,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 12,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 13,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 14,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 15,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 16,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 17,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 18,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 19,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 20,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 21,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 22,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 23,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 24,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 25,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 26,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 27,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 28,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 29,
+      "ConnectionsCreated": 10,
+      "ConnectionsClosed": 10,
+      "FindInputOps": 10,
+      "RemoveOps": 10,
+      "InsertOps": 10,
+      "FindOutputOps": 10,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 40
+    },
+    {
+      "Second": 30,
+      "ConnectionsCreated": 1,
+      "ConnectionsClosed": 1,
+      "FindInputOps": 1,
+      "RemoveOps": 1,
+      "InsertOps": 1,
+      "FindOutputOps": 1,
+      "FailedOps": 0,
+      "InFlightTasks": 1,
+      "CombinedOps": 4
+    }
+  ],
+  "ResourceSamples": [
+    {
+      "Second": 0,
+      "EphemeralPortsInUse": 38,
+      "TimeWaitSockets": 8,
+      "HandleCount": 309,
+      "ThreadCount": 16,
+      "CpuPercent": 0,
+      "WorkingSetBytes": 63447040
+    },
+    {
+      "Second": 1,
+      "EphemeralPortsInUse": 67,
+      "TimeWaitSockets": 28,
+      "HandleCount": 417,
+      "ThreadCount": 17,
+      "CpuPercent": 4.28,
+      "WorkingSetBytes": 71974912
+    },
+    {
+      "Second": 2,
+      "EphemeralPortsInUse": 91,
+      "TimeWaitSockets": 48,
+      "HandleCount": 398,
+      "ThreadCount": 19,
+      "CpuPercent": 4.09,
+      "WorkingSetBytes": 78229504
+    },
+    {
+      "Second": 3,
+      "EphemeralPortsInUse": 109,
+      "TimeWaitSockets": 68,
+      "HandleCount": 497,
+      "ThreadCount": 19,
+      "CpuPercent": 8.56,
+      "WorkingSetBytes": 81985536
+    },
+    {
+      "Second": 4,
+      "EphemeralPortsInUse": 129,
+      "TimeWaitSockets": 88,
+      "HandleCount": 597,
+      "ThreadCount": 19,
+      "CpuPercent": 7.21,
+      "WorkingSetBytes": 85700608
+    },
+    {
+      "Second": 5,
+      "EphemeralPortsInUse": 149,
+      "TimeWaitSockets": 108,
+      "HandleCount": 698,
+      "ThreadCount": 19,
+      "CpuPercent": 8.95,
+      "WorkingSetBytes": 92200960
+    },
+    {
+      "Second": 6,
+      "EphemeralPortsInUse": 169,
+      "TimeWaitSockets": 128,
+      "HandleCount": 408,
+      "ThreadCount": 19,
+      "CpuPercent": 1.75,
+      "WorkingSetBytes": 93966336
+    },
+    {
+      "Second": 7,
+      "EphemeralPortsInUse": 191,
+      "TimeWaitSockets": 150,
+      "HandleCount": 500,
+      "ThreadCount": 16,
+      "CpuPercent": 1.36,
+      "WorkingSetBytes": 95068160
+    },
+    {
+      "Second": 8,
+      "EphemeralPortsInUse": 210,
+      "TimeWaitSockets": 170,
+      "HandleCount": 600,
+      "ThreadCount": 16,
+      "CpuPercent": 6.23,
+      "WorkingSetBytes": 96415744
+    },
+    {
+      "Second": 9,
+      "EphemeralPortsInUse": 230,
+      "TimeWaitSockets": 190,
+      "HandleCount": 312,
+      "ThreadCount": 16,
+      "CpuPercent": 1.17,
+      "WorkingSetBytes": 96325632
+    },
+    {
+      "Second": 10,
+      "EphemeralPortsInUse": 250,
+      "TimeWaitSockets": 210,
+      "HandleCount": 412,
+      "ThreadCount": 16,
+      "CpuPercent": 1.36,
+      "WorkingSetBytes": 96366592
+    },
+    {
+      "Second": 11,
+      "EphemeralPortsInUse": 270,
+      "TimeWaitSockets": 230,
+      "HandleCount": 511,
+      "ThreadCount": 16,
+      "CpuPercent": 0.97,
+      "WorkingSetBytes": 96378880
+    },
+    {
+      "Second": 12,
+      "EphemeralPortsInUse": 292,
+      "TimeWaitSockets": 250,
+      "HandleCount": 608,
+      "ThreadCount": 16,
+      "CpuPercent": 1.75,
+      "WorkingSetBytes": 97046528
+    },
+    {
+      "Second": 13,
+      "EphemeralPortsInUse": 310,
+      "TimeWaitSockets": 270,
+      "HandleCount": 381,
+      "ThreadCount": 16,
+      "CpuPercent": 1.56,
+      "WorkingSetBytes": 91537408
+    },
+    {
+      "Second": 14,
+      "EphemeralPortsInUse": 330,
+      "TimeWaitSockets": 290,
+      "HandleCount": 480,
+      "ThreadCount": 16,
+      "CpuPercent": 1.36,
+      "WorkingSetBytes": 91537408
+    },
+    {
+      "Second": 15,
+      "EphemeralPortsInUse": 350,
+      "TimeWaitSockets": 310,
+      "HandleCount": 578,
+      "ThreadCount": 16,
+      "CpuPercent": 1.36,
+      "WorkingSetBytes": 91615232
+    },
+    {
+      "Second": 16,
+      "EphemeralPortsInUse": 370,
+      "TimeWaitSockets": 330,
+      "HandleCount": 679,
+      "ThreadCount": 16,
+      "CpuPercent": 1.17,
+      "WorkingSetBytes": 92397568
+    },
+    {
+      "Second": 17,
+      "EphemeralPortsInUse": 392,
+      "TimeWaitSockets": 350,
+      "HandleCount": 372,
+      "ThreadCount": 16,
+      "CpuPercent": 0.39,
+      "WorkingSetBytes": 91848704
+    },
+    {
+      "Second": 18,
+      "EphemeralPortsInUse": 409,
+      "TimeWaitSockets": 371,
+      "HandleCount": 471,
+      "ThreadCount": 16,
+      "CpuPercent": 1.17,
+      "WorkingSetBytes": 91848704
+    },
+    {
+      "Second": 19,
+      "EphemeralPortsInUse": 431,
+      "TimeWaitSockets": 391,
+      "HandleCount": 568,
+      "ThreadCount": 16,
+      "CpuPercent": 0.58,
+      "WorkingSetBytes": 91848704
+    },
+    {
+      "Second": 20,
+      "EphemeralPortsInUse": 451,
+      "TimeWaitSockets": 411,
+      "HandleCount": 665,
+      "ThreadCount": 15,
+      "CpuPercent": 1.75,
+      "WorkingSetBytes": 92647424
+    },
+    {
+      "Second": 21,
+      "EphemeralPortsInUse": 471,
+      "TimeWaitSockets": 431,
+      "HandleCount": 390,
+      "ThreadCount": 15,
+      "CpuPercent": 2.33,
+      "WorkingSetBytes": 91742208
+    },
+    {
+      "Second": 22,
+      "EphemeralPortsInUse": 493,
+      "TimeWaitSockets": 451,
+      "HandleCount": 489,
+      "ThreadCount": 15,
+      "CpuPercent": 1.36,
+      "WorkingSetBytes": 91811840
+    },
+    {
+      "Second": 23,
+      "EphemeralPortsInUse": 511,
+      "TimeWaitSockets": 471,
+      "HandleCount": 587,
+      "ThreadCount": 15,
+      "CpuPercent": 0.97,
+      "WorkingSetBytes": 92000256
+    },
+    {
+      "Second": 24,
+      "EphemeralPortsInUse": 531,
+      "TimeWaitSockets": 491,
+      "HandleCount": 319,
+      "ThreadCount": 15,
+      "CpuPercent": 1.17,
+      "WorkingSetBytes": 91938816
+    },
+    {
+      "Second": 25,
+      "EphemeralPortsInUse": 553,
+      "TimeWaitSockets": 514,
+      "HandleCount": 418,
+      "ThreadCount": 15,
+      "CpuPercent": 1.17,
+      "WorkingSetBytes": 91938816
+    },
+    {
+      "Second": 26,
+      "EphemeralPortsInUse": 573,
+      "TimeWaitSockets": 534,
+      "HandleCount": 514,
+      "ThreadCount": 15,
+      "CpuPercent": 1.75,
+      "WorkingSetBytes": 91938816
+    },
+    {
+      "Second": 27,
+      "EphemeralPortsInUse": 595,
+      "TimeWaitSockets": 554,
+      "HandleCount": 614,
+      "ThreadCount": 15,
+      "CpuPercent": 1.17,
+      "WorkingSetBytes": 92016640
+    },
+    {
+      "Second": 28,
+      "EphemeralPortsInUse": 614,
+      "TimeWaitSockets": 574,
+      "HandleCount": 366,
+      "ThreadCount": 14,
+      "CpuPercent": 1.17,
+      "WorkingSetBytes": 91619328
+    },
+    {
+      "Second": 29,
+      "EphemeralPortsInUse": 635,
+      "TimeWaitSockets": 594,
+      "HandleCount": 476,
+      "ThreadCount": 16,
+      "CpuPercent": 2.14,
+      "WorkingSetBytes": 91709440
+    }
+  ],
+  "Process": {
+    "PeakWorkingSetBytes": 97046528,
+    "PeakHandleCount": 698,
+    "PeakThreadCount": 19,
+    "MaxCpuPercent": 8.95,
+    "PeakEphemeralPortsInUse": 635,
+    "PeakTimeWaitSockets": 594
+  }
+}

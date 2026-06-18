@@ -1,7 +1,9 @@
 {
-  // SMOKE-TEST config only — 40 docs (10 per bucket) to validate connectivity, whole-doc sizing,
-  // index creation and verification against live backends. NOT the real dataset. Delete after use.
-  "TaskSleepMs": 10000,
+  // Smoke-test config: single-op insert-output, 30 s, 1 iteration.
+  // Isolates cold-connection write cost (insert into calc_output, no prior remove).
+  // Note: accumulates docs in calc_output — intended only for short targeted tests.
+  // Produces only insert latency in the result (find_input/remove/find_output are absent).
+  "TaskSleepMs": 0,
   "Dataset": {
     "DocumentCount": 40,
     "Seed": 42,
@@ -26,7 +28,7 @@
     "Burst": { "Enabled": false, "JobsPerSecondLambda": 0.57, "MaxTasksPerJob": 5, "MinTasksPerJob": 1, "DurationSeconds": 30 }
   },
   "Workload": {
-    "Mode": "FullWorkload",
-    "SingleOpType": "FindInput"
+    "Mode": "SingleOp",
+    "SingleOpType": "InsertOutput"
   }
 }

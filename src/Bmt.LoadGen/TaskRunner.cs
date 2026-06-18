@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Bmt.Core;
+using Bmt.Core.Configuration;
 using Bmt.Core.Connections;
 using Bmt.Core.Errors;
 using Bmt.Core.Metrics;
@@ -10,8 +11,9 @@ using MongoDB.Driver;
 namespace Bmt.LoadGen;
 
 /// <summary>
-/// Executes exactly one Task = the strict 4-op cycle under test (test_instruction.md §2.1), all keyed
-/// on the <c>ReqId</c> field (never the <c>_id</c> point-read):
+/// Executes one Task under the configured workload mode (test_instruction.md §2.1).
+/// <para>
+/// <b>Full-workload mode</b> (default): the strict 4-op cycle, all keyed on the <c>ReqId</c> field:
 /// <list type="number">
 ///   <item><c>find</c> input (calc_input by ReqId)</item>
 ///   <item>sleep <c>taskSleepMs</c> (calc-time substitute; between input-find and output-remove)</item>
@@ -19,10 +21,17 @@ namespace Bmt.LoadGen;
 ///   <item><c>insert</c> output (calc_output)</item>
 ///   <item><c>find</c> output (calc_output by ReqId)</item>
 /// </list>
+/// </para>
+/// <para>
+/// <b>Single-op mode</b>: one operation per connection, selected by <see cref="WorkloadConfig.SingleOpType"/>:
+/// <list type="bullet">
+///   <item><c>find-input</c>: find on calc_input — isolates cold-connection read cost.</item>
+///   <item><c>insert-output</c>: insert into calc_output — isolates cold-connection write cost (accumulates docs; suitable for short isolated tests).</item>
+/// </list>
+/// The calc-time substitute sleep is skipped in single-op mode.
+/// </para>
 /// A brand-new <see cref="TaskConnection"/> (fresh MongoClient, pool size 1, no reuse) is created and
-/// disposed per Task. taskSleepMs is excluded from per-op latencies but included in the full cycle.
-/// Throttling/errors are CLASSIFIED and recorded (not silently retried) so latency is not hidden —
-/// Cosmos RU 429s land in the <c>CosmosRuThrottling</c> bucket (§7.4).
+/// disposed per Task in all modes. Throttling/errors are CLASSIFIED and recorded (not silently retried).
 /// </summary>
 public sealed class TaskRunner
 {
@@ -30,16 +39,19 @@ public sealed class TaskRunner
     private readonly MetricsCollector _metrics;
     private readonly int _taskSleepMs;
     private readonly TargetKey _target;
+    private readonly WorkloadConfig _workload;
     private readonly string _outputPayload;
 
     public TaskRunner(
         TaskConnectionFactory factory,
         MetricsCollector metrics,
         TargetKey target,
-        int taskSleepMs)
+        int taskSleepMs,
+        WorkloadConfig workload)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+        _workload = workload ?? throw new ArgumentNullException(nameof(workload));
         _target = target;
         _taskSleepMs = Math.Max(0, taskSleepMs);
 
@@ -65,37 +77,14 @@ public sealed class TaskRunner
             createSw.Stop();
             _metrics.RecordClientCreate(createSw.Elapsed.TotalMilliseconds);
 
-            var inputFilter = Builders<CalcInputDoc>.Filter.Eq(d => d.ReqId, reqId);
-            var outputFilter = Builders<CalcOutputDoc>.Filter.Eq(d => d.ReqId, reqId);
-
-            // Op 1: find input by ReqId (read).
-            await TimedAsync(OpNames.FindInput, ct, async () =>
-                await conn.CalcInput.Find(inputFilter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
-                .ConfigureAwait(false);
-
-            // Step 2: calc-time substitute sleep (excluded from per-op latency, included in cycle).
-            if (_taskSleepMs > 0)
+            if (_workload.Mode == WorkloadMode.SingleOp)
             {
-                await Task.Delay(_taskSleepMs, ct).ConfigureAwait(false);
+                await RunSingleOpAsync(conn, reqId, ct).ConfigureAwait(false);
             }
-
-            // Op 2: remove output by ReqId (write) — mandatory, never upsert.
-            await TimedAsync(OpNames.Remove, ct, async () =>
-                await conn.CalcOutput.DeleteManyAsync(outputFilter, ct).ConfigureAwait(false))
-                .ConfigureAwait(false);
-
-            // Op 3: insert output (write) — plain insert, never upsert.
-            var doc = BuildOutputDoc(reqId);
-            await TimedAsync(OpNames.Insert, ct, async () =>
+            else
             {
-                await conn.CalcOutput.InsertOneAsync(doc, cancellationToken: ct).ConfigureAwait(false);
-                return true;
-            }).ConfigureAwait(false);
-
-            // Op 4: find output by ReqId (read-back).
-            await TimedAsync(OpNames.FindOutput, ct, async () =>
-                await conn.CalcOutput.Find(outputFilter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
-                .ConfigureAwait(false);
+                await RunFullWorkloadAsync(conn, reqId, ct).ConfigureAwait(false);
+            }
 
             success = true;
         }
@@ -112,6 +101,74 @@ public sealed class TaskRunner
             conn?.Dispose();
             cycle.Stop();
             _metrics.OnTaskEnd(success, cycle.Elapsed.TotalMilliseconds);
+        }
+    }
+
+    /// <summary>Full 4-op cycle with calc-time sleep (original benchmark behavior).</summary>
+    private async Task RunFullWorkloadAsync(TaskConnection conn, string reqId, CancellationToken ct)
+    {
+        var inputFilter = Builders<CalcInputDoc>.Filter.Eq(d => d.ReqId, reqId);
+        var outputFilter = Builders<CalcOutputDoc>.Filter.Eq(d => d.ReqId, reqId);
+
+        // Op 1: find input by ReqId (read).
+        await TimedAsync(OpNames.FindInput, ct, async () =>
+            await conn.CalcInput.Find(inputFilter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        // Step 2: calc-time substitute sleep (excluded from per-op latency, included in cycle).
+        if (_taskSleepMs > 0)
+        {
+            await Task.Delay(_taskSleepMs, ct).ConfigureAwait(false);
+        }
+
+        // Op 2: remove output by ReqId (write) — mandatory, never upsert.
+        await TimedAsync(OpNames.Remove, ct, async () =>
+            await conn.CalcOutput.DeleteManyAsync(outputFilter, ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        // Op 3: insert output (write) — plain insert, never upsert.
+        var doc = BuildOutputDoc(reqId);
+        await TimedAsync(OpNames.Insert, ct, async () =>
+        {
+            await conn.CalcOutput.InsertOneAsync(doc, cancellationToken: ct).ConfigureAwait(false);
+            return true;
+        }).ConfigureAwait(false);
+
+        // Op 4: find output by ReqId (read-back).
+        await TimedAsync(OpNames.FindOutput, ct, async () =>
+            await conn.CalcOutput.Find(outputFilter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Single-op mode: one operation per connection, no sleep.</summary>
+    private async Task RunSingleOpAsync(TaskConnection conn, string reqId, CancellationToken ct)
+    {
+        switch (_workload.SingleOpType)
+        {
+            case SingleOpType.FindInput:
+            {
+                var filter = Builders<CalcInputDoc>.Filter.Eq(d => d.ReqId, reqId);
+                await TimedAsync(OpNames.FindInput, ct, async () =>
+                    await conn.CalcInput.Find(filter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
+                    .ConfigureAwait(false);
+                break;
+            }
+
+            case SingleOpType.InsertOutput:
+            {
+                // Use a fresh ObjectId as _id (not reqId) since there is no prior remove in single-op
+                // mode — reusing reqId as _id would collide with existing calc_output docs.
+                var doc = BuildOutputDoc(reqId, useReqIdAsId: false);
+                await TimedAsync(OpNames.Insert, ct, async () =>
+                {
+                    await conn.CalcOutput.InsertOneAsync(doc, cancellationToken: ct).ConfigureAwait(false);
+                    return true;
+                }).ConfigureAwait(false);
+                break;
+            }
+
+            default:
+                throw new InvalidOperationException($"Unhandled SingleOpType: {_workload.SingleOpType}");
         }
     }
 
@@ -137,12 +194,12 @@ public sealed class TaskRunner
         }
     }
 
-    private CalcOutputDoc BuildOutputDoc(string reqId)
+    private CalcOutputDoc BuildOutputDoc(string reqId, bool useReqIdAsId = true)
     {
         var now = DateTime.UtcNow;
         return new CalcOutputDoc
         {
-            Id = reqId,
+            Id = useReqIdAsId ? reqId : MongoDB.Bson.ObjectId.GenerateNewId().ToString(),
             ReqId = reqId,
             StartTime = now.ToString("O"),
             EndTime = now.AddMilliseconds(_taskSleepMs).ToString("O"),

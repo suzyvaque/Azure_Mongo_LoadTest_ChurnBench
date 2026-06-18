@@ -28,8 +28,12 @@
 
   // Load scenarios (§6.2). Steady = Scenario A peak-hour; Burst = Scenario B Poisson spikes.
   // MaxConcurrentTasks caps in-flight Tasks (each owns one fresh connection) — set at/above the
-  // §6.2 concurrent target (≥ 11,000). Durations are overridable per-run via --duration-sec.
+  // §6.2 concurrent target (≥ 11,000). Iterations controls how many back-to-back timed windows are
+  // run per invocation; each produces its own artifacts. IterationDurationSeconds overrides both
+  // Steady.DurationSeconds and Burst.DurationSeconds when set (> 0).
   "Scenario": {
+    "Iterations": 3,
+    "IterationDurationSeconds": 1800,
     "MaxConcurrentTasks": 15000,
     "ResourceSampleIntervalMs": 1000,
     "Steady": {
@@ -67,8 +71,18 @@
     "RequirePrivateNetwork": true,
     "SampleSize": 1000,
     "WarmupMaxAgeMinutes": 360,
-    "CosmosExpectedRuPerSec": 40000,
+    "CosmosExpectedRuPerSec": 100000,
     "DocumentDbExpectedTier": "M80",
     "MongoExpectedMaxIncomingConnections": null
+  },
+
+  // Workload mode. Default is "FullWorkload" (original 4-op cycle). Set to "SingleOp" to run just
+  // one operation per connection (useful for isolating individual op latency). In SingleOp mode,
+  // SingleOpType selects which op: "FindInput" (find on calc_input) or "InsertOutput" (insert into
+  // calc_output — accumulates docs; use only for short targeted tests). TaskSleepMs is skipped in
+  // SingleOp mode. No-reuse model is preserved in all modes.
+  "Workload": {
+    "Mode": "FullWorkload",
+    "SingleOpType": "FindInput"
   }
 }

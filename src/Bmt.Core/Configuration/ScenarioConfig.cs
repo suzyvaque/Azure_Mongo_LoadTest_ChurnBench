@@ -20,6 +20,20 @@ public sealed class ScenarioConfig
     /// <summary>Period (ms) for sampling client-host resources (ports/TIME_WAIT/handles/CPU/mem), §7.3.</summary>
     public int ResourceSampleIntervalMs { get; set; } = 1_000;
 
+    /// <summary>
+    /// Number of back-to-back timed iterations to run per invocation. Each iteration produces its own
+    /// result artifacts; an aggregate.json is written at the campaign folder root after the last iteration.
+    /// Default 1 (single run — original behavior). Phase-1 production uses 3.
+    /// </summary>
+    public int Iterations { get; set; } = 1;
+
+    /// <summary>
+    /// Duration in seconds for EACH iteration, applied to all scenario generators (Steady + Burst).
+    /// When > 0 this overrides the per-scenario <c>DurationSeconds</c> values. Default 0 = use the
+    /// per-scenario values as-is. The CLI <c>--duration-sec</c> flag takes precedence over this.
+    /// </summary>
+    public int IterationDurationSeconds { get; set; } = 0;
+
     public void Validate()
     {
         Steady.Validate();
@@ -32,6 +46,16 @@ public sealed class ScenarioConfig
         if (ResourceSampleIntervalMs <= 0)
         {
             throw new InvalidOperationException("Scenario.ResourceSampleIntervalMs must be > 0.");
+        }
+
+        if (Iterations <= 0)
+        {
+            throw new InvalidOperationException("Scenario.Iterations must be > 0.");
+        }
+
+        if (IterationDurationSeconds < 0)
+        {
+            throw new InvalidOperationException("Scenario.IterationDurationSeconds must be >= 0.");
         }
     }
 }

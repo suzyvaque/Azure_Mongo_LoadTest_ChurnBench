@@ -1,7 +1,8 @@
 {
-  // SMOKE-TEST config only — 40 docs (10 per bucket) to validate connectivity, whole-doc sizing,
-  // index creation and verification against live backends. NOT the real dataset. Delete after use.
-  "TaskSleepMs": 10000,
+  // Smoke-test config: single-op find-input, 30 s, 1 iteration.
+  // Isolates cold-connection read cost (find on calc_input by ReqId).
+  // Produces only find_input latency in the result (remove/insert/find_output are absent).
+  "TaskSleepMs": 0,
   "Dataset": {
     "DocumentCount": 40,
     "Seed": 42,
@@ -26,7 +27,7 @@
     "Burst": { "Enabled": false, "JobsPerSecondLambda": 0.57, "MaxTasksPerJob": 5, "MinTasksPerJob": 1, "DurationSeconds": 30 }
   },
   "Workload": {
-    "Mode": "FullWorkload",
+    "Mode": "SingleOp",
     "SingleOpType": "FindInput"
   }
 }

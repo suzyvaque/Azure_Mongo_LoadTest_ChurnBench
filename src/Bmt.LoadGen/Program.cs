@@ -173,13 +173,21 @@ public sealed class RunOptions
         Console.WriteLine("  --config, -c        Path to config.json (default: config.json).");
         Console.WriteLine("  --target, -t        Backend key (resolves the connection string from its env var).");
         Console.WriteLine("  --scenario, -s      steady (A) | burst (B) | both (default: both).");
-        Console.WriteLine("  --duration-sec, -d  Override each scenario's duration in seconds (for short smoke runs).");
-        Console.WriteLine("  --results           Output directory for JSON + CSV artifacts (default: results).");
+        Console.WriteLine("  --duration-sec, -d  Override each iteration's duration in seconds (for short smoke runs).");
+        Console.WriteLine("  --results           Output directory for campaign folder (default: results).");
         Console.WriteLine("  --no-preflight      Skip the §6.3 preflight gate (NOT recommended; preconditions unverified).");
         Console.WriteLine("  --help,   -h        Show this help.");
         Console.WriteLine();
-        Console.WriteLine("Runs the connection-churn workload (strict 4-op Task, new connection per Task, no reuse) against");
-        Console.WriteLine("one target and writes a JSON run artifact + per-second/latency CSVs to results/ for the report.");
-        Console.WriteLine("No pass/fail — the comparison is by p99/p95/p99.9.");
+        Console.WriteLine("Config controls workload shape (config.json):");
+        Console.WriteLine("  Scenario.Iterations            Number of back-to-back timed windows (default 1; production uses 3).");
+        Console.WriteLine("  Scenario.IterationDurationSeconds  Duration per iteration, overrides per-scenario DurationSeconds.");
+        Console.WriteLine("  Workload.Mode                  FullWorkload (default) | SingleOp");
+        Console.WriteLine("  Workload.SingleOpType          FindInput | InsertOutput  (used when Mode=SingleOp)");
+        Console.WriteLine();
+        Console.WriteLine("Artifact layout:");
+        Console.WriteLine("  results/<target>-<scenario>-<workload>-<stamp>/");
+        Console.WriteLine("    iter-01/  <runid>-iter-01-<stamp>.json  + -timeseries.csv  + -latency.csv");
+        Console.WriteLine("    iter-02/  ...");
+        Console.WriteLine("    aggregate.json  (cross-iteration mean/min/max stats)");
     }
 }

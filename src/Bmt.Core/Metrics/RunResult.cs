@@ -15,6 +15,15 @@ public sealed class RunResult
 
     public string Scenario { get; set; } = string.Empty;
 
+    /// <summary>Workload mode label: "full-workload", "find-input", or "insert-output".</summary>
+    public string WorkloadMode { get; set; } = "full-workload";
+
+    /// <summary>1-based iteration number within the campaign (1 for single-iteration runs).</summary>
+    public int IterationNumber { get; set; } = 1;
+
+    /// <summary>Total number of iterations planned for this campaign.</summary>
+    public int IterationCount { get; set; } = 1;
+
     public string StartedUtc { get; set; } = string.Empty;
 
     public string FinishedUtc { get; set; } = string.Empty;

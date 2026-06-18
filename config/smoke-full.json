@@ -1,7 +1,7 @@
 {
-  // SMOKE-TEST config only — 40 docs (10 per bucket) to validate connectivity, whole-doc sizing,
-  // index creation and verification against live backends. NOT the real dataset. Delete after use.
-  "TaskSleepMs": 10000,
+  // Smoke-test config: full-workload mode, 30 s, 1 iteration, 40-doc dataset (from smoke.json seeder).
+  // Use this to validate the 4-op cycle path end-to-end before production runs.
+  "TaskSleepMs": 0,
   "Dataset": {
     "DocumentCount": 40,
     "Seed": 42,

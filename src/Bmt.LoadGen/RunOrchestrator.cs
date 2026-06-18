@@ -12,11 +12,11 @@ using MongoDB.Driver;
 namespace Bmt.LoadGen;
 
 /// <summary>
-/// Orchestrates one <c>test</c> run end-to-end (test_instruction.md §6): warm the data cache (untimed
-/// pre-read, no retained connections) → run the mandatory preflight gate (abort on any FAIL unless
-/// <c>--no-preflight</c>) → execute the selected scenario(s) under the no-reuse per-Task connection
-/// model → collect §7 metrics → write the JSON + CSV artifacts to <c>results/</c>. Targets run one at
-/// a time on VM1; this drives exactly one target per invocation.
+/// Orchestrates one <c>test</c> invocation end-to-end (test_instruction.md §6): warm the data cache
+/// (untimed pre-read, no retained connections) → run the mandatory preflight gate (abort on any FAIL
+/// unless <c>--no-preflight</c>) → execute N iterations of the selected scenario(s) under the no-reuse
+/// per-Task connection model → write per-iteration JSON + CSV artifacts → write a cross-iteration
+/// aggregate.json. Targets run one at a time; this drives exactly one target per invocation.
 /// </summary>
 public sealed class RunOrchestrator
 {
@@ -35,10 +35,14 @@ public sealed class RunOrchestrator
     {
         var target = _options.Target;
         var cliName = TargetConnection.CliName(target);
-        ConsoleLog.Info($"=== LoadGen run: target={cliName} scenario={_options.Scenario} ===");
+        var workloadToken = _config.Workload.Token();
+        var iterations = _config.Scenario.Iterations;
+
+        ConsoleLog.Info($"=== LoadGen run: target={cliName} scenario={_options.Scenario} " +
+                        $"workload={workloadToken} iterations={iterations} ===");
         ConsoleLog.Info($"Connection: {ConnectionStringMasker.Mask(_connectionString)}");
 
-        // ---- Preflight gate (§6.3) ----
+        // ---- Preflight gate (§6.3) — runs once before all iterations ----
         var gate = new PreflightGateInfo { Ran = false, Outcome = "skipped" };
         if (_options.RunPreflight)
         {
@@ -79,15 +83,77 @@ public sealed class RunOrchestrator
 
         ConsoleLog.Info($"Dataset: calc_input has {datasetCount} documents (ReqId space \"1\"..\"{datasetCount}\").");
 
-        // ---- Warm the data cache (untimed; no retained connections) ----
+        // ---- Warm the data cache once (untimed; no retained connections) ----
         await WarmCacheAsync(datasetCount, ct).ConfigureAwait(false);
 
-        // ---- Wire metrics + per-Task no-reuse connection factory ----
+        // ---- Determine effective per-iteration duration ----
+        // Priority: CLI --duration-sec > config Scenario.IterationDurationSeconds > per-scenario defaults.
+        var effectiveDurationSec = _options.DurationSecondsOverride > 0
+            ? _options.DurationSecondsOverride
+            : _config.Scenario.IterationDurationSeconds > 0
+                ? _config.Scenario.IterationDurationSeconds
+                : 0; // 0 = each scenario uses its own DurationSeconds
+
+        // ---- Campaign folder (shared by all iterations + aggregate) ----
+        var campaignStamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+        var scenarioLabel = ScenarioLabel(_options.Scenario.ToString());
+        var campaignId = $"{cliName}-{scenarioLabel}-{workloadToken}-{campaignStamp}";
+        var campaignDir = Path.Combine(_options.ResultsDirectory, campaignId);
+        Directory.CreateDirectory(campaignDir);
+        ConsoleLog.Info($"Campaign folder: {campaignDir}");
+
+        // ---- Run iterations ----
+        var iterResults = new List<RunResult>(iterations);
+        var artifactRelPaths = new List<string>(iterations);
+
+        for (var iter = 1; iter <= iterations; iter++)
+        {
+            if (ct.IsCancellationRequested)
+            {
+                break;
+            }
+
+            ConsoleLog.Info($"");
+            ConsoleLog.Info($">>> Iteration {iter}/{iterations} <<<");
+
+            var (result, relPath) = await RunIterationAsync(
+                iter, iterations, campaignId, campaignDir,
+                datasetCount, effectiveDurationSec, gate, cliName, ct).ConfigureAwait(false);
+
+            iterResults.Add(result);
+            artifactRelPaths.Add(relPath);
+        }
+
+        // ---- Write aggregate ----
+        if (iterResults.Count > 0)
+        {
+            var agg = AggregateResult.Build(iterResults, artifactRelPaths);
+            var aggPath = Path.Combine(campaignDir, "aggregate.json");
+            await File.WriteAllTextAsync(aggPath, agg.ToJson(), ct).ConfigureAwait(false);
+            ConsoleLog.Info($"Wrote aggregate: {aggPath}");
+            PrintAggregateSummary(agg);
+        }
+
+        return 0;
+    }
+
+    private async Task<(RunResult result, string relPath)> RunIterationAsync(
+        int iterNumber,
+        int totalIters,
+        string campaignId,
+        string campaignDir,
+        long datasetCount,
+        int effectiveDurationSec,
+        PreflightGateInfo gate,
+        string cliName,
+        CancellationToken ct)
+    {
+        // ---- Wire fresh metrics + per-Task no-reuse connection factory (new per iteration) ----
         var counters = new ConnectionEventCounters();
         var metrics = new MetricsCollector();
         var observer = new CompositeConnectionObserver(counters, metrics);
-        var factory = new TaskConnectionFactory(target, _connectionString, observer, _config.Client);
-        var runner = new TaskRunner(factory, metrics, target, _config.TaskSleepMs);
+        var factory = new TaskConnectionFactory(_options.Target, _connectionString, observer, _config.Client);
+        var runner = new TaskRunner(factory, metrics, _options.Target, _config.TaskSleepMs, _config.Workload);
 
         var reqIdRng = new Random(BmtConstants.DatasetSeed);
         var reqIdLock = new object();
@@ -109,32 +175,28 @@ public sealed class RunOrchestrator
         var startedUtc = DateTime.UtcNow;
 
         // ---- Execute the selected scenario(s) ----
-        // §6.4 Phase 1: a single 1-hour window HOLDS Scenario A (steady) while Scenario B (Poisson
-        // burst) is applied WITHIN the same window. For --scenario both the two arrival generators run
-        // CONCURRENTLY against one launcher (one shared no-reuse Task population), not as separate passes.
         try
         {
             var generators = new List<Task>();
             if (_options.Scenario is RunScenario.Steady or RunScenario.Both)
             {
-                var steady = new SteadyScenario(_config.Scenario.Steady, _options.DurationSecondsOverride);
+                var steady = new SteadyScenario(_config.Scenario.Steady, effectiveDurationSec);
                 generators.Add(steady.RunAsync(launcher, ct));
             }
 
             if (_options.Scenario is RunScenario.Burst or RunScenario.Both)
             {
-                var burst = new BurstScenario(_config.Scenario.Burst, _options.DurationSecondsOverride, BmtConstants.DatasetSeed);
+                var burst = new BurstScenario(_config.Scenario.Burst, effectiveDurationSec, BmtConstants.DatasetSeed);
                 generators.Add(burst.RunAsync(launcher, ct));
             }
 
             await Task.WhenAll(generators).ConfigureAwait(false);
-
             ConsoleLog.Info("Arrival generation complete; draining in-flight Tasks...");
             await launcher.DrainAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            ConsoleLog.Warn("Run canceled; draining in-flight Tasks...");
+            ConsoleLog.Warn("Iteration canceled; draining in-flight Tasks...");
             await launcher.DrainAsync().ConfigureAwait(false);
         }
 
@@ -142,10 +204,13 @@ public sealed class RunOrchestrator
         var finishedUtc = DateTime.UtcNow;
         await sampler.StopAsync().ConfigureAwait(false);
 
-        // ---- Build + persist the result ----
+        // ---- Build result ----
         var result = metrics.Build(counters, sampler.Samples(), sampler.Peaks());
         result.Target = cliName;
         result.Scenario = _options.Scenario.ToString();
+        result.WorkloadMode = _config.Workload.Token();
+        result.IterationNumber = iterNumber;
+        result.IterationCount = totalIters;
         result.StartedUtc = startedUtc.ToString("O");
         result.FinishedUtc = finishedUtc.ToString("O");
         result.DurationSeconds = Math.Round(runClock.Elapsed.TotalSeconds, 3);
@@ -154,9 +219,31 @@ public sealed class RunOrchestrator
         result.DatasetDocumentCount = datasetCount;
         result.Preflight = gate;
 
-        await WriteArtifactsAsync(result, ct).ConfigureAwait(false);
-        PrintSummary(result);
-        return 0;
+        // ---- Persist artifacts into iter-NN subfolder ----
+        var iterLabel = $"iter-{iterNumber:D2}";
+        var iterDir = Path.Combine(campaignDir, iterLabel);
+        Directory.CreateDirectory(iterDir);
+
+        var fileStamp = startedUtc.ToString("yyyyMMdd-HHmmss");
+        var runId = $"{campaignId}-{iterLabel}-{fileStamp}";
+
+        var jsonPath = Path.Combine(iterDir, runId + ".json");
+        var tsPath = Path.Combine(iterDir, runId + "-timeseries.csv");
+        var latPath = Path.Combine(iterDir, runId + "-latency.csv");
+
+        await File.WriteAllTextAsync(jsonPath, result.ToJson(), ct).ConfigureAwait(false);
+        await CsvWriter.WriteTimeSeriesAsync(result, tsPath, ct).ConfigureAwait(false);
+        await CsvWriter.WriteLatencySummaryAsync(result, latPath, ct).ConfigureAwait(false);
+
+        ConsoleLog.Info($"Wrote: {jsonPath}");
+        ConsoleLog.Info($"Wrote: {tsPath}");
+        ConsoleLog.Info($"Wrote: {latPath}");
+
+        PrintIterationSummary(result);
+
+        // Return relative path from campaign dir for the aggregate cross-reference.
+        var relPath = Path.Combine(iterLabel, runId + ".json");
+        return (result, relPath);
     }
 
     private async Task<long> CountInputAsync(CancellationToken ct)
@@ -188,47 +275,23 @@ public sealed class RunOrchestrator
         ConsoleLog.Info("Warm-up complete (throwaway connection disposed; none retained).");
     }
 
-    private async Task WriteArtifactsAsync(RunResult result, CancellationToken ct)
-    {
-        var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-        var runId = $"{result.Target}-{ScenarioLabel(result.Scenario)}-{stamp}";
-
-        // Each run writes its artifacts into its own subfolder (results/<run-id>/) so a benchmark
-        // campaign can group several target runs (plus the comparison report) under one parent dir.
-        var dir = Path.Combine(_options.ResultsDirectory, runId);
-        Directory.CreateDirectory(dir);
-
-        var jsonPath = Path.Combine(dir, runId + ".json");
-        var tsPath = Path.Combine(dir, runId + "-timeseries.csv");
-        var latPath = Path.Combine(dir, runId + "-latency.csv");
-
-        await File.WriteAllTextAsync(jsonPath, result.ToJson(), ct).ConfigureAwait(false);
-        await CsvWriter.WriteTimeSeriesAsync(result, tsPath, ct).ConfigureAwait(false);
-        await CsvWriter.WriteLatencySummaryAsync(result, latPath, ct).ConfigureAwait(false);
-
-        ConsoleLog.Info($"Wrote: {jsonPath}");
-        ConsoleLog.Info($"Wrote: {tsPath}");
-        ConsoleLog.Info($"Wrote: {latPath}");
-    }
-
-    // Human-readable scenario token for filenames: "Both" -> "steady-burst" (Scenario A steady +
-    // Scenario B burst run together in one window), else the lowercased scenario name.
+    // Human-readable scenario token for filenames.
     private static string ScenarioLabel(string scenario) =>
         scenario.Equals("Both", StringComparison.OrdinalIgnoreCase)
             ? "steady-burst"
             : scenario.ToLowerInvariant();
 
-    private static void PrintSummary(RunResult r)
+    private static void PrintIterationSummary(RunResult r)
     {
         ConsoleLog.Info(new string('-', 70));
-        ConsoleLog.Info($"RUN COMPLETE: {r.Target} / {r.Scenario} / {r.DurationSeconds}s");
+        ConsoleLog.Info($"ITER {r.IterationNumber}/{r.IterationCount} DONE: {r.Target} / {r.Scenario} / {r.WorkloadMode} / {r.DurationSeconds}s");
         ConsoleLog.Info($"Tasks: {r.Totals.TotalTasks} total, {r.Totals.SuccessfulTasks} ok, {r.Totals.FailedTasks} failed.");
         ConsoleLog.Info($"Ops:   {r.Totals.TotalOps} total, {r.Totals.FailedOps} failed.");
         var cyc = r.TaskCycleLatencyMs;
         ConsoleLog.Info($"Cycle latency ms: p50={cyc.P50Ms:F1} p95={cyc.P95Ms:F1} p99={cyc.P99Ms:F1} p99.9={cyc.P999Ms:F1}");
         foreach (var op in OpNames.Ordered)
         {
-            if (r.OperationLatencyMs.TryGetValue(op, out var s))
+            if (r.OperationLatencyMs.TryGetValue(op, out var s) && s.Count > 0)
             {
                 ConsoleLog.Info($"  {op,-12} ms: p50={s.P50Ms:F1} p95={s.P95Ms:F1} p99={s.P99Ms:F1} p99.9={s.P999Ms:F1} (n={s.Count})");
             }
@@ -244,5 +307,21 @@ public sealed class RunOrchestrator
 
         ConsoleLog.Info($"Client peaks: ports={r.Process.PeakEphemeralPortsInUse} time_wait={r.Process.PeakTimeWaitSockets} " +
                         $"handles={r.Process.PeakHandleCount} cpu%={r.Process.MaxCpuPercent:F1} ws={r.Process.PeakWorkingSetBytes / (1024 * 1024)}MB");
+    }
+
+    private static void PrintAggregateSummary(AggregateResult agg)
+    {
+        ConsoleLog.Info(new string('=', 70));
+        ConsoleLog.Info($"AGGREGATE: {agg.Target} / {agg.Scenario} / {agg.WorkloadMode} / {agg.IterationCount} iterations");
+        ConsoleLog.Info($"Mean tasks/s (successful): {agg.Stats.MeanSuccessfulTasksPerSec:F1}  Mean error%: {agg.Stats.MeanErrorRatePct:F2}%");
+        var c = agg.Stats.TaskCycleMs;
+        ConsoleLog.Info($"Cycle p99 ms: mean={c.MeanP99Ms:F1} min={c.MinP99Ms:F1} max={c.MaxP99Ms:F1}");
+        foreach (var kv in agg.Stats.OperationMs)
+        {
+            if (kv.Value.TotalCount > 0)
+            {
+                ConsoleLog.Info($"  {kv.Key,-12} p99 ms: mean={kv.Value.MeanP99Ms:F1} min={kv.Value.MinP99Ms:F1} max={kv.Value.MaxP99Ms:F1}");
+            }
+        }
     }
 }
