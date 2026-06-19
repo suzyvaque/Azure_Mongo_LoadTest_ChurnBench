@@ -1,0 +1,12 @@
+{
+  // PRODUCTION config — single-op find-input, STEADY scenario only. Inherits everything from
+  // single-find.json (Mode=SingleOp, SingleOpType=FindInput, TaskSleepMs=0) and just flips the
+  // scenario envelope to Steady-only so `test --scenario steady` has an active scenario.
+  // Burst is disabled here so running steady never stacks the two arrival rates.
+  "Extends": "single-find.json",
+
+  "Scenario": {
+    "Steady": { "Enabled": true },
+    "Burst":  { "Enabled": false }
+  }
+}
