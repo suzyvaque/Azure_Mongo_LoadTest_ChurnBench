@@ -39,6 +39,13 @@ available to each and the comparison stays apples-to-apples.
 - **.NET 8 SDK** (LTS).
 - **MongoDB C# Driver 2.30** (pinned; restored automatically).
 - Network reachability from VM1 to all three backends (private endpoints resolve to RFC1918 from VM1).
+- **Host TCP tuning on every load-generator VM** (ephemeral ports + `TcpTimedWaitDelay`) — without it the
+  burst scenario fails with port exhaustion. See below and **[`docs/ENVIRONMENT-SETUP.md`](docs/ENVIRONMENT-SETUP.md)**.
+
+> **Recreating the whole environment?** [`docs/ENVIRONMENT-SETUP.md`](docs/ENVIRONMENT-SETUP.md) is the
+> blueprint for the load-generator hosts, the required OS/TCP modifications, the MongoDB active/standby
+> (AZ3/AZ1) replica-set topology, the DocumentDB / Cosmos-RU settings, and the network/DNS wiring needed
+> for a faithful re-run. This README covers the *tool*; that doc covers the *environment*.
 
 ---
 
@@ -59,6 +66,9 @@ config/
   smoke.json       # tiny 40-doc config for connectivity smoke tests
 scripts/
   tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
+docs/
+  ENVIRONMENT-SETUP.md  # how to recreate the full environment: load-gen hosts, OS/TCP tuning,
+                        #   MongoDB active/standby topology, DocumentDB/Cosmos settings, network wiring
 results/           # benchmark campaigns: results/<campaign>/<target-run>/ + comparison HTML + summary
                    #   published, EXCEPT *.log (raw console logs may echo private IPs) which are ignored
 artifacts/         # preflight JSON artifacts (git-ignored)
