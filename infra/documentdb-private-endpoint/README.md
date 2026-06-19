@@ -1,4 +1,15 @@
-# Azure DocumentDB Private Endpoint Setup for VM1-az2
+# `infra/documentdb-private-endpoint` — DocumentDB private connection for VM1-az2
+
+Establishes a **private connection** between **Azure DocumentDB (Cosmos vCore)** and the load-generator
+VM (**VM1-az2**) before running the connection-churn benchmark.
+
+This folder is self-contained:
+- **`README.md`** (this file) — the manual, step-by-step procedure and validation checklist.
+- **`setup-private-endpoint.ps1`** — automation that performs the same VNet peering + DNS linking + validation
+  (`.\setup-private-endpoint.ps1`; `-Cleanup` to tear it back down).
+
+> Companion to [`infra/cosmos`](../cosmos/README.md) (which re-provisions the Cosmos RU backend). Both live
+> under `infra/` because they **provision Azure resources**; host-side run helpers live under `scripts/`.
 
 ## Overview
 
@@ -249,7 +260,7 @@ Once all checks pass, you can proceed with running the benchmark on VM1-az2 usin
 After private connection is established:
 
 1. **Set up VM1-az2** following `scripts/vm1-az2-setup-and-run.ps1`
-2. **Run the benchmark** with `dotnet run --project src/Bmt.LoadGen -- test --config config/config.json --target documentdb --scenario both`
+2. **Run the benchmark** with `dotnet run --project src/Bmt.LoadGen -- test --config config/production/full-workload.json --target documentdb --scenario both`
 3. **Collect results** and commit to the repo
 
 ---

@@ -167,6 +167,10 @@ Azure portal → Private DNS zones → privatelink.mongocluster.cosmos.azure.com
   → Virtual network links → + Add → link VM1-az2's VNet
 ```
 
+> **Automated procedure.** The full VNet-peering + private-DNS-link + validation steps (manual checklist
+> *and* a `setup-private-endpoint.ps1` script) live in
+> [`infra/documentdb-private-endpoint/`](../infra/documentdb-private-endpoint/README.md).
+
 Verify both DNS resolution and TCP reachability **before** a timed run — see
 `scripts\vm1-az2-setup-and-run.ps1` STEP 5 (it tests the private IP and the hostname independently).
 
@@ -268,6 +272,10 @@ known budget. The embedded preflight gate in each run's JSON also captures the e
 
 1. **Provision** the three backends (§3–§5) and the load-generator VM(s) (§2.1) in the right AZs, with
    private endpoints + DNS zone links so every host resolves the backends to **private** IPs.
+   Provisioning automation lives under [`infra/`](../infra/): [`infra/cosmos/`](../infra/cosmos/README.md)
+   (Terraform for the Cosmos RU account) and
+   [`infra/documentdb-private-endpoint/`](../infra/documentdb-private-endpoint/README.md) (DocumentDB
+   private connection).
 2. **Tune** every generator host: `scripts\tune-vm1.ps1` (elevated) + reboot (§2.2). Verify the ephemeral
    range and `TcpTimedWaitDelay`.
 3. **Install** .NET 8 SDK; clone the repo; `dotnet build -c Release`.
