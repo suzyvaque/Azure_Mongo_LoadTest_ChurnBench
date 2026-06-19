@@ -66,6 +66,7 @@ config/
   smoke.json       # tiny 40-doc config for connectivity smoke tests
 scripts/
   tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
+  cosmos-ru.ps1    # show/raise/min the shared Cosmos RU/s for cost control between rounds (-Set/-Min/-Show)
 docs/
   ENVIRONMENT-SETUP.md  # how to recreate the full environment: load-gen hosts, OS/TCP tuning,
                         #   MongoDB active/standby topology, DocumentDB/Cosmos settings, network wiring

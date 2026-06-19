@@ -180,7 +180,9 @@ Verify both DNS resolution and TCP reachability **before** a timed run — see
 | Item | Value |
 |---|---|
 | Service | Azure Cosmos DB for MongoDB (request-units model) |
-| Throughput | **Fixed 100,000 RU/s** (provisioned; **never auto-raised**, even for seeding) |
+| Account / RG | `cosmos-dbtest-hpc-0` / `rg-db-test-hpc` |
+| Throughput | **Provisioned (manual), SHARED at the database level on `bmt_db`** — both `calc_input` and `calc_output` draw from one RU/s budget; neither collection has dedicated throughput. Test value **100,000 RU/s**; **never auto-raised**, even for seeding. |
+| Throughput floor | **1,000 RU/s** (Azure rule `MAX(400, highest-ever-provisioned/100, storage-floor)`; since 100,000 was provisioned, the floor is permanently ~1,000 — you cannot reach 0 without deleting the database) |
 | Connection | port **10255**, `ssl=true`, `replicaSet=globaldb`, **`retrywrites=false`**, `maxIdleTimeMS=120000` |
 | Private endpoint | resolves to a private IP (e.g. `10.2.0.6`) from the generator |
 | `ReqId` index | **non-unique** (platform constraint) — distinct ReqId still guaranteed because `ReqId == _id` and `_id` is system-unique |
@@ -197,6 +199,54 @@ Verify both DNS resolution and TCP reachability **before** a timed run — see
 
 > The RU/s in force for a given run is recorded in that campaign's `INDEX.md`. The first Phase-1 campaign
 > ran at **40,000 RU/s** (RU-bound); from 2026-06-18 onward Cosmos runs at **100,000 RU/s**.
+
+### 5.2 Cost control — scale down between rounds (`scripts/cosmos-ru.ps1`)
+
+100,000 RU/s is expensive to leave idle. Because the throughput is **manual and shared at the database
+level**, you can scale the whole `bmt_db` budget up and down with one operation. Use the committed helper
+(it logs every change to `scripts/cosmos-ru.log`, which is git-ignored):
+
+```powershell
+# Inspect only (no change):
+pwsh -File scripts\cosmos-ru.ps1 -Show
+
+# BEFORE a Cosmos run — raise to the test value and block until it is actually live:
+pwsh -File scripts\cosmos-ru.ps1 -Set 100000 -Wait
+
+# AFTER the Cosmos run (+ your buffer) — drop to the real Azure minimum to save cost:
+pwsh -File scripts\cosmos-ru.ps1 -Min
+```
+
+**Recommended cost-saving cycle (one Cosmos round):**
+
+1. **~15–30 min before** the Cosmos run: `-Set 100000 -Wait`. Scale-*up* is fast (minutes) because the
+   partitions were already split at 100k previously; the full Mongo window is *not* needed as warm-up, so
+   raising 15–30 min ahead avoids ~90 min of needless 100k billing. `-Wait` gates on completion so you
+   never start a timed run mid-scale (which would throw 429s).
+2. Set `CosmosExpectedRuPerSec` in the config to the live value — **preflight check 6** then verifies the
+   account is actually at the expected RU/s before the run starts.
+3. Run the Cosmos campaign.
+4. **Keep a ~1 h trailing buffer** in case the run failed or you want a back-to-back rerun — do **not**
+   scale down immediately.
+5. After the buffer: `-Min` (drops to ~1,000 RU/s). The seeded dataset + `ReqId` indexes are preserved, so
+   the next round only needs a scale-up, not a re-seed.
+
+**Caveats:**
+- **You cannot reach 0 RU/s.** `-Min` lands on the ~1,000 floor (still bills, but ~99% cheaper than 100k).
+  True $0 requires deleting the database/collections → then you must re-seed 100k + reindex (and re-warm)
+  before the next run, which also reintroduces seed/RU variance. Prefer `-Min`.
+- **Do not switch to autoscale** to save money: autoscale's idle floor is 10% of max (= **10,000 RU/s**,
+  *higher* than the 1,000 manual floor) **and** it violates the "fixed RU, never auto-raised" methodology.
+  Stay on manual provisioned.
+- **Re-warm after a long idle** with `preflight --warmup` (untimed pre-read) so a cold cache doesn't skew
+  the first iteration.
+
+### 5.3 Record the RU/s per campaign (required)
+
+Because the RU/s now varies between rounds, **every campaign must state the RU/s in force** in its
+`results/<campaign>/INDEX.md` resource-spec table (alongside the Mongo VM size and DocumentDB tier). A run
+whose RU/s isn't recorded is not interpretable — `CosmosRuThrottling` counts only make sense against a
+known budget. The embedded preflight gate in each run's JSON also captures the expected RU/s.
 
 ---
 

@@ -437,3 +437,6 @@ artifacts/
 # resolved private endpoints) -> keep raw logs out of the repo. The same info, masked, is preserved
 # in the published JSON/CSV/HTML/MD results.
 results/**/*.log
+
+# Cosmos RU scaling audit log (operational, echoes account/RG) - keep out of repo
+scripts/cosmos-ru.log
