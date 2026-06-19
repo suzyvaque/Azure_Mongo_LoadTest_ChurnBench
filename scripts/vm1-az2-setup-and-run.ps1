@@ -181,6 +181,17 @@ dotnet run --project src/Bmt.LoadGen -c Release -- `
 #     aggregate.json
 
 # ---------------------------------------------------------------------------
+# STEP 6b – CLEAN calc_output AFTER THE CAMPAIGN
+# ---------------------------------------------------------------------------
+# Empty only calc_output (keeps calc_input + ReqId index). REQUIRED after a
+# single-insert run, which accumulates docs without bound; harmless after a
+# 4-op or find-only run.
+dotnet run --project src/Bmt.Seeder -c Release -- `
+    clean-output `
+    --target documentdb `
+    --config config/production/full-workload.json
+
+# ---------------------------------------------------------------------------
 # STEP 7 – COMMIT AND PUSH RESULTS
 # ---------------------------------------------------------------------------
 Set-Location $RepoDir
@@ -211,7 +222,8 @@ Write-Host "Done. Results are now in the shared repo." -ForegroundColor Green
 #
 # Production single-op runs (find-only / insert-only, 3 x 30 min each):
 #   --config config/production/single-find.json
-#   --config config/production/single-insert.json   (note: calc_output accumulates — empty it first)
+#   --config config/production/single-insert.json   (note: calc_output accumulates —
+#       run `clean-output` before AND after; see STEP 6b)
 #
 # Cosmos RU throughput is 100,000 RU/s (set on 2026-06-18 from VM1; no action needed here).
 #

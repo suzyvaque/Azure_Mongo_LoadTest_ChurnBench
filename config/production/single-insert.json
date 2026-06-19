@@ -9,8 +9,9 @@
   //   * storage + index size climb during the run, so later iterations write into a larger collection;
   //   * on cosmos-ru this consumes RU + storage continuously;
   //   * each Task inserts with a fresh ObjectId _id (no collision with the seeded ReqId==_id docs).
-  // Recommended: empty calc_output before this campaign (re-run prepare-data, or drop+recreate the
-  // collection) so iteration 1 starts from the seeded baseline, and record the starting doc count.
+  // Recommended: run `clean-output` before AND after this campaign to empty calc_output without
+  // re-seeding the 100k input (lighter than prepare-data --force), so iteration 1 starts from the
+  // seeded baseline; record the starting doc count.
   "TaskSleepMs": 0,
   "Dataset": {
     "DocumentCount": 100000,

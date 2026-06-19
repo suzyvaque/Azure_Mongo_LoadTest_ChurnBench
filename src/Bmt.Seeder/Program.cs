@@ -28,12 +28,21 @@ internal static class Program
                 ConsoleLog.Warn("Cancellation requested — finishing current batch then stopping (re-run to resume).");
             };
 
-            await runner.RunAsync(cts.Token).ConfigureAwait(false);
+            switch (options.Command)
+            {
+                case SeederCommand.CleanOutput:
+                    await runner.RunCleanOutputAsync(cts.Token).ConfigureAwait(false);
+                    break;
+                default:
+                    await runner.RunAsync(cts.Token).ConfigureAwait(false);
+                    break;
+            }
+
             return 0;
         }
         catch (OperationCanceledException)
         {
-            ConsoleLog.Warn("prepare-data canceled. Seeding is resumable — re-run the same command.");
+            ConsoleLog.Warn("Canceled. prepare-data is resumable and clean-output is repeatable — re-run the same command.");
             return 130;
         }
         catch (BmtException ex)
@@ -67,6 +76,8 @@ internal sealed class SeederOptions
 
     public bool ShowHelp { get; private set; }
 
+    public SeederCommand Command { get; private set; } = SeederCommand.PrepareData;
+
     public static SeederOptions Parse(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -81,6 +92,10 @@ internal sealed class SeederOptions
             {
                 case "prepare-data":
                     // Accept the verb so callers can use the same surface as the unified CLI.
+                    options.Command = SeederCommand.PrepareData;
+                    break;
+                case "clean-output":
+                    options.Command = SeederCommand.CleanOutput;
                     break;
                 case "--config":
                 case "-c":
@@ -125,17 +140,30 @@ internal sealed class SeederOptions
 
     public static void PrintUsage()
     {
-        Console.WriteLine("Usage: seeder prepare-data --config <config.json> --target <cosmos-ru|documentdb|mongo-vm> [--force]");
+        Console.WriteLine("Usage: seeder <prepare-data|clean-output> --config <config.json> --target <cosmos-ru|documentdb|mongo-vm> [--force]");
+        Console.WriteLine();
+        Console.WriteLine("Commands:");
+        Console.WriteLine("  prepare-data   Seed calc_input + create ReqId indexes on both collections.");
+        Console.WriteLine("  clean-output   Empty ONLY calc_output (batched, Cosmos-429-aware); keeps calc_input");
+        Console.WriteLine("                 and the ReqId index. Run after every campaign — required after an");
+        Console.WriteLine("                 insert-only run (calc_output accumulates without bound).");
         Console.WriteLine();
         Console.WriteLine("  --config, -c   Path to config.json (default: config.json).");
         Console.WriteLine("  --target, -t   Backend key. Resolves the connection string from the matching env var:");
         Console.WriteLine("                   cosmos-ru  -> BMT_CONN_COSMOS");
         Console.WriteLine("                   documentdb -> BMT_CONN");
         Console.WriteLine("                   mongo-vm   -> BMT_CONN_MONGO");
-        Console.WriteLine("  --force, -f    Empty calc_input first, then reseed from scratch.");
+        Console.WriteLine("  --force, -f    (prepare-data only) Empty calc_input first, then reseed from scratch.");
         Console.WriteLine("  --help, -h     Show this help.");
         Console.WriteLine();
         Console.WriteLine("Seeds exactly the configured doc count into calc_input (whole-doc BSON sizing) and");
         Console.WriteLine("creates the ReqId index on both calc_input (unique) and calc_output. Idempotent/resumable.");
     }
+}
+
+/// <summary>Seeder subcommands.</summary>
+internal enum SeederCommand
+{
+    PrepareData,
+    CleanOutput,
 }

@@ -58,6 +58,7 @@ src/
                    #   per-Task no-reuse connection factory, ReqId index spec, error taxonomy,
                    #   Cosmos 429 backoff, metrics models (RunResult, LatencyDigest)
   Bmt.Seeder/      # prepare-data : seed 100k + create ReqId indexes (idempotent/resumable)
+                   # clean-output : empty only calc_output after a campaign (batched, Cosmos-429-aware)
   Bmt.Preflight/   # preflight    : the 10 mandatory pre-run checks (gate)
   Bmt.LoadGen/     # test         : the timed connection-churn run (Scenario A steady + B burst)
   Bmt.Report/      # report       : results JSON/CSV -> self-contained HTML
@@ -101,6 +102,18 @@ Loads **exactly 100,000** documents into `calc_input` (four whole-document size 
 seed 42 -> byte-identical across targets) and creates the `ReqId` index on **both** `calc_input`
 (unique, except non-unique on `cosmos-ru`) and `calc_output`. Idempotent and resumable
 (`--force` empties both collections first via small batched deletes).
+
+#### `clean-output` — empty `calc_output` after a campaign (Bmt.Seeder)
+
+```powershell
+dotnet run --project src/Bmt.Seeder -- clean-output --config config/production/full-workload.json --target mongo-vm
+```
+
+Empties **only** `calc_output` via small batched (Cosmos-429-aware) deletes, leaving `calc_input`
+and the `ReqId` index intact — much lighter than `prepare-data --force`, which re-seeds the full
+100k input. **Run this after every campaign**, and it is **required after an insert-only run**:
+single-op insert never removes, so `calc_output` grows without bound (see below). Does not change
+provisioned Cosmos RU/s.
 
 ### 2. `preflight` — the mandatory gate (Bmt.Preflight)
 
@@ -161,8 +174,9 @@ there is no CLI flag for it:
 | Connectivity / sizing check | — | `config/smoke/connectivity.json` | `Mode=FullWorkload` (40 docs) |
 
 > **Single-op insert accumulates** docs in `calc_output` (no remove), so the collection grows for the whole
-> campaign. Empty `calc_output` (re-run `prepare-data`) before an insert campaign and record the starting
-> count. See the header comment in `config/production/single-insert.json`.
+> campaign. Run `clean-output` before **and** after an insert campaign (and record the starting count); it
+> empties only `calc_output` without re-seeding the 100k input. See the header comment in
+> `config/production/single-insert.json`.
 
 Config keys (all configs share this shape):
 
@@ -304,6 +318,9 @@ backend tolerates connection storms. Do not extrapolate these numbers to a poole
 dotnet run --project src/Bmt.Seeder    -- prepare-data --config config/production/full-workload.json --target <key>
 dotnet run --project src/Bmt.Preflight -- preflight    --config config/production/full-workload.json --target <key> --warmup
 dotnet run --project src/Bmt.LoadGen   -- test         --config config/production/full-workload.json --target <key> --scenario both --results results/<campaign>
+
+# After every campaign: empty calc_output (REQUIRED after a single-insert run, which accumulates docs).
+dotnet run --project src/Bmt.Seeder    -- clean-output --config config/production/full-workload.json --target <key>
 
 # After all three targets have run:
 dotnet run --project src/Bmt.Report    -- report --input results/<campaign>/ --output results/<campaign>/comparison-3way-steady-burst-<ts>.html

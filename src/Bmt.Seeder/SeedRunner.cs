@@ -93,6 +93,51 @@ internal sealed class SeedRunner
         await VerifyAsync(db, input, ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Implements <c>clean-output</c>: empty ONLY <c>calc_output</c> via small batched deletes,
+    /// leaving <c>calc_input</c> and the mandatory ReqId indexes untouched. Run this after every
+    /// campaign — the 4-op workload's remove+insert keeps calc_output bounded, but a single-op
+    /// insert-only run accumulates docs without bound (see config/production/single-insert.json).
+    /// Deletes (not drops) so the collection and its ReqId index survive; small batches are
+    /// 429-aware on Cosmos (handoff §3) and NEVER change provisioned RU/s.
+    /// </summary>
+    public async Task RunCleanOutputAsync(CancellationToken ct)
+    {
+        ConsoleLog.Info($"clean-output target={TargetConnection.CliName(_target)} " +
+                        $"collection={BmtConstants.CalcOutputCollection}");
+
+        var connectionString = TargetConnection.ResolveConnectionString(_target);
+        ConsoleLog.Info($"Connection: {ConnectionStringMasker.Mask(connectionString)}");
+
+        var client = AdminClientFactory.Create(_target, connectionString);
+        var db = client.GetDatabase(BmtConstants.DatabaseName);
+        var output = db.GetCollection<BsonDocument>(BmtConstants.CalcOutputCollection);
+
+        var before = await output.CountDocumentsAsync(FilterDefinition<BsonDocument>.Empty, cancellationToken: ct)
+            .ConfigureAwait(false);
+        ConsoleLog.Info($"calc_output starting count = {before:N0}.");
+
+        await DeleteAllAsync(output, BmtConstants.CalcOutputCollection, ct).ConfigureAwait(false);
+
+        var after = await output.CountDocumentsAsync(FilterDefinition<BsonDocument>.Empty, cancellationToken: ct)
+            .ConfigureAwait(false);
+        if (after != 0)
+        {
+            throw new BmtException(
+                BmtErrorType.DataSetMissing,
+                $"clean-output failed: calc_output still has {after:N0} docs after delete.");
+        }
+
+        // Re-verify the ReqId index survived (delete never touches indexes, but a campaign needs it).
+        var outputHasIndex = await HasReqIdIndexAsync(db, BmtConstants.CalcOutputCollection, ct).ConfigureAwait(false);
+        if (!outputHasIndex)
+        {
+            ConsoleLog.Warn("calc_output has no ReqId index — run prepare-data before the next campaign.");
+        }
+
+        ConsoleLog.Info($"VERIFIED: calc_output emptied ({before:N0} -> 0); ReqId index present={outputHasIndex}. clean-output OK.");
+    }
+
     private async Task SeedAsync(IMongoCollection<CalcInputDoc> input, int startId, CancellationToken ct)
     {
         var dataset = _config.Dataset;
@@ -218,7 +263,7 @@ internal sealed class SeedRunner
 
     private async Task DeleteAllAsync(IMongoCollection<BsonDocument> raw, string name, CancellationToken ct)
     {
-        ConsoleLog.Info($"--force: emptying {name} (batched delete)...");
+        ConsoleLog.Info($"Emptying {name} (batched delete)...");
         var pageSize = _config.Seeder.DeleteBatchSize;
         var projection = Builders<BsonDocument>.Projection.Include("_id");
         var deleted = 0L;
@@ -244,7 +289,7 @@ internal sealed class SeedRunner
             deleted += result.DeletedCount;
         }
 
-        ConsoleLog.Info($"--force: deleted {deleted:N0} docs from {name}.");
+        ConsoleLog.Info($"Deleted {deleted:N0} docs from {name}.");
     }
 
     private async Task VerifyAsync(IMongoDatabase db, IMongoCollection<CalcInputDoc> input, CancellationToken ct)

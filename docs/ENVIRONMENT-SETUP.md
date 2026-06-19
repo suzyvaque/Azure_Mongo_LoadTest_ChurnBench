@@ -277,8 +277,11 @@ known budget. The embedded preflight gate in each run's JSON also captures the e
 7. **Confirm** `TIME_WAIT < ~200` and (for `mongo-vm`) `rs.status()` healthy.
 8. **Run** the timed campaign (3×30-min iterations; full-workload or single-op per the chosen config),
    one target at a time, into a shared `results/<campaign>` folder.
-9. **Report**: build the self-contained HTML from the campaign folder.
-10. **Record** the exact backend tiers/RU for that round in `results/<campaign>/INDEX.md`, and commit
+9. **Clean** `calc_output` after each campaign with `clean-output` (empties only `calc_output`, keeps
+   `calc_input` + the `ReqId` index). **Required after a single-insert run** (it accumulates docs without
+   bound); harmless after full-workload/find-only. Run it before an insert campaign too, for a clean baseline.
+10. **Report**: build the self-contained HTML from the campaign folder.
+11. **Record** the exact backend tiers/RU for that round in `results/<campaign>/INDEX.md`, and commit
     results (`*.log` stays git-ignored — it echoes private IPs).
 
 See the [`README.md`](../README.md) for the per-command CLI details and the metrics/interpretation guide.
