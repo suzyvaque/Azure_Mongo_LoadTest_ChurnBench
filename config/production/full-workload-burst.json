@@ -1,0 +1,12 @@
+{
+  // PRODUCTION config — full 4-op workload, BURST scenario only. Inherits everything from
+  // full-workload.json (Mode=FullWorkload, TaskSleepMs=10000) and just flips the scenario envelope
+  // to Burst-only so `test --scenario burst` has an active scenario.
+  // Steady is disabled here so running burst never stacks the two arrival rates.
+  "Extends": "full-workload.json",
+
+  "Scenario": {
+    "Steady": { "Enabled": false },
+    "Burst":  { "Enabled": true }
+  }
+}

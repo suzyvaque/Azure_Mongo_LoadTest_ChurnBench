@@ -1,0 +1,13 @@
+{
+  // PRODUCTION config — single-op insert-output, BURST scenario only. Inherits everything from
+  // single-insert.json (Mode=SingleOp, SingleOpType=InsertOutput, TaskSleepMs=0) and just flips the
+  // scenario envelope to Burst-only so `test --scenario burst` has an active scenario.
+  // Steady is disabled here so running burst never stacks the two arrival rates.
+  // NOTE: insert-only accumulates calc_output — run clean-output before AND after the campaign.
+  "Extends": "single-insert.json",
+
+  "Scenario": {
+    "Steady": { "Enabled": false },
+    "Burst":  { "Enabled": true }
+  }
+}
