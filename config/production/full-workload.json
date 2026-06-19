@@ -1,88 +1,16 @@
 {
-  // PRODUCTION config — full 4-op workload (find-input -> remove-output -> insert-output -> find-output),
-  // 3 iterations x 30 min, steady + burst. This is the canonical benchmark run.
-  // Sample config for the MongoDB connection-churn benchmark.
-  // Secrets are NOT stored here — connection strings are read at runtime from env vars:
-  //   cosmos-ru -> BMT_CONN_COSMOS,  documentdb -> BMT_CONN,  mongo-vm -> BMT_CONN_MONGO
+  // PRODUCTION config — full 4-op workload (find-input -> remove-output -> insert-output -> find-output).
+  // This is the canonical benchmark run. Inherits the scenario/dataset/seeder/preflight/client envelope
+  // from common.json; only the workload + calc-time sleep differ here.
+  //
+  // Scenario selection (Steady vs Burst) lives in common.json via the per-scenario "Enabled" flags
+  // — enable just one at a time to keep them separate. Override here only if this run needs to differ.
+  "Extends": "common.json",
 
-  // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6). Default 10,000 (10 s).
+  // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6).
   "TaskSleepMs": 10000,
 
-  // Dataset: exactly 100,000 docs, fixed seed 42, four whole-document size buckets.
-  // SizeBytes is the WHOLE-document target (Input is padded so total BSON == SizeBytes).
-  "Dataset": {
-    "DocumentCount": 100000,
-    "Seed": 42,
-    "Buckets": [
-      { "Name": "Small",  "SizeBytes": 6144,  "Count": 10000 },
-      { "Name": "Medium", "SizeBytes": 16384, "Count": 15000 },
-      { "Name": "Large",  "SizeBytes": 51200, "Count": 35000 },
-      { "Name": "XL",     "SizeBytes": 59392, "Count": 40000 }
-    ]
-  },
-
-  // Seeder tuning. Cosmos uses smaller insert batches to ease RU throttling; RU/s is never changed.
-  "Seeder": {
-    "InsertBatchSize": 1000,
-    "CosmosInsertBatchSize": 100,
-    "DeleteBatchSize": 500
-  },
-
-  // Load scenarios (§6.2). Steady = Scenario A peak-hour; Burst = Scenario B Poisson spikes.
-  // MaxConcurrentTasks caps in-flight Tasks (each owns one fresh connection) — set at/above the
-  // §6.2 concurrent target (≥ 11,000). Iterations controls how many back-to-back timed windows are
-  // run per invocation; each produces its own artifacts. IterationDurationSeconds overrides both
-  // Steady.DurationSeconds and Burst.DurationSeconds when set (> 0).
-  "Scenario": {
-    "Iterations": 3,
-    "IterationDurationSeconds": 1800,
-    "MaxConcurrentTasks": 15000,
-    "ResourceSampleIntervalMs": 1000,
-    "Steady": {
-      "Enabled": true,
-      "TasksPerSecond": 135,
-      "DurationSeconds": 3600
-    },
-    "Burst": {
-      "Enabled": true,
-      "JobsPerSecondLambda": 0.57,
-      "MaxTasksPerJob": 500,
-      "MinTasksPerJob": 14,
-      "DurationSeconds": 600
-    }
-  },
-
-  // Per-Task MongoClient tuning (applied uniformly; does NOT relax the no-reuse model).
-  // Fail-fast timeouts stop a saturated generator host from masking backend latency; directConnection
-  // is applied ONLY to the single-node mongo-vm so each fresh per-Task client skips replica-set
-  // topology discovery + its per-client heartbeat monitor (the bottleneck at thousands of clients).
-  "Client": {
-    "ServerSelectionTimeoutMs": 5000,
-    "ConnectTimeoutMs": 5000,
-    "SocketTimeoutMs": 0,
-    "DirectConnectionForSingleNode": true
-  },
-
-  // Preflight gate (§6.3). All optional with sane defaults; thresholds drive warn/fail verdicts.
-  // Expected server values (check 6) are recorded verbatim in the preflight JSON + HTML report.
-  "Preflight": {
-    "ResultsDirectory": "artifacts",
-    "MinFreeDiskBytes": 1073741824,
-    "ConcurrentConnectionTarget": 11000,
-    "ConnectionChurnPerSecTarget": 1200,
-    "RequirePrivateNetwork": true,
-    "SampleSize": 1000,
-    "WarmupMaxAgeMinutes": 360,
-    "CosmosExpectedRuPerSec": 100000,
-    "DocumentDbExpectedTier": "M80",
-    "MongoExpectedMaxIncomingConnections": null
-  },
-
-  // Workload mode. Default is "FullWorkload" (original 4-op cycle). Set to "SingleOp" to run just
-  // one operation per connection (useful for isolating individual op latency). In SingleOp mode,
-  // SingleOpType selects which op: "FindInput" (find on calc_input) or "InsertOutput" (insert into
-  // calc_output — accumulates docs; use only for short targeted tests). TaskSleepMs is skipped in
-  // SingleOp mode. No-reuse model is preserved in all modes.
+  // Full 4-op cycle per connection (SingleOpType is ignored when Mode=FullWorkload).
   "Workload": {
     "Mode": "FullWorkload",
     "SingleOpType": "FindInput"

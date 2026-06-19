@@ -1,60 +1,12 @@
 {
-  // Production config for single-op find-input runs.
-  // Same shape as config.json (3 iterations x 30 min, steady+burst) but
-  // Workload.Mode=SingleOp so only find(calc_input by ReqId) is executed per connection.
-  // Use this to isolate cold-connection read latency across all three backends.
+  // PRODUCTION config — single-op find-input. Each fresh per-Task connection performs exactly ONE op:
+  // find(calc_input by ReqId). Isolates cold-connection READ cost across all three backends.
+  // Inherits the scenario/dataset/seeder/preflight/client envelope from common.json.
+  "Extends": "common.json",
+
+  // SingleOp skips the calc-time sleep.
   "TaskSleepMs": 0,
-  "Dataset": {
-    "DocumentCount": 100000,
-    "Seed": 42,
-    "Buckets": [
-      { "Name": "Small",  "SizeBytes": 6144,  "Count": 10000 },
-      { "Name": "Medium", "SizeBytes": 16384, "Count": 15000 },
-      { "Name": "Large",  "SizeBytes": 51200, "Count": 35000 },
-      { "Name": "XL",     "SizeBytes": 59392, "Count": 40000 }
-    ]
-  },
-  "Seeder": {
-    "InsertBatchSize": 1000,
-    "CosmosInsertBatchSize": 100,
-    "DeleteBatchSize": 500
-  },
-  "Scenario": {
-    "Iterations": 3,
-    "IterationDurationSeconds": 1800,
-    "MaxConcurrentTasks": 15000,
-    "ResourceSampleIntervalMs": 1000,
-    "Steady": {
-      "Enabled": true,
-      "TasksPerSecond": 135,
-      "DurationSeconds": 1800
-    },
-    "Burst": {
-      "Enabled": true,
-      "JobsPerSecondLambda": 0.57,
-      "MaxTasksPerJob": 500,
-      "MinTasksPerJob": 14,
-      "DurationSeconds": 1800
-    }
-  },
-  "Client": {
-    "ServerSelectionTimeoutMs": 5000,
-    "ConnectTimeoutMs": 5000,
-    "SocketTimeoutMs": 0,
-    "DirectConnectionForSingleNode": true
-  },
-  "Preflight": {
-    "ResultsDirectory": "artifacts",
-    "MinFreeDiskBytes": 1073741824,
-    "ConcurrentConnectionTarget": 11000,
-    "ConnectionChurnPerSecTarget": 1200,
-    "RequirePrivateNetwork": true,
-    "SampleSize": 1000,
-    "WarmupMaxAgeMinutes": 360,
-    "CosmosExpectedRuPerSec": 100000,
-    "DocumentDbExpectedTier": "M80",
-    "MongoExpectedMaxIncomingConnections": null
-  },
+
   "Workload": {
     "Mode": "SingleOp",
     "SingleOpType": "FindInput"

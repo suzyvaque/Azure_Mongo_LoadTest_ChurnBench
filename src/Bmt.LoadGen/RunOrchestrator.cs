@@ -94,6 +94,20 @@ public sealed class RunOrchestrator
                 ? _config.Scenario.IterationDurationSeconds
                 : 0; // 0 = each scenario uses its own DurationSeconds
 
+        // ---- Resolve active scenarios: CLI --scenario selects candidates, config Enabled gates them.
+        // Keeping Steady and Burst separate (enable only one) avoids stacking their arrival rates. ----
+        var (runSteady, runBurst) = ResolveActiveScenarios();
+        if (!runSteady && !runBurst)
+        {
+            ConsoleLog.Error(
+                $"No scenario active: --scenario={_options.Scenario} with " +
+                $"Steady.Enabled={_config.Scenario.Steady.Enabled}, Burst.Enabled={_config.Scenario.Burst.Enabled}. " +
+                "Enable at least one scenario in config (or change --scenario).");
+            return 3;
+        }
+
+        ConsoleLog.Info($"Active scenarios: Steady={runSteady}, Burst={runBurst}.");
+
         // ---- Campaign folder (shared by all iterations + aggregate) ----
         var campaignStamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
         var scenarioLabel = ScenarioLabel(_options.Scenario.ToString());
@@ -178,13 +192,14 @@ public sealed class RunOrchestrator
         try
         {
             var generators = new List<Task>();
-            if (_options.Scenario is RunScenario.Steady or RunScenario.Both)
+            var (runSteady, runBurst) = ResolveActiveScenarios();
+            if (runSteady)
             {
                 var steady = new SteadyScenario(_config.Scenario.Steady, effectiveDurationSec);
                 generators.Add(steady.RunAsync(launcher, ct));
             }
 
-            if (_options.Scenario is RunScenario.Burst or RunScenario.Both)
+            if (runBurst)
             {
                 var burst = new BurstScenario(_config.Scenario.Burst, effectiveDurationSec, BmtConstants.DatasetSeed);
                 generators.Add(burst.RunAsync(launcher, ct));
@@ -244,6 +259,20 @@ public sealed class RunOrchestrator
         // Return relative path from campaign dir for the aggregate cross-reference.
         var relPath = Path.Combine(iterLabel, runId + ".json");
         return (result, relPath);
+    }
+
+    /// <summary>
+    /// A scenario runs only when the CLI <c>--scenario</c> selects it AND its config <c>Enabled</c>
+    /// flag is true. This lets a config keep Steady and Burst separate by enabling just one of them,
+    /// even under the default <c>--scenario both</c>.
+    /// </summary>
+    private (bool runSteady, bool runBurst) ResolveActiveScenarios()
+    {
+        var runSteady = _options.Scenario is RunScenario.Steady or RunScenario.Both
+                        && _config.Scenario.Steady.Enabled;
+        var runBurst = _options.Scenario is RunScenario.Burst or RunScenario.Both
+                       && _config.Scenario.Burst.Enabled;
+        return (runSteady, runBurst);
     }
 
     private async Task<long> CountInputAsync(CancellationToken ct)
