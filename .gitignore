@@ -440,3 +440,10 @@ results/**/*.log
 
 # Cosmos RU scaling audit log (operational, echoes account/RG) - keep out of repo
 scripts/cosmos-ru.log
+
+# Terraform state (contains secrets) + local provider cache
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+infra/**/terraform.tfvars

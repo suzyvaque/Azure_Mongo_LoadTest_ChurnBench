@@ -1,0 +1,27 @@
+# Copy to terraform.tfvars and adjust as needed. All values below mirror the original account, so on a
+# fresh subscription/region you can often apply as-is. Nothing here is a secret (no keys/passwords).
+
+subscription_id     = "01c04f52-ad2b-4cc0-b77b-61508ec58f51"
+resource_group_name = "rg-db-test-hpc"
+location            = "koreacentral"
+
+account_name  = "cosmos-dbtest-hpc-0"
+database_name = "bmt_db"
+collections   = ["calc_input", "calc_output"]
+
+# Start cheap on a brand-new account (floor is 400 RU/s). Raise to 100000 just before a run with
+# scripts/cosmos-ru.ps1 -Set 100000 -Wait, then drop back with -Min afterwards.
+throughput = 400
+
+# Private endpoint + DNS
+vnet_resource_group   = "rg-db-test-hpc"
+vnet_name             = "vm-dbtest-hpc-0-vnet"
+subnet_name           = "default"
+private_endpoint_name = "pe-cosmos-ru"
+
+# Leave empty to link the PE's own VNet. Add other generator VNet IDs (e.g. VM1-az2's VNet) to let them
+# resolve the private FQDN too:
+# dns_link_vnet_ids = [
+#   "/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/<vm1-az2-vnet>"
+# ]
+dns_link_vnet_ids = []
