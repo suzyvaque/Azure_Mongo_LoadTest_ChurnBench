@@ -75,6 +75,11 @@ config/
 scripts/
   tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
   cosmos-ru.ps1    # show/raise/min the shared Cosmos RU/s for cost control between rounds (-Set/-Min/-Show)
+  vm1-az2-setup-and-run.ps1  # end-to-end VM1 runbook: tune -> prepare-data -> preflight -> test ->
+                   #   clean-output -> commit results (DocumentDB AZ2 host; adapt per target)
+infra/
+  cosmos/          # Terraform to recreate the cosmos-ru backend (account + bmt_db + collections +
+                   #   private endpoint + DNS); raise RU/s with scripts/cosmos-ru.ps1 before a run
 docs/
   ENVIRONMENT-SETUP.md  # how to recreate the full environment: load-gen hosts, OS/TCP tuning,
                         #   MongoDB active/standby topology, DocumentDB/Cosmos settings, network wiring
