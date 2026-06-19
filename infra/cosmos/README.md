@@ -3,6 +3,10 @@
 Terraform to **recreate the `cosmos-ru` benchmark backend** faithfully after you delete it for cost
 reasons, plus the connect step that wires it back into the harness.
 
+> **Sibling.** For the DocumentDB private connection see
+> [`infra/documentdb-private-endpoint/`](../documentdb-private-endpoint/README.md). Both folders under
+> `infra/` **provision Azure resources**; host-side run helpers live under `scripts/`.
+
 > **Why this exists.** Cosmos at 100,000 RU/s is expensive to leave running. When the budget is tight you
 > can **delete the account** entirely (cost → $0), then re-apply this Terraform later to bring back a
 > byte-for-byte-equivalent account, database, collections and private networking. Re-seed the 100k dataset

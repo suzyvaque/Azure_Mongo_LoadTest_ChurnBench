@@ -77,12 +77,14 @@ scripts/
   cosmos-ru.ps1    # show/raise/min the shared Cosmos RU/s for cost control between rounds (-Set/-Min/-Show)
   vm1-az2-setup-and-run.ps1  # end-to-end VM1 runbook: tune -> prepare-data -> preflight -> test ->
                    #   clean-output -> commit results (DocumentDB AZ2 host; adapt per target)
-infra/
-  cosmos/          # Terraform to recreate the cosmos-ru backend (account + bmt_db + collections +
-                   #   private endpoint + DNS); raise RU/s with scripts/cosmos-ru.ps1 before a run
+infra/             # provision/destroy the Azure backends + private networking (each subfolder is self-contained)
+  cosmos/          # Terraform to recreate the cosmos-ru account + bmt_db + collections + PE/DNS
+  documentdb-private-endpoint/  # VNet peering + private DNS so VM1 reaches DocumentDB privately
+    README.md                   #   manual procedure + validation checklist
+    setup-private-endpoint.ps1  #   automation for the same (-Cleanup to tear down)
 docs/
-  ENVIRONMENT-SETUP.md  # how to recreate the full environment: load-gen hosts, OS/TCP tuning,
-                        #   MongoDB active/standby topology, DocumentDB/Cosmos settings, network wiring
+  ENVIRONMENT-SETUP.md  # reference blueprint to recreate the full environment: load-gen hosts,
+                        #   OS/TCP tuning, MongoDB active/standby topology, backend settings, network wiring
 results/           # benchmark campaigns: results/<campaign>/<target-run>/ + comparison HTML + summary
                    #   published, EXCEPT *.log (raw console logs may echo private IPs) which are ignored
 artifacts/         # preflight JSON artifacts (git-ignored)
