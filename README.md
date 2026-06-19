@@ -62,8 +62,15 @@ src/
   Bmt.LoadGen/     # test         : the timed connection-churn run (Scenario A steady + B burst)
   Bmt.Report/      # report       : results JSON/CSV -> self-contained HTML
 config/
-  config.json      # sample config (dataset, seeder, preflight, scenario)
-  smoke.json       # tiny 40-doc config for connectivity smoke tests
+  production/      # full 100k dataset, 3 iterations x 30 min, steady + burst:
+    full-workload.json   #   4-op cycle: find-input -> remove -> insert -> find-output (canonical run)
+    single-find.json     #   single-op: find(calc_input) only — isolates cold read latency
+    single-insert.json   #   single-op: insert(calc_output) only — isolates cold write latency
+  smoke/           # tiny/fast configs for validation (30 s or 40 docs), one per mode:
+    connectivity.json    #   40-doc connectivity/sizing/index check
+    full-workload.json   #   30 s 4-op cycle
+    single-find.json     #   30 s single-op find
+    single-insert.json   #   30 s single-op insert
 scripts/
   tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
   cosmos-ru.ps1    # show/raise/min the shared Cosmos RU/s for cost control between rounds (-Set/-Min/-Show)
@@ -85,9 +92,9 @@ from the built DLL (`dotnet <assembly>.dll`).
 ### 1. `prepare-data` — seed + index (Bmt.Seeder)
 
 ```powershell
-dotnet run --project src/Bmt.Seeder -- prepare-data --config config/config.json --target mongo-vm
-dotnet run --project src/Bmt.Seeder -- prepare-data --config config/config.json --target documentdb
-dotnet run --project src/Bmt.Seeder -- prepare-data --config config/config.json --target cosmos-ru
+dotnet run --project src/Bmt.Seeder -- prepare-data --config config/production/full-workload.json --target mongo-vm
+dotnet run --project src/Bmt.Seeder -- prepare-data --config config/production/full-workload.json --target documentdb
+dotnet run --project src/Bmt.Seeder -- prepare-data --config config/production/full-workload.json --target cosmos-ru
 ```
 
 Loads **exactly 100,000** documents into `calc_input` (four whole-document size buckets, fixed RNG
@@ -98,7 +105,7 @@ seed 42 -> byte-identical across targets) and creates the `ReqId` index on **bot
 ### 2. `preflight` — the mandatory gate (Bmt.Preflight)
 
 ```powershell
-dotnet run --project src/Bmt.Preflight -- preflight --config config/config.json --target mongo-vm --warmup
+dotnet run --project src/Bmt.Preflight -- preflight --config config/production/full-workload.json --target mongo-vm --warmup
 ```
 
 Runs the 10 §6.3 checks and writes a JSON artifact to `artifacts/`. Exit `0` = may proceed (pass/warn),
@@ -115,7 +122,7 @@ runs a full distinct-ReqId aggregation (RU-heavy on `cosmos-ru`).
 ### 3. `test` — the timed churn run (Bmt.LoadGen)
 
 ```powershell
-dotnet run --project src/Bmt.LoadGen -- test --config config/config.json --target mongo-vm --scenario both
+dotnet run --project src/Bmt.LoadGen -- test --config config/production/full-workload.json --target mongo-vm --scenario both
 ```
 
 Warms the cache -> runs the preflight gate (aborts on FAIL unless `--no-preflight`) -> executes the
@@ -123,6 +130,10 @@ selected scenario(s) -> writes a JSON run artifact + per-second/latency CSVs to 
 
 Options: `--scenario steady|burst|both` (default `both`), `--duration-sec N` (override each scenario's
 duration for short smoke runs), `--results <dir>`, `--no-preflight` (NOT recommended).
+
+**Workload mode is chosen by which config you pass** (see the table below) — e.g.
+`config/production/single-find.json` for find-only or `config/production/single-insert.json` for
+insert-only. All three production configs run 3 iterations × 30 min, steady + burst.
 
 ### 4. `report` — self-contained HTML (Bmt.Report)
 
@@ -136,17 +147,37 @@ single self-contained HTML report. To compare all three candidates, run `test` o
 
 ---
 
-## Configuration (`config/config.json`)
+## Configuration (`config/`)
 
-- `TaskSleepMs` — calc-time substitute sleep between the input-find and output-remove (default 10,000 ms).
+Configs are split into **`config/production/`** (full 100k dataset, 3 × 30 min, steady + burst) and
+**`config/smoke/`** (tiny/fast validation). **The workload mode is selected by which config you pass** —
+there is no CLI flag for it:
+
+| Workload | Production config | Smoke config | `Workload` block |
+|---|---|---|---|
+| Full 4-op cycle (canonical) | `config/production/full-workload.json` | `config/smoke/full-workload.json` | `Mode=FullWorkload` |
+| Single-op **find** (cold read) | `config/production/single-find.json` | `config/smoke/single-find.json` | `Mode=SingleOp`, `SingleOpType=FindInput` |
+| Single-op **insert** (cold write) | `config/production/single-insert.json` | `config/smoke/single-insert.json` | `Mode=SingleOp`, `SingleOpType=InsertOutput` |
+| Connectivity / sizing check | — | `config/smoke/connectivity.json` | `Mode=FullWorkload` (40 docs) |
+
+> **Single-op insert accumulates** docs in `calc_output` (no remove), so the collection grows for the whole
+> campaign. Empty `calc_output` (re-run `prepare-data`) before an insert campaign and record the starting
+> count. See the header comment in `config/production/single-insert.json`.
+
+Config keys (all configs share this shape):
+
+- `TaskSleepMs` — calc-time substitute sleep between the input-find and output-remove (default 10,000 ms;
+  **0** and skipped entirely in single-op modes).
 - `Dataset` — `DocumentCount` (100,000), `Seed` (42), and the four whole-document size `Buckets`
   (6 KB×10,000 / 16 KB×15,000 / 50 KB×35,000 / 58 KB×40,000; mean ≈ 43.7 KB, total ≈ 4.37 GB). Sizes are
   **whole-BSON-document** targets — the `Input` field is padded so the entire doc hits the bucket size.
 - `Seeder` — insert/delete batch sizes (`cosmos-ru` uses smaller batches to ease RU throttling).
 - `Preflight` — expected server values (RU/s, tier, max connections) and host-headroom thresholds.
-- `Scenario` — `MaxConcurrentTasks`, resource sample interval, and the two scenarios:
-  - **Steady (A)**: `TasksPerSecond` 135, `DurationSeconds` 3600.
-  - **Burst (B)**: Poisson `JobsPerSecondLambda` 0.57, `MinTasksPerJob`..`MaxTasksPerJob` 14..500, `DurationSeconds` 600.
+- `Scenario` — `Iterations` (production 3), `IterationDurationSeconds` (production 1800 — overrides each
+  scenario's `DurationSeconds`), `MaxConcurrentTasks`, resource sample interval, and the two scenarios:
+  - **Steady (A)**: `TasksPerSecond` 135.
+  - **Burst (B)**: Poisson `JobsPerSecondLambda` 0.57, `MinTasksPerJob`..`MaxTasksPerJob` 14..500.
+- `Workload` — `Mode` (`FullWorkload` | `SingleOp`) and `SingleOpType` (`FindInput` | `InsertOutput`).
 
 ---
 
@@ -268,10 +299,11 @@ backend tolerates connection storms. Do not extrapolate these numbers to a poole
 ## Typical Phase-1 workflow
 
 ```powershell
-# Per target (one at a time on VM1); --results points every run at the same campaign folder:
-dotnet run --project src/Bmt.Seeder    -- prepare-data --config config/config.json --target <key>
-dotnet run --project src/Bmt.Preflight -- preflight    --config config/config.json --target <key> --warmup
-dotnet run --project src/Bmt.LoadGen   -- test         --config config/config.json --target <key> --scenario both --results results/<campaign>
+# Per target (one at a time on VM1); --results points every run at the same campaign folder.
+# Swap the production config to choose the workload (full-workload / single-find / single-insert):
+dotnet run --project src/Bmt.Seeder    -- prepare-data --config config/production/full-workload.json --target <key>
+dotnet run --project src/Bmt.Preflight -- preflight    --config config/production/full-workload.json --target <key> --warmup
+dotnet run --project src/Bmt.LoadGen   -- test         --config config/production/full-workload.json --target <key> --scenario both --results results/<campaign>
 
 # After all three targets have run:
 dotnet run --project src/Bmt.Report    -- report --input results/<campaign>/ --output results/<campaign>/comparison-3way-steady-burst-<ts>.html

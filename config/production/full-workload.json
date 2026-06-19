@@ -1,4 +1,6 @@
 {
+  // PRODUCTION config — full 4-op workload (find-input -> remove-output -> insert-output -> find-output),
+  // 3 iterations x 30 min, steady + burst. This is the canonical benchmark run.
   // Sample config for the MongoDB connection-churn benchmark.
   // Secrets are NOT stored here — connection strings are read at runtime from env vars:
   //   cosmos-ru -> BMT_CONN_COSMOS,  documentdb -> BMT_CONN,  mongo-vm -> BMT_CONN_MONGO

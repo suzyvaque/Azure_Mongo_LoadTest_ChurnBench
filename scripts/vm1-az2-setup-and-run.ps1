@@ -170,7 +170,7 @@ dotnet run --project src/Bmt.LoadGen -c Release -- `
     test `
     --target documentdb `
     --scenario both `
-    --config config/config.json `
+    --config config/production/full-workload.json `
     --results results
 
 # The above takes ~90 min. Artifacts land in:
@@ -203,11 +203,15 @@ Write-Host "Done. Results are now in the shared repo." -ForegroundColor Green
 #
 #   dotnet run --project src/Bmt.LoadGen -c Release -- `
 #       test --target documentdb --scenario steady `
-#       --config config/smoke-single-find.json --results results --no-preflight
+#       --config config/smoke/single-find.json --results results --no-preflight
 #
 #   dotnet run --project src/Bmt.LoadGen -c Release -- `
 #       test --target documentdb --scenario steady `
-#       --config config/smoke-full.json --results results --no-preflight
+#       --config config/smoke/full-workload.json --results results --no-preflight
+#
+# Production single-op runs (find-only / insert-only, 3 x 30 min each):
+#   --config config/production/single-find.json
+#   --config config/production/single-insert.json   (note: calc_output accumulates — empty it first)
 #
 # Cosmos RU throughput is 100,000 RU/s (set on 2026-06-18 from VM1; no action needed here).
 #

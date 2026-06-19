@@ -58,7 +58,7 @@ Per-target folder contents:
 
 ```
 # Each target run writes results/<run-id>/ automatically. Point --results at the campaign folder:
-dotnet run --project src/Bmt.LoadGen -c Release -- test --config config/config.json \
+dotnet run --project src/Bmt.LoadGen -c Release -- test --config config/production/full-workload.json \
   --target <key> --scenario both --results results/<campaign>
 # Then build the comparison from the campaign folder (loader scans recursively):
 dotnet run --project src/Bmt.Report -c Release -- report \

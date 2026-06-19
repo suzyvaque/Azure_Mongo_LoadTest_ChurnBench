@@ -1,0 +1,70 @@
+{
+  // PRODUCTION config — single-op insert-output runs (3 iterations x 30 min, steady + burst).
+  // Same shape as full-workload.json but Workload.Mode=SingleOp / SingleOpType=InsertOutput, so each
+  // fresh per-Task connection performs exactly ONE op: insert into calc_output (no prior remove).
+  // Isolates cold-connection WRITE cost across all three backends. TaskSleepMs is skipped in SingleOp.
+  //
+  // ⚠ ACCUMULATION: insert-only never removes, so calc_output GROWS for the whole campaign (~millions of
+  // docs over 3x30 min). Implications:
+  //   * storage + index size climb during the run, so later iterations write into a larger collection;
+  //   * on cosmos-ru this consumes RU + storage continuously;
+  //   * each Task inserts with a fresh ObjectId _id (no collision with the seeded ReqId==_id docs).
+  // Recommended: empty calc_output before this campaign (re-run prepare-data, or drop+recreate the
+  // collection) so iteration 1 starts from the seeded baseline, and record the starting doc count.
+  "TaskSleepMs": 0,
+  "Dataset": {
+    "DocumentCount": 100000,
+    "Seed": 42,
+    "Buckets": [
+      { "Name": "Small",  "SizeBytes": 6144,  "Count": 10000 },
+      { "Name": "Medium", "SizeBytes": 16384, "Count": 15000 },
+      { "Name": "Large",  "SizeBytes": 51200, "Count": 35000 },
+      { "Name": "XL",     "SizeBytes": 59392, "Count": 40000 }
+    ]
+  },
+  "Seeder": {
+    "InsertBatchSize": 1000,
+    "CosmosInsertBatchSize": 100,
+    "DeleteBatchSize": 500
+  },
+  "Scenario": {
+    "Iterations": 3,
+    "IterationDurationSeconds": 1800,
+    "MaxConcurrentTasks": 15000,
+    "ResourceSampleIntervalMs": 1000,
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 135,
+      "DurationSeconds": 1800
+    },
+    "Burst": {
+      "Enabled": true,
+      "JobsPerSecondLambda": 0.57,
+      "MaxTasksPerJob": 500,
+      "MinTasksPerJob": 14,
+      "DurationSeconds": 1800
+    }
+  },
+  "Client": {
+    "ServerSelectionTimeoutMs": 5000,
+    "ConnectTimeoutMs": 5000,
+    "SocketTimeoutMs": 0,
+    "DirectConnectionForSingleNode": true
+  },
+  "Preflight": {
+    "ResultsDirectory": "artifacts",
+    "MinFreeDiskBytes": 1073741824,
+    "ConcurrentConnectionTarget": 11000,
+    "ConnectionChurnPerSecTarget": 1200,
+    "RequirePrivateNetwork": true,
+    "SampleSize": 1000,
+    "WarmupMaxAgeMinutes": 360,
+    "CosmosExpectedRuPerSec": 100000,
+    "DocumentDbExpectedTier": "M80",
+    "MongoExpectedMaxIncomingConnections": null
+  },
+  "Workload": {
+    "Mode": "SingleOp",
+    "SingleOpType": "InsertOutput"
+  }
+}

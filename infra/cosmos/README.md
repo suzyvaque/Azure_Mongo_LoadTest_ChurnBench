@@ -73,7 +73,7 @@ terraform output -raw bmt_conn_cosmos |
 # 1) raise RU to the test value and wait until live:
 pwsh -File ..\..\scripts\cosmos-ru.ps1 -Set 100000 -Wait
 # 2) seed 100k + create ReqId indexes:
-dotnet run --project ..\..\src\Bmt.Seeder -- prepare-data --config ..\..\config\config.json --target cosmos-ru
+dotnet run --project ..\..\src\Bmt.Seeder -- prepare-data --config ..\..\config\production\full-workload.json --target cosmos-ru
 # 3) preflight + run as usual, then drop RU back afterwards:
 pwsh -File ..\..\scripts\cosmos-ru.ps1 -Min
 ```
