@@ -1,0 +1,318 @@
+{
+  "Target": "mongo-vm",
+  "Scenario": "Burst",
+  "WorkloadMode": "insert-output",
+  "GeneratedUtc": "2026-06-19T19:33:06.9455230Z",
+  "IterationCount": 3,
+  "Iterations": [
+    {
+      "IterationNumber": 1,
+      "ArtifactPath": "iter-01\\mongo-vm-burst-insert-output-20260619-190303-iter-01-20260619-190303.json",
+      "DurationSeconds": 601.012,
+      "TotalTasks": 88207,
+      "SuccessfulTasks": 87780,
+      "FailedTasks": 427,
+      "ErrorRatePct": 0.484,
+      "TaskCycleLatencyMs": {
+        "Count": 88207,
+        "MinMs": 72.1935,
+        "MaxMs": 14954.7255,
+        "MeanMs": 1962.7884289625538,
+        "P50Ms": 1552.0223,
+        "P90Ms": 3826.8466,
+        "P95Ms": 4643.7793,
+        "P99Ms": 6683.0522,
+        "P999Ms": 11994.2652
+      },
+      "OperationLatencyMs": {
+        "find_input": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        },
+        "remove": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        },
+        "insert": {
+          "Count": 87780,
+          "MinMs": 66.914,
+          "MaxMs": 14931.2536,
+          "MeanMs": 1917.9000503907537,
+          "P50Ms": 1519.3949,
+          "P90Ms": 3735.403,
+          "P95Ms": 4525.4093,
+          "P99Ms": 6470.3442,
+          "P999Ms": 11970.4695
+        },
+        "find_output": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        }
+      },
+      "ConnectionOpenMs": {
+        "Count": 87780,
+        "MinMs": 19.5472,
+        "MaxMs": 7138.5792,
+        "MeanMs": 873.5459485725648,
+        "P50Ms": 662.9914,
+        "P90Ms": 1773.5198,
+        "P95Ms": 2227.1307,
+        "P99Ms": 3558.9175,
+        "P999Ms": 4765.2375
+      },
+      "ErrorsByType": {
+        "ServerSelectionTimeout": 425,
+        "ThrottlingOrRateLimit": 2
+      }
+    },
+    {
+      "IterationNumber": 2,
+      "ArtifactPath": "iter-02\\mongo-vm-burst-insert-output-20260619-190303-iter-02-20260619-191305.json",
+      "DurationSeconds": 601.198,
+      "TotalTasks": 88905,
+      "SuccessfulTasks": 88472,
+      "FailedTasks": 433,
+      "ErrorRatePct": 0.487,
+      "TaskCycleLatencyMs": {
+        "Count": 88905,
+        "MinMs": 77.6721,
+        "MaxMs": 15538.2741,
+        "MeanMs": 2095.097257276873,
+        "P50Ms": 1639.4658,
+        "P90Ms": 4072.5218,
+        "P95Ms": 5059.7023,
+        "P99Ms": 8081.6034,
+        "P999Ms": 14340.3047
+      },
+      "OperationLatencyMs": {
+        "find_input": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        },
+        "remove": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        },
+        "insert": {
+          "Count": 88472,
+          "MinMs": 70.4498,
+          "MaxMs": 15484.6454,
+          "MeanMs": 2049.152067283431,
+          "P50Ms": 1609.343,
+          "P90Ms": 3982.9325,
+          "P95Ms": 4917.7667,
+          "P99Ms": 7775.5418,
+          "P999Ms": 14303.3777
+        },
+        "find_output": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        }
+      },
+      "ConnectionOpenMs": {
+        "Count": 88472,
+        "MinMs": 19.3815,
+        "MaxMs": 7371.1513,
+        "MeanMs": 906.9760675049748,
+        "P50Ms": 681.217,
+        "P90Ms": 1827.7145,
+        "P95Ms": 2517.7035,
+        "P99Ms": 3938.4127,
+        "P999Ms": 5022.4827
+      },
+      "ErrorsByType": {
+        "ServerSelectionTimeout": 432,
+        "ThrottlingOrRateLimit": 1
+      }
+    },
+    {
+      "IterationNumber": 3,
+      "ArtifactPath": "iter-03\\mongo-vm-burst-insert-output-20260619-190303-iter-03-20260619-192306.json",
+      "DurationSeconds": 600.6,
+      "TotalTasks": 88905,
+      "SuccessfulTasks": 88269,
+      "FailedTasks": 636,
+      "ErrorRatePct": 0.715,
+      "TaskCycleLatencyMs": {
+        "Count": 88905,
+        "MinMs": 83.4832,
+        "MaxMs": 16299.8718,
+        "MeanMs": 2185.5237249491047,
+        "P50Ms": 1656.9032,
+        "P90Ms": 4368.3391,
+        "P95Ms": 5435.6742,
+        "P99Ms": 10605.8692,
+        "P999Ms": 13304.4056
+      },
+      "OperationLatencyMs": {
+        "find_input": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        },
+        "remove": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        },
+        "insert": {
+          "Count": 88269,
+          "MinMs": 75.5996,
+          "MaxMs": 16290.8436,
+          "MeanMs": 2137.3433918963806,
+          "P50Ms": 1625.0718,
+          "P90Ms": 4214.0967,
+          "P95Ms": 5387.9644,
+          "P99Ms": 10443.1528,
+          "P999Ms": 13296.5543
+        },
+        "find_output": {
+          "Count": 0,
+          "MinMs": 0,
+          "MaxMs": 0,
+          "MeanMs": 0,
+          "P50Ms": 0,
+          "P90Ms": 0,
+          "P95Ms": 0,
+          "P99Ms": 0,
+          "P999Ms": 0
+        }
+      },
+      "ConnectionOpenMs": {
+        "Count": 88269,
+        "MinMs": 19.7812,
+        "MaxMs": 9785.8028,
+        "MeanMs": 964.735186039265,
+        "P50Ms": 726.681,
+        "P90Ms": 1915.9118,
+        "P95Ms": 2542.4692,
+        "P99Ms": 4191.1155,
+        "P999Ms": 9147.0407
+      },
+      "ErrorsByType": {
+        "ServerSelectionTimeout": 634,
+        "ThrottlingOrRateLimit": 2
+      }
+    }
+  ],
+  "Stats": {
+    "TaskCycleMs": {
+      "MeanP50Ms": 1616.13,
+      "MeanP90Ms": 4089.236,
+      "MeanP95Ms": 5046.385,
+      "MeanP99Ms": 8456.842,
+      "MeanP999Ms": 13212.992,
+      "MinP99Ms": 6683.0522,
+      "MaxP99Ms": 10605.8692,
+      "TotalCount": 266017
+    },
+    "OperationMs": {
+      "find_input": {
+        "MeanP50Ms": 0,
+        "MeanP90Ms": 0,
+        "MeanP95Ms": 0,
+        "MeanP99Ms": 0,
+        "MeanP999Ms": 0,
+        "MinP99Ms": 0,
+        "MaxP99Ms": 0,
+        "TotalCount": 0
+      },
+      "remove": {
+        "MeanP50Ms": 0,
+        "MeanP90Ms": 0,
+        "MeanP95Ms": 0,
+        "MeanP99Ms": 0,
+        "MeanP999Ms": 0,
+        "MinP99Ms": 0,
+        "MaxP99Ms": 0,
+        "TotalCount": 0
+      },
+      "insert": {
+        "MeanP50Ms": 1584.603,
+        "MeanP90Ms": 3977.477,
+        "MeanP95Ms": 4943.713,
+        "MeanP99Ms": 8229.68,
+        "MeanP999Ms": 13190.134,
+        "MinP99Ms": 6470.3442,
+        "MaxP99Ms": 10443.1528,
+        "TotalCount": 264521
+      },
+      "find_output": {
+        "MeanP50Ms": 0,
+        "MeanP90Ms": 0,
+        "MeanP95Ms": 0,
+        "MeanP99Ms": 0,
+        "MeanP999Ms": 0,
+        "MinP99Ms": 0,
+        "MaxP99Ms": 0,
+        "TotalCount": 0
+      }
+    },
+    "ConnectionOpenMs": {
+      "MeanP50Ms": 690.296,
+      "MeanP90Ms": 1839.049,
+      "MeanP95Ms": 2429.101,
+      "MeanP99Ms": 3896.149,
+      "MeanP999Ms": 6311.587,
+      "MinP99Ms": 3558.9175,
+      "MaxP99Ms": 4191.1155,
+      "TotalCount": 264521
+    },
+    "MeanSuccessfulTasksPerSec": 146.727,
+    "MeanErrorRatePct": 0.562
+  }
+}
