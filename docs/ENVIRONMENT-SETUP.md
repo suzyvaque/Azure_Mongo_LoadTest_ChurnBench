@@ -94,7 +94,7 @@ What the script changes (registry: `HKLM\SYSTEM\CurrentControlSet\Services\Tcpip
 - **Wait for `TIME_WAIT` to drain (< ~200) between runs.** Back-to-back invocations within ~60 s reuse
   ports still held by the previous run's warmup/preflight sockets → error **10048** at startup. Check
   with `(netstat -an | Select-String TIME_WAIT).Count`.
-- **Run detached for long campaigns.** A 3×30-min campaign is ~90 min; launch it so it survives the
+- **Run detached for long campaigns.** A 3×10-min campaign is ~30 min per scenario; launch it so it survives the
   shell/SSH session closing (e.g. `Start-Process pwsh -WindowStyle Hidden ...`), and tee output to a log.
 
 ---
@@ -283,7 +283,7 @@ known budget. The embedded preflight gate in each run's JSON also captures the e
 5. **Seed + index** once per backend: `prepare-data` (100k docs, seed 42, `ReqId` indexes).
 6. **Preflight** the target (the 10-check gate; `--warmup`). Resolve any FAIL before timing.
 7. **Confirm** `TIME_WAIT < ~200` and (for `mongo-vm`) `rs.status()` healthy.
-8. **Run** the timed campaign (3×30-min iterations; full-workload or single-op per the chosen config),
+8. **Run** the timed campaign (3×10-min iterations; full-workload or single-op per the chosen config),
    one target at a time, into a shared `results/<campaign>` folder.
 9. **Clean** `calc_output` after each campaign with `clean-output` (empties only `calc_output`, keeps
    `calc_input` + the `ReqId` index). **Required after a single-insert run** (it accumulates docs without
@@ -302,5 +302,5 @@ See the [`README.md`](../README.md) for the per-command CLI details and the metr
 |---|---|
 | TCP tuning values (10000–65534, TIME_WAIT 30 s) | Backend tier (e.g. DocumentDB M-tier, Mongo VM size) |
 | No-reuse Task model, dataset (100k, seed 42) | Cosmos RU/s (40,000 → 100,000 → …) |
-| `ReqId` index on both collections | Run shape (1×60 min vs 3×30 min; full-workload vs single-op) |
+| `ReqId` index on both collections | Run shape (1×60 min vs 3×10 min; full-workload vs single-op) |
 | Software stack pins (.NET 8, driver 2.30, Server 7.0) | Which AZ each VM/backend sits in |

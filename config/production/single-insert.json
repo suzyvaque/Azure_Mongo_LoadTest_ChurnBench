@@ -4,7 +4,7 @@
   // three backends. Inherits the scenario/dataset/seeder/preflight/client envelope from common.json.
   //
   // ⚠ ACCUMULATION: insert-only never removes, so calc_output GROWS for the whole campaign (~millions
-  // of docs over 3x30 min). Implications:
+  // of docs over 3x10 min). Implications:
   //   * storage + index size climb during the run, so later iterations write into a larger collection;
   //   * on cosmos-ru this consumes RU + storage continuously;
   //   * each Task inserts with a fresh ObjectId _id (no collision with the seeded ReqId==_id docs).

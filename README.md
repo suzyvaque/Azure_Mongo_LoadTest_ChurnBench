@@ -63,10 +63,15 @@ src/
   Bmt.LoadGen/     # test         : the timed connection-churn run (Scenario A steady + B burst)
   Bmt.Report/      # report       : results JSON/CSV -> self-contained HTML
 config/
-  production/      # full 100k dataset, 3 iterations x 10 min, steady + burst:
-    full-workload.json   #   4-op cycle: find-input -> remove -> insert -> find-output (canonical run)
-    single-find.json     #   single-op: find(calc_input) only — isolates cold read latency
-    single-insert.json   #   single-op: insert(calc_output) only — isolates cold write latency
+  production/      # full 100k dataset, 3 iterations x 10 min:
+    full-workload.json   #   4-op cycle: find-input -> remove -> insert -> find-output (canonical; burst-only via common.json)
+    single-find.json     #   single-op: find(calc_input) only — isolates cold read latency (burst-only)
+    single-insert.json   #   single-op: insert(calc_output) only — isolates cold write latency (burst-only)
+    # Per-scenario variants (pin exactly ONE scenario so an individual run never stacks arrival rates):
+    full-workload-steady.json / full-workload-burst.json
+    single-find-steady.json   / single-find-burst.json
+    single-insert-steady.json / single-insert-burst.json
+    common.json          #   shared envelope (dataset/seeder/preflight/client + scenario defaults: burst on, steady off)
   smoke/           # tiny/fast configs for validation (30 s or 40 docs), one per mode:
     connectivity.json    #   40-doc connectivity/sizing/index check
     full-workload.json   #   30 s 4-op cycle
@@ -179,6 +184,23 @@ there is no CLI flag for it:
 | Single-op **find** (cold read) | `config/production/single-find.json` | `config/smoke/single-find.json` | `Mode=SingleOp`, `SingleOpType=FindInput` |
 | Single-op **insert** (cold write) | `config/production/single-insert.json` | `config/smoke/single-insert.json` | `Mode=SingleOp`, `SingleOpType=InsertOutput` |
 | Connectivity / sizing check | — | `config/smoke/connectivity.json` | `Mode=FullWorkload` (40 docs) |
+
+> **Running an individual scenario (steady *or* burst).** A run executes a scenario only when the CLI
+> `--scenario` selects it **and** that scenario's `Enabled` flag is true in config (they are ANDed —
+> running both at once would stack the arrival rates). `common.json` ships **burst on, steady off**, so the
+> three base configs above run **burst-only**. To run a single scenario explicitly, pass the matching
+> `*-steady.json` / `*-burst.json` variant (which pins exactly one scenario) with the same `--scenario`:
+>
+> ```powershell
+> # individual steady single-find run:
+> dotnet run --project src/Bmt.LoadGen -- test --config config/production/single-find-steady.json --target mongo-vm --scenario steady --results results/<campaign>
+> # individual burst full-workload run:
+> dotnet run --project src/Bmt.LoadGen -- test --config config/production/full-workload-burst.json --target mongo-vm --scenario burst --results results/<campaign>
+> ```
+>
+> The six variants are: `full-workload-{steady,burst}.json`, `single-find-{steady,burst}.json`,
+> `single-insert-{steady,burst}.json`. If `--scenario` and the config disagree (no scenario active), the
+> run aborts with a clear "No scenario active" message rather than running nothing silently.
 
 > **Single-op insert accumulates** docs in `calc_output` (no remove), so the collection grows for the whole
 > campaign. Run `clean-output` before **and** after an insert campaign (and record the starting count); it
