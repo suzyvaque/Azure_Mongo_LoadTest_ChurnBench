@@ -27,9 +27,7 @@ first database operation triggers TCP + TLS + auth. The benchmark records two **
 > percentile look slightly lower than a neighbouring one). The raw `ConnectionOpenMs` and `OperationMs`
 > percentiles in each run's `aggregate.json` are exact.
 
-Best value per row is **bold, underlined, green** (`<u><b style="color:#1a7f37">`). The earlier non-TLS
-mongo single-find runs under `mongo_tls_false/` are excluded — they skipped the TLS crypto and are not
-comparable.
+Best value per row is **bold**.
 
 ---
 
