@@ -17,7 +17,7 @@ Task cycle under steady + bursty load, and produces a self-contained HTML compar
 | CLI `--target` | Backend | Env var (connection string) | Notes |
 |---|---|---|---|
 | `mongo-vm` | MongoDB on a VM (single-node `rs0`) | `BMT_CONN_MONGO` | `authSource=admin`; only `_id` index by default, so `prepare-data` adds the `ReqId` index. |
-| `cosmos-ru` | Azure Cosmos DB for MongoDB (RU) | `BMT_CONN_COSMOS` | `RetryWrites=false`; **fixed provisioned RU/s** (held constant within a campaign, never auto-raised); 429/`RetryAfterMs` backoff; `ReqId` index is **non-unique** (platform constraint). |
+| `cosmos-ru` | Azure Cosmos DB for MongoDB (RU) | `BMT_CONN_COSMOS` | `RetryWrites=false`; **fixed 100,000 RU/s (100k RU/s)** (held constant within a campaign, never auto-raised); 429/`RetryAfterMs` backoff; `ReqId` index is **non-unique** (platform constraint). **Excluded from the current run; kept for a future round.** |
 | `documentdb` | Azure DocumentDB / Cosmos vCore | `BMT_CONN` | `mongodb+srv://` SRV resolution; `retrywrites=false` in URI. |
 
 **Secrets never live in the repo.** Connection strings are read at runtime from the env vars above. On
@@ -63,7 +63,7 @@ src/
   Bmt.LoadGen/     # test         : the timed connection-churn run (Scenario A steady + B burst)
   Bmt.Report/      # report       : results JSON/CSV -> self-contained HTML
 config/
-  production/      # full 100k dataset, 3 iterations x 30 min, steady + burst:
+  production/      # full 100k dataset, 3 iterations x 10 min, steady + burst:
     full-workload.json   #   4-op cycle: find-input -> remove -> insert -> find-output (canonical run)
     single-find.json     #   single-op: find(calc_input) only — isolates cold read latency
     single-insert.json   #   single-op: insert(calc_output) only — isolates cold write latency
@@ -153,7 +153,7 @@ duration for short smoke runs), `--results <dir>`, `--no-preflight` (NOT recomme
 
 **Workload mode is chosen by which config you pass** (see the table below) — e.g.
 `config/production/single-find.json` for find-only or `config/production/single-insert.json` for
-insert-only. All three production configs run 3 iterations × 30 min, steady + burst.
+insert-only. All three production configs run 3 iterations × 10 min, steady + burst.
 
 ### 4. `report` — self-contained HTML (Bmt.Report)
 
@@ -169,7 +169,7 @@ single self-contained HTML report. To compare all three candidates, run `test` o
 
 ## Configuration (`config/`)
 
-Configs are split into **`config/production/`** (full 100k dataset, 3 × 30 min, steady + burst) and
+Configs are split into **`config/production/`** (full 100k dataset, 3 × 10 min, steady + burst) and
 **`config/smoke/`** (tiny/fast validation). **The workload mode is selected by which config you pass** —
 there is no CLI flag for it:
 
@@ -194,7 +194,7 @@ Config keys (all configs share this shape):
   **whole-BSON-document** targets — the `Input` field is padded so the entire doc hits the bucket size.
 - `Seeder` — insert/delete batch sizes (`cosmos-ru` uses smaller batches to ease RU throttling).
 - `Preflight` — expected server values (RU/s, tier, max connections) and host-headroom thresholds.
-- `Scenario` — `Iterations` (production 3), `IterationDurationSeconds` (production 1800 — overrides each
+- `Scenario` — `Iterations` (production 3), `IterationDurationSeconds` (production 600 — overrides each
   scenario's `DurationSeconds`), `MaxConcurrentTasks`, resource sample interval, and the two scenarios:
   - **Steady (A)**: `TasksPerSecond` 135.
   - **Burst (B)**: Poisson `JobsPerSecondLambda` 0.57, `MinTasksPerJob`..`MaxTasksPerJob` 14..500.
@@ -221,7 +221,7 @@ released after each Task.
 ## Output artifacts
 
 Run artifacts are organised as **campaigns**: one folder per benchmark campaign under `results/`
-(e.g. `results/phase1-3way-steady-burst-20260616/`) holding one **per-target run subfolder** plus the
+(e.g. `results/run-20260619-00/`) holding one **per-target run subfolder** plus the
 comparison report and summary. Each `test` run writes its own `results/<run-id>/` subfolder, where the
 run id is `<target>-<scenario>-<yyyyMMdd-HHmmss>` — the scenario token `steady-burst` means Scenario A
 steady + Scenario B burst in one window. Point `--results` at the campaign folder so a campaign's runs
@@ -278,8 +278,8 @@ gap between created and closed means connections leaked or were not released. Th
 but no pooling/reuse occurs between requests; within a single Task the four ops legitimately share that
 Task's one connection.)
 
-**How Cosmos RU throttling affects results.** `cosmos-ru` runs at a **fixed provisioned RU/s** budget
-(held constant within a campaign, never auto-raised — even for seeding). When the workload exceeds it, the
+**How Cosmos RU throttling affects results.** `cosmos-ru` runs at a **fixed 100,000 RU/s (100k RU/s)**
+budget (held constant within a campaign, never auto-raised — even for seeding). When the workload exceeds it, the
 server returns **429 / `RetryAfterMs`**. During the **timed run** these are **classified and recorded as
 `CosmosRuThrottling`** (a separate error bucket) rather than silently retried, so throttling shows up as
 failures/latency in the report instead of being hidden. High `CosmosRuThrottling` counts mean the workload
@@ -317,7 +317,7 @@ backend tolerates connection storms. Do not extrapolate these numbers to a poole
 
 ---
 
-## Typical Phase-1 workflow
+## Typical campaign workflow
 
 ```powershell
 # Per target (one at a time on VM1); --results points every run at the same campaign folder.

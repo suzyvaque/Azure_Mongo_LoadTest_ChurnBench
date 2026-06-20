@@ -34,6 +34,12 @@ This benchmark intentionally does **not** model a long-lived connection-pool app
 
 > **Operation count per Task = strictly 4 DB ops, in this exact order: `find` (input) → `remove` (output) → `insert` (output) → `find` (output).** All four ops are keyed by **`ReqId`** (the logical Request ID), not the sequential `_id`. Production uses **remove + insert (NOT upsert)** to write results, so the `remove` step is **mandatory** for every Task — never replace it with an upsert and never skip it. The two `find` ops target different collections (`calc_input` then `calc_output`).
 
+> **Full workload vs. single-operation isolation tests.** The 4-op cycle above is the **canonical full
+> workload**. The benchmark also runs **single-operation isolation tests** — **find-only** (one `find` on
+> `calc_input`) and **insert-only** (one `insert` into `calc_output`) — where each Task performs exactly
+> one op with `TaskSleepMs = 0`. These isolate the cold read / cold write halves of the connection-churn
+> cost from the combined cycle. See Section 6.4 for how the two test types are run.
+
 ### 2.2 No-Reuse Requirements (HARD CONSTRAINTS)
 
 The implementation MUST NOT do any of the following:
@@ -120,10 +126,15 @@ Load **100,000 documents** into `calc_input` during the prepare-data stage.
 | Target key      | Resource |
 |-----------------|----------|
 | `documentdb`    | Azure DocumentDB (M80, 32 vCore, 128 GB RAM, 512 GB SSD) |
-| `cosmos-ru`     | Azure Cosmos DB for MongoDB — **fixed 40,000 RU/s. DO NOT change RU/s.** |
+| `cosmos-ru`     | Azure Cosmos DB for MongoDB — **fixed 100,000 RU/s (100k RU/s). DO NOT change RU/s.** |
 | `mongo-vm`      | MongoDB on Azure VM (Windows Server Datacenter 2025, 32 vCore, 256 GB RAM, 512 GB data disk SSD) |
 
 > **Versions:** MongoDB **Server 7.0** and **wire/API 7.0** for all three targets. Build/run the benchmark tool on **.NET 8 (LTS)** with the **MongoDB C# Driver 2.30** (Core API).
+
+> **`cosmos-ru` scope for the current run:** `cosmos-ru` is **excluded from the current campaign**
+> (only `mongo-vm` and `documentdb` are run) but is kept as a first-class target throughout this
+> document because it **will be considered in a future round**. When it is re-enabled it runs at the
+> **fixed 100,000 RU/s (100k RU/s)** budget above — never auto-raised mid-campaign.
 
 ### 4.1 Test topology
 
@@ -232,30 +243,56 @@ Before starting a load test against any `--target`, the tool MUST run an automat
 3. **Network path is private** — connectivity to the DB/VM is over a **private or peered** path (Private Endpoint / VNet peering / private DNS), **not** the public internet. Verify the resolved endpoint is a private IP (RFC1918) or the expected private-endpoint FQDN, and fail if it resolves to a public address. This keeps latency results free of internet-path noise and matches the prod topology.
 4. **Connectivity & auth smoke test** — open one connection, run a single `find` by `ReqId`, and close it cleanly. Confirms credentials, TLS, server selection, and the `ReqId` query path all work before load begins.
 5. **`calc_output` writable** — the output collection exists (or auto-creates) and a `remove`+`insert`+`find` round-trip on a throwaway `ReqId` succeeds; clean up the probe document afterward.
-6. **Server/throughput config matches the target spec** — e.g., Cosmos is at the **fixed 40,000 RU/s** (and must not be changed); DocumentDB is the M80 tier; `mongo-vm` mongod is up with the intended `maxIncomingConnections`. Record these in the report's config summary.
+6. **Server/throughput config matches the target spec** — e.g., Cosmos (when included) is at the **fixed 100,000 RU/s (100k RU/s)** (and must not be changed); DocumentDB is the M80 tier; `mongo-vm` mongod is up with the intended `maxIncomingConnections`. Record these in the report's config summary.
 7. **Client host headroom** — the test host's **ephemeral port range and `TcpTimedWaitDelay`** are tuned for the expected churn (see Section 7.3), and the process **file-descriptor / handle limit** is high enough for the target concurrent-connection level. Warn (or fail) if the configured headroom is below the scenario's concurrent-connection target.
 8. **Clock & time sync** — client clock is NTP-synced (latency and per-second-rate metrics depend on accurate timestamps).
 9. **Clean starting state** — no leftover connections from a prior aborted run; results directory writable; sufficient local disk for raw JSON/CSV output.
 10. **Data-cache warm-up completed** — the untimed warm-up pass (Section 6.5) has run so the working set is hot before measurement, keeping the comparison apples-to-apples.
 
-### 6.4 Test execution plan (phased)
+### 6.4 Test execution plan (single-operation isolation + full workload)
 
-Run the benchmark in two phases. **Run Phase 1 first for every target; use its results to decide whether a Phase 2 soak is worthwhile for that target** (a candidate that already shows severe instability in Phase 1 can be deprioritized for the longer soak).
+The benchmark is run as **two complementary test types**, each executed under both the **Steady**
+(Scenario A) and **Burst** (Scenario B) envelopes from Section 6.2. Every run is **3 iterations × 600 s
+(10 min) per target** (the production envelope in `config/production/common.json`), and targets are run
+**one at a time** (Section 4.1). Run the single-operation tests and the full workload independently —
+they answer different questions and are not phases of one another.
 
-**Phase 1 — 1-hour peak behavior**
-- Duration: **1 hour per target.**
-- Load: hold the **peak-hour profile** uniformly (Scenario A: 135 conn/sec, 540 ops/sec sustained), then apply the **Poisson burst** (Scenario B) within the same hour to exercise the spike envelope.
-- Purpose: reproduce the worst single prod hour 1:1 and surface the **fast-onset** behaviors — connection rejection, RU throttling, server-selection/socket timeouts, and client ephemeral-port/TIME_WAIT pressure (these appear within minutes).
-- What to observe and compare: connection rejections, whether ops/sec holds during the burst, and **p99/p95/p99.9 latency** relative to the other candidates (no hard SLA; tail latency is the primary comparison metric).
+**Test type 1 — Single-operation isolation tests** (`TaskSleepMs = 0`, no calc-time sleep)
 
-**Phase 2 — N-hour workload recreation (prod-quality soak)**
-- Duration: **multi-hour**, two options:
-  - **Full-shape replay (preferred):** replay the contiguous **11-hour** prod window (14:00→00:00) following the real hour-by-hour Task curve, including the back-to-back heavy hours near the daily peak. This validates the actual daily peak *shape*, not a synthetic flat hour.
-  - **Soak (minimum):** hold the Phase-1 peak load for **≥ 4 hours** continuously.
-- Purpose: catch **cumulative / slow-onset** effects that a 1-hour test cannot — file-descriptor/handle leaks, slow client memory growth, sustained TIME_WAIT accumulation, and managed-service background maintenance / RU throttle-smoothing that operate on longer cycles than 1 hour.
-- What to observe and compare: whether each target holds the Phase-1 behavior for the full window, and whether there is **upward drift** in latency, error rate, or resource (FD/memory/port) usage over time — stability over the soak is itself a key differentiator between the options.
+Each Task opens a brand-new connection, performs exactly **one** DB op, then disconnects. Because the
+connection is never reused, op1 absorbs the **entire connection-establishment cost** (TCP + TLS handshake
++ auth + server selection), so the measured latency is dominated by connection setup rather than server
+execution. Two variants split the cost by read vs write:
 
-> **Why 1 hour is sufficient for Phase 1 but not for a final recommendation:** the prod data is bucketed hourly, so the peak hour *is* a complete 1-hour window — a 1-hour test reproduces peak throughput and all fast-onset behaviors exactly. Cumulative leaks and managed-service accounting, however, only become visible over a longer soak, so a **prod-quality comparison needs Phase 2** for the candidates that look viable after Phase 1.
+- **find-only** (`config/production/single-find*.json`) — a single `find` on `calc_input` by `ReqId`.
+  Isolates the **cold read** path.
+- **insert-only** (`config/production/single-insert*.json`) — a single `insert` into `calc_output`.
+  Isolates the **cold write** path.
+
+> **Insert-only grows `calc_output`.** A single-op insert never removes, so `calc_output` accumulates
+> across iterations. Run `clean-output` to reset to the seeded baseline **before/after every insert-only
+> run** so the next run starts from a known state.
+
+**Test type 2 — Full 4-op workload** (`TaskSleepMs = 10,000 ms`; `config/production/full-workload*.json`)
+
+Each Task runs the canonical production cycle `find` (input) → `remove` (output) → `insert` (output) →
+`find` (output) on one connection, with the calc-time sleep applied between the input `find` and the
+output `remove` (Section 6.6). **Op1 (`find_input`) pays the cold-connection cost; ops 2–4 run on the
+now-warm socket and isolate true server execution.** This is the canonical run that reflects the real
+HPC workload and exposes the combined per-Task cycle under the realistic 50/50 read/write op mix.
+
+**Purpose & what to observe (both test types).** Reproduce the worst single prod hour and surface the
+connection-churn behaviors — connection rejection, RU throttling (`cosmos-ru`, when included),
+server-selection/socket timeouts, and client ephemeral-port/TIME_WAIT pressure (these appear within
+minutes). Compare candidates by **p99/p95/p99.9 latency** relative to one another (no hard SLA; tail
+latency is the primary comparison metric). The single-op tests **separate the connection tax from server
+execution** (and split it into read vs write); the full workload shows the **combined per-Task cycle** —
+cold connection on op1, warm server execution on ops 2–4.
+
+> **Why 3 × 600 s is enough for this comparison:** the prod data is bucketed hourly, so a steady run at
+> peak-hour rate plus the Poisson burst reproduces peak throughput and all fast-onset behaviors
+> (connection rejection, throttling, timeouts, port/TIME_WAIT pressure) exactly. Three independent
+> 10-minute iterations give a mean-of-3 with visible run-to-run variance without a multi-hour soak.
 
 ### 6.5 Starting-state normalization (warm data cache, cold connections)
 
@@ -315,7 +352,7 @@ The real HPC calculation step is replaced in this test by a **fixed `sleep`** so
 
 ### 7.3 Client-side resource metrics (host running the test)
 
-These are the likely **first failure point** in a no-reuse churn test (every Task opens a new outbound socket), and they back the Phase-1 fast-onset checks and the Phase-2 no-drift criteria in Section 6.4.
+These are the likely **first failure point** in a no-reuse churn test (every Task opens a new outbound socket), and they back the fast-onset failure checks in Section 6.4 (connection rejection, port/TIME_WAIT pressure).
 - Ephemeral (outbound) ports in use; configured ephemeral port range and % utilization.
 - Sockets in **TIME_WAIT** (count over time); configured `TcpTimedWaitDelay`.
 - Open socket/file-descriptor (handle) count over time.
