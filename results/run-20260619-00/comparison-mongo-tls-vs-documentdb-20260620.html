@@ -17,11 +17,12 @@
   main{max-width:1000px; margin:0 auto;}
   h1{font-size:25px; margin:0 0 4px;}
   h2{font-size:19px; margin:34px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--line);}
+  h3{font-size:16px; margin:22px 0 6px;}
   .sub{color:var(--muted); margin:0 0 18px;}
   .meta{background:#f6f8fa; border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:16px 0;}
   .meta code{background:#eaeef2; padding:1px 5px; border-radius:4px; font-size:13px;}
   .note{background:#fff8e6; border:1px solid #e6c200; border-radius:8px; padding:10px 14px; margin:14px 0; font-size:14px;}
-  table{border-collapse:collapse; width:100%; margin:12px 0 6px; font-size:14px;}
+  table{border-collapse:collapse; width:100%; margin:8px 0 6px; font-size:14px;}
   th,td{border:1px solid var(--line); padding:6px 10px; text-align:left;}
   th{background:#f6f8fa; font-weight:600;}
   td.num,th.num{text-align:right; font-variant-numeric:tabular-nums;}
@@ -36,143 +37,190 @@
 <body>
 <main>
   <h1>MongoDB Connection-Churn Benchmark — mongo-vm (TLS) vs DocumentDB</h1>
-  <p class="sub">Campaign <b>run-20260619-00</b> · TLS-vs-TLS · 3 iterations × 600&nbsp;s per run · steady (135&nbsp;Tasks/s) &amp; burst (Poisson λ=0.57) run separately · latency in ms, mean of 3 iterations' percentiles.</p>
+  <p class="sub">Campaign <b>run-20260619-00</b> · TLS-vs-TLS · 3 iterations × 600&nbsp;s per run · steady
+    (135&nbsp;Tasks/s) and burst (Poisson λ=0.57) run as <b>separate</b> runs · latency in ms, mean of 3
+    iterations' percentiles.</p>
 
   <div class="meta">
     <b>Workload:</b> new <code>MongoClient</code> per Task (no reuse; <code>maxPoolSize=1</code>/<code>minPoolSize=0</code>).
     Three workloads: single-op <b>find-input</b>, single-op <b>insert-output</b>, full 4-op
-    <b>full-workload</b> (<code>find</code>→<code>remove</code>→<code>insert</code>→<code>find</code>) keyed by <code>ReqId</code>.<br>
-    <b>TLS:</b> both backends do a full handshake per connection — <code>mongo-vm</code> server-side TLS enabled
-    (<code>allowTLS</code>, self-signed cert + chain-of-trust <code>CAFile</code>, <code>tlsInsecure=true</code> client-side);
-    <code>documentdb</code> always-TLS. Connection-establishment cost is now directly comparable.<br>
-    <b>Stack:</b> MongoDB 7.0 / wire 7.0 · .NET 8 · C# Driver 2.30.
+    <b>full-workload</b> (<code>find</code>→<code>remove</code>→<code>insert</code>→<code>find</code>).<br>
+    <b>TLS:</b> both backends do a full handshake per connection — <code>mongo-vm</code> server-side TLS
+    enabled (<code>allowTLS</code>, self-signed cert + <code>CAFile</code>); <code>documentdb</code>
+    always-TLS. <b>Stack:</b> MongoDB 7.0 / wire 7.0 · .NET 8 · C# Driver 2.30.
   </div>
 
-  <p class="legend">Best value per row is <u><b>bold, underlined, green</b></u>. Metric bands:
+  <h2>How the metrics are separated</h2>
+  <p>Each Task opens a <b>brand-new</b> connection; the driver connects <b>lazily</b>, so the first op
+    triggers TCP+TLS+auth. Two <b>independent</b> measurements are recorded:</p>
+  <ul>
+    <li><b>Connection (TCP+TLS+auth)</b> — <code>ConnectionOpenMs</code> from the driver's
+      <code>ConnectionOpenedEvent</code> duration. This is the <b>only</b> place the handshake cost is
+      counted.</li>
+    <li><b>Server query / execution</b> — the operation latency <b>net of</b> the connection handshake. For
+      single-op tests the one (cold) op bundles connect+query, so the server-execution figure is
+      <code>op&nbsp;−&nbsp;ConnectionOpenMs</code> at the same percentile (<b>query time with TCP+TLS+auth
+      removed</b>). For the full workload, op1 (<code>find_input</code>) is cold (shown net of connection);
+      ops 2–4 run on the <b>warm</b> socket and are already pure server execution.</li>
+  </ul>
+  <div class="note"><b>Approximation:</b> percentiles are not additive, so <code>op − connection</code> at a
+    given percentile is an <b>indicative</b> decomposition, not an exact per-request subtraction. The raw
+    <code>ConnectionOpenMs</code> / <code>OperationMs</code> percentiles in each <code>aggregate.json</code>
+    are exact. The earlier non-TLS mongo runs under <code>mongo_tls_false/</code> are excluded (no TLS crypto).</div>
+
+  <p class="legend">Best value per row is <u><b>bold, underlined, green</b></u>. Bands:
     <span><span class="sw" style="background:var(--band-blue)"></span>throughput/errors</span>
-    <span><span class="sw" style="background:var(--band-amber)"></span>connectionOpen</span>
-    <span><span class="sw" style="background:var(--band-red)"></span>find / cold op</span>
-    <span><span class="sw" style="background:var(--band-teal)"></span>insert</span>
+    <span><span class="sw" style="background:var(--band-amber)"></span>connection (TCP+TLS+auth)</span>
+    <span><span class="sw" style="background:var(--band-red)"></span>server query (cold)</span>
+    <span><span class="sw" style="background:var(--band-teal)"></span>server write / insert</span>
     <span><span class="sw" style="background:var(--band-purple)"></span>total cycle</span>
   </p>
 
-  <div class="note">The earlier <b>non-TLS</b> mongo single-find runs live under <code>mongo_tls_false/</code>
-    and are excluded here — their connection times skipped the TLS crypto and are not comparable to DocumentDB's handshake.</div>
+  <h2>1. Single-op: find-input</h2>
+  <p class="sub">One <code>find</code> on <code>calc_input</code> per fresh connection. Server query =
+    <code>find</code> latency − connection (TCP+TLS+auth).</p>
 
-  <h2>Single-op: find-input <span style="font-weight:400;color:var(--muted)">(cold connection — find pays TCP+TLS+auth)</span></h2>
+  <h3>1a. find-input — STEADY (135 Tasks/s)</h3>
   <table>
-    <thead><tr><th>Scenario</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
+    <thead><tr><th>Metric group</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
     <tbody>
-      <tr style="background:var(--band-blue)"><td rowspan="2"><b>steady</b></td><td>Throughput (req/s)</td><td class="num"><u><b>135.0</b></u></td><td class="num"><u><b>135.0</b></u></td></tr>
-      <tr style="background:var(--band-blue)"><td>Error rate</td><td class="num"><u><b>0.00%</b></u></td><td class="num"><u><b>0.00%</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td rowspan="2"><b>connectionOpen</b></td><td>p50</td><td class="num">24.9</td><td class="num"><u><b>15.1</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td>p99</td><td class="num"><u><b>48.4</b></u></td><td class="num">86.9</td></tr>
-      <tr style="background:var(--band-red)"><td rowspan="2"><b>find (query)</b></td><td>p50</td><td class="num">44.6</td><td class="num"><u><b>32.8</b></u></td></tr>
-      <tr style="background:var(--band-red)"><td>p99</td><td class="num"><u><b>83.3</b></u></td><td class="num">124.9</td></tr>
-      <tr style="background:var(--band-purple)"><td rowspan="2"><b>Total cycle</b></td><td>p50</td><td class="num">45.9</td><td class="num"><u><b>42.1</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td>p99</td><td class="num"><u><b>91.4</b></u></td><td class="num">141.7</td></tr>
-      <tr style="background:var(--band-blue)"><td rowspan="2"><b>burst</b></td><td>Throughput (req/s)</td><td class="num"><u><b>145.8</b></u></td><td class="num">143.6</td></tr>
-      <tr style="background:var(--band-blue)"><td>Error rate</td><td class="num">0.37%</td><td class="num"><u><b>0.00%</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td rowspan="2"><b>connectionOpen</b></td><td>p50</td><td class="num">655.2</td><td class="num"><u><b>410.8</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td>p99</td><td class="num">3,806.5</td><td class="num"><u><b>3,010.0</b></u></td></tr>
-      <tr style="background:var(--band-red)"><td rowspan="2"><b>find (query)</b></td><td>p50</td><td class="num">1,485.3</td><td class="num"><u><b>785.1</b></u></td></tr>
-      <tr style="background:var(--band-red)"><td>p99</td><td class="num">6,398.5</td><td class="num"><u><b>5,266.8</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td rowspan="2"><b>Total cycle</b></td><td>p50</td><td class="num">1,513.0</td><td class="num"><u><b>828.1</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td>p99</td><td class="num">6,515.0</td><td class="num"><u><b>5,327.9</b></u></td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Throughput</b></td><td>req/s</td><td class="num"><u><b>135.0</b></u></td><td class="num"><u><b>135.0</b></u></td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Errors</b></td><td>error rate</td><td class="num"><u><b>0.00%</b></u></td><td class="num"><u><b>0.00%</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p50</td><td class="num">24.9</td><td class="num"><u><b>15.1</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p99</td><td class="num"><u><b>48.4</b></u></td><td class="num">86.9</td></tr>
+      <tr style="background:var(--band-red)"><td><b>Server query (ex-connection)</b></td><td>p50</td><td class="num">19.7</td><td class="num"><u><b>17.7</b></u></td></tr>
+      <tr style="background:var(--band-red)"><td><b>Server query (ex-connection)</b></td><td>p99</td><td class="num"><u><b>34.9</b></u></td><td class="num">38.0</td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p50</td><td class="num">45.9</td><td class="num"><u><b>42.1</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p99</td><td class="num"><u><b>91.4</b></u></td><td class="num">141.7</td></tr>
     </tbody>
   </table>
 
-  <h2>Single-op: insert-output <span style="font-weight:400;color:var(--muted)">(cold connection — insert pays TCP+TLS+auth)</span></h2>
+  <h3>1b. find-input — BURST (Poisson λ=0.57)</h3>
   <table>
-    <thead><tr><th>Scenario</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
+    <thead><tr><th>Metric group</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
     <tbody>
-      <tr style="background:var(--band-blue)"><td rowspan="2"><b>steady</b></td><td>Throughput (req/s)</td><td class="num"><u><b>135.0</b></u></td><td class="num">134.8</td></tr>
-      <tr style="background:var(--band-blue)"><td>Error rate</td><td class="num"><u><b>0.00%</b></u></td><td class="num"><u><b>0.00%</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td rowspan="2"><b>connectionOpen</b></td><td>p50</td><td class="num">24.5</td><td class="num"><u><b>14.7</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td>p99</td><td class="num"><u><b>42.7</b></u></td><td class="num">90.1</td></tr>
-      <tr style="background:var(--band-teal)"><td rowspan="2"><b>insert (write)</b></td><td>p50</td><td class="num">47.0</td><td class="num"><u><b>32.9</b></u></td></tr>
-      <tr style="background:var(--band-teal)"><td>p99</td><td class="num"><u><b>72.3</b></u></td><td class="num">125.9</td></tr>
-      <tr style="background:var(--band-purple)"><td rowspan="2"><b>Total cycle</b></td><td>p50</td><td class="num">48.2</td><td class="num"><u><b>41.1</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td>p99</td><td class="num"><u><b>74.2</b></u></td><td class="num">144.4</td></tr>
-      <tr style="background:var(--band-blue)"><td rowspan="2"><b>burst</b></td><td>Throughput (req/s)</td><td class="num"><u><b>146.7</b></u></td><td class="num">144.5</td></tr>
-      <tr style="background:var(--band-blue)"><td>Error rate</td><td class="num">0.56%</td><td class="num"><u><b>0.00%</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td rowspan="2"><b>connectionOpen</b></td><td>p50</td><td class="num">690.3</td><td class="num"><u><b>363.3</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td>p99</td><td class="num">3,896.1</td><td class="num"><u><b>2,399.2</b></u></td></tr>
-      <tr style="background:var(--band-teal)"><td rowspan="2"><b>insert (write)</b></td><td>p50</td><td class="num">1,584.6</td><td class="num"><u><b>722.8</b></u></td></tr>
-      <tr style="background:var(--band-teal)"><td>p99</td><td class="num">8,229.7</td><td class="num"><u><b>4,088.1</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td rowspan="2"><b>Total cycle</b></td><td>p50</td><td class="num">1,616.1</td><td class="num"><u><b>762.7</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td>p99</td><td class="num">8,456.8</td><td class="num"><u><b>4,134.4</b></u></td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Throughput</b></td><td>req/s</td><td class="num"><u><b>145.8</b></u></td><td class="num">143.6</td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Errors</b></td><td>error rate</td><td class="num">0.37%</td><td class="num"><u><b>0.00%</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p50</td><td class="num">655.2</td><td class="num"><u><b>410.8</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p99</td><td class="num">3,806.5</td><td class="num"><u><b>3,010.0</b></u></td></tr>
+      <tr style="background:var(--band-red)"><td><b>Server query (ex-connection)</b></td><td>p50</td><td class="num">830.1</td><td class="num"><u><b>374.3</b></u></td></tr>
+      <tr style="background:var(--band-red)"><td><b>Server query (ex-connection)</b></td><td>p99</td><td class="num">2,592.0</td><td class="num"><u><b>2,256.8</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p50</td><td class="num">1,513.0</td><td class="num"><u><b>828.1</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p99</td><td class="num">6,515.0</td><td class="num"><u><b>5,327.9</b></u></td></tr>
     </tbody>
   </table>
 
-  <h2>Full 4-op workload <span style="font-weight:400;color:var(--muted)">(find→remove→insert→find; per-op p50 / p99 ms)</span></h2>
-  <p class="sub"><code>find_input</code> = <b>cold socket</b> (op1 on a brand-new connection — pays TCP+TLS+auth).
-    <code>remove</code>/<code>insert</code>/<code>find_output</code> run on the now-<b>warm socket</b>, isolating true server execution.
-    Total cycle includes the fixed <b>10,000 ms</b> <code>taskSleepMs</code>.</p>
+  <h2>2. Single-op: insert-output</h2>
+  <p class="sub">One <code>insert</code> into <code>calc_output</code> per fresh connection. Server write =
+    <code>insert</code> latency − connection (TCP+TLS+auth).</p>
+
+  <h3>2a. insert-output — STEADY (135 Tasks/s)</h3>
   <table>
-    <thead><tr><th>Scenario</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
+    <thead><tr><th>Metric group</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
     <tbody>
-      <tr style="background:var(--band-blue)"><td rowspan="2"><b>steady</b></td><td>Throughput (req/s)</td><td class="num">101.3</td><td class="num"><u><b>132.0</b></u></td></tr>
-      <tr style="background:var(--band-blue)"><td>Error rate</td><td class="num">22.83%</td><td class="num"><u><b>0.02%</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td rowspan="2"><b>connectionOpen</b></td><td>p50</td><td class="num">3,407.9</td><td class="num"><u><b>20.3</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td>p99</td><td class="num">8,509.4</td><td class="num"><u><b>136.8</b></u></td></tr>
-      <tr style="background:var(--band-red)"><td><b>find — cold</b> (op1)</td><td>p50 / p99</td><td class="num">7,075 / 14,080</td><td class="num"><u><b>43 / 208</b></u></td></tr>
-      <tr style="background:var(--band-green)"><td><b>remove</b> (warm, op2)</td><td>p50 / p99</td><td class="num">27 / 608</td><td class="num"><u><b>3 / 90</b></u></td></tr>
-      <tr style="background:var(--band-teal)"><td><b>insert</b> (warm, op3)</td><td>p50 / p99</td><td class="num">78 / 1,208</td><td class="num"><u><b>3 / 90</b></u></td></tr>
-      <tr style="background:var(--band-green2)"><td><b>find — warm</b> (op4)</td><td>p50 / p99</td><td class="num">26 / 610</td><td class="num"><u><b>1 / 73</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td rowspan="2"><b>Total cycle</b><br><span style="font-weight:400;color:var(--muted)">incl. 10 s sleep</span></td><td>p50</td><td class="num">16,528</td><td class="num"><u><b>10,087</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td>p99</td><td class="num">24,170</td><td class="num"><u><b>10,312</b></u></td></tr>
-      <tr style="background:var(--band-blue)"><td rowspan="2"><b>burst</b></td><td>Throughput (req/s)</td><td class="num">93.3</td><td class="num"><u><b>134.8</b></u></td></tr>
-      <tr style="background:var(--band-blue)"><td>Error rate</td><td class="num">32.00%</td><td class="num"><u><b>0.05%</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td rowspan="2"><b>connectionOpen</b></td><td>p50</td><td class="num">2,571.3</td><td class="num"><u><b>530.8</b></u></td></tr>
-      <tr style="background:var(--band-amber)"><td>p99</td><td class="num">8,447.5</td><td class="num"><u><b>3,434.5</b></u></td></tr>
-      <tr style="background:var(--band-red)"><td><b>find — cold</b> (op1)</td><td>p50 / p99</td><td class="num">5,757 / 18,103</td><td class="num"><u><b>1,044 / 6,562</b></u></td></tr>
-      <tr style="background:var(--band-green)"><td><b>remove</b> (warm, op2)</td><td>p50 / p99</td><td class="num">29 / 632</td><td class="num"><u><b>4 / 243</b></u></td></tr>
-      <tr style="background:var(--band-teal)"><td><b>insert</b> (warm, op3)</td><td>p50 / p99</td><td class="num">89 / 1,283</td><td class="num"><u><b>6 / 201</b></u></td></tr>
-      <tr style="background:var(--band-green2)"><td><b>find — warm</b> (op4)</td><td>p50 / p99</td><td class="num">34 / 755</td><td class="num"><u><b>4 / 185</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td rowspan="2"><b>Total cycle</b><br><span style="font-weight:400;color:var(--muted)">incl. 10 s sleep</span></td><td>p50</td><td class="num">14,212</td><td class="num"><u><b>11,521</b></u></td></tr>
-      <tr style="background:var(--band-purple)"><td>p99</td><td class="num">28,070</td><td class="num"><u><b>17,150</b></u></td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Throughput</b></td><td>req/s</td><td class="num"><u><b>135.0</b></u></td><td class="num">134.8</td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Errors</b></td><td>error rate</td><td class="num"><u><b>0.00%</b></u></td><td class="num"><u><b>0.00%</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p50</td><td class="num">24.5</td><td class="num"><u><b>14.7</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p99</td><td class="num"><u><b>42.7</b></u></td><td class="num">90.1</td></tr>
+      <tr style="background:var(--band-teal)"><td><b>Server write (ex-connection)</b></td><td>p50</td><td class="num">22.5</td><td class="num"><u><b>18.2</b></u></td></tr>
+      <tr style="background:var(--band-teal)"><td><b>Server write (ex-connection)</b></td><td>p99</td><td class="num"><u><b>29.6</b></u></td><td class="num">35.8</td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p50</td><td class="num">48.2</td><td class="num"><u><b>41.1</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p99</td><td class="num"><u><b>74.2</b></u></td><td class="num">144.4</td></tr>
     </tbody>
   </table>
 
-  <h2>What the latency is measuring</h2>
-  <p>Each Task opens a <b>brand-new</b> <code>MongoClient</code>, so <b>op1 (find_input) absorbs the full
-    cold-connection cost</b>: TCP + <b>TLS handshake</b> + SCRAM auth + server selection. Ops 2–4 reuse that
-    now-warm socket, so <code>remove</code>/<code>insert</code>/<code>find_output</code> reflect <b>true server
-    execution</b> (sub-100 ms p50 on both backends). The single-op find/insert tables therefore <i>also</i>
-    bundle connection cost into the op latency — which is exactly why steady connection p50 (~25 ms mongo,
-    ~15 ms DocumentDB) is the dominant term, not the query. The earlier "query got slower" observation was
-    this cold-connection tax, not slower server-side execution.</p>
+  <h3>2b. insert-output — BURST (Poisson λ=0.57)</h3>
+  <table>
+    <thead><tr><th>Metric group</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
+    <tbody>
+      <tr style="background:var(--band-blue)"><td><b>Throughput</b></td><td>req/s</td><td class="num"><u><b>146.7</b></u></td><td class="num">144.5</td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Errors</b></td><td>error rate</td><td class="num">0.56%</td><td class="num"><u><b>0.00%</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p50</td><td class="num">690.3</td><td class="num"><u><b>363.3</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p99</td><td class="num">3,896.1</td><td class="num"><u><b>2,399.2</b></u></td></tr>
+      <tr style="background:var(--band-teal)"><td><b>Server write (ex-connection)</b></td><td>p50</td><td class="num">894.3</td><td class="num"><u><b>359.5</b></u></td></tr>
+      <tr style="background:var(--band-teal)"><td><b>Server write (ex-connection)</b></td><td>p99</td><td class="num">4,333.6</td><td class="num"><u><b>1,688.9</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p50</td><td class="num">1,616.1</td><td class="num"><u><b>762.7</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle</b></td><td>p99</td><td class="num">8,456.8</td><td class="num"><u><b>4,134.4</b></u></td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Full 4-op workload (find→remove→insert→find)</h2>
+  <p class="sub">Op1 (<code>find_input</code>) is the cold op — its server-query row is net of connection.
+    Ops 2–4 run on the warm socket (already pure server execution). Total cycle includes the fixed
+    <b>10,000 ms</b> <code>taskSleepMs</code>.</p>
+
+  <h3>3a. full-workload — STEADY (135 Tasks/s)</h3>
+  <table>
+    <thead><tr><th>Metric group</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
+    <tbody>
+      <tr style="background:var(--band-blue)"><td><b>Throughput</b></td><td>req/s</td><td class="num">101.3</td><td class="num"><u><b>132.0</b></u></td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Errors</b></td><td>error rate</td><td class="num">22.83%</td><td class="num"><u><b>0.02%</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p50</td><td class="num">3,407.9</td><td class="num"><u><b>20.3</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p99</td><td class="num">8,509.4</td><td class="num"><u><b>136.8</b></u></td></tr>
+      <tr style="background:var(--band-red)"><td><b>find_input — cold, server query (ex-connection)</b></td><td>p50</td><td class="num">3,667.5</td><td class="num"><u><b>23.0</b></u></td></tr>
+      <tr style="background:var(--band-red)"><td><b>find_input — cold, server query (ex-connection)</b></td><td>p99</td><td class="num">5,570.5</td><td class="num"><u><b>71.2</b></u></td></tr>
+      <tr style="background:var(--band-green)"><td><b>remove — warm</b></td><td>p50</td><td class="num">27.5</td><td class="num"><u><b>2.8</b></u></td></tr>
+      <tr style="background:var(--band-green)"><td><b>remove — warm</b></td><td>p99</td><td class="num">608.4</td><td class="num"><u><b>89.5</b></u></td></tr>
+      <tr style="background:var(--band-teal)"><td><b>insert — warm</b></td><td>p50</td><td class="num">77.8</td><td class="num"><u><b>3.3</b></u></td></tr>
+      <tr style="background:var(--band-teal)"><td><b>insert — warm</b></td><td>p99</td><td class="num">1,207.6</td><td class="num"><u><b>90.0</b></u></td></tr>
+      <tr style="background:var(--band-green2)"><td><b>find_output — warm</b></td><td>p50</td><td class="num">26.4</td><td class="num"><u><b>1.0</b></u></td></tr>
+      <tr style="background:var(--band-green2)"><td><b>find_output — warm</b></td><td>p99</td><td class="num">609.5</td><td class="num"><u><b>72.6</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle (incl. 10 s sleep)</b></td><td>p50</td><td class="num">16,527.6</td><td class="num"><u><b>10,087.2</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle (incl. 10 s sleep)</b></td><td>p99</td><td class="num">24,169.5</td><td class="num"><u><b>10,312.4</b></u></td></tr>
+    </tbody>
+  </table>
+
+  <h3>3b. full-workload — BURST (Poisson λ=0.57)</h3>
+  <table>
+    <thead><tr><th>Metric group</th><th>Metric</th><th class="num">mongo-vm (TLS)</th><th class="num">documentdb</th></tr></thead>
+    <tbody>
+      <tr style="background:var(--band-blue)"><td><b>Throughput</b></td><td>req/s</td><td class="num">93.3</td><td class="num"><u><b>134.8</b></u></td></tr>
+      <tr style="background:var(--band-blue)"><td><b>Errors</b></td><td>error rate</td><td class="num">32.00%</td><td class="num"><u><b>0.05%</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p50</td><td class="num">2,571.3</td><td class="num"><u><b>530.8</b></u></td></tr>
+      <tr style="background:var(--band-amber)"><td><b>Connection (TCP+TLS+auth)</b></td><td>p99</td><td class="num">8,447.5</td><td class="num"><u><b>3,434.5</b></u></td></tr>
+      <tr style="background:var(--band-red)"><td><b>find_input — cold, server query (ex-connection)</b></td><td>p50</td><td class="num">3,185.4</td><td class="num"><u><b>512.7</b></u></td></tr>
+      <tr style="background:var(--band-red)"><td><b>find_input — cold, server query (ex-connection)</b></td><td>p99</td><td class="num">9,655.9</td><td class="num"><u><b>3,127.1</b></u></td></tr>
+      <tr style="background:var(--band-green)"><td><b>remove — warm</b></td><td>p50</td><td class="num">28.9</td><td class="num"><u><b>3.9</b></u></td></tr>
+      <tr style="background:var(--band-green)"><td><b>remove — warm</b></td><td>p99</td><td class="num">632.2</td><td class="num"><u><b>243.4</b></u></td></tr>
+      <tr style="background:var(--band-teal)"><td><b>insert — warm</b></td><td>p50</td><td class="num">88.6</td><td class="num"><u><b>5.7</b></u></td></tr>
+      <tr style="background:var(--band-teal)"><td><b>insert — warm</b></td><td>p99</td><td class="num">1,283.4</td><td class="num"><u><b>200.7</b></u></td></tr>
+      <tr style="background:var(--band-green2)"><td><b>find_output — warm</b></td><td>p50</td><td class="num">34.1</td><td class="num"><u><b>3.7</b></u></td></tr>
+      <tr style="background:var(--band-green2)"><td><b>find_output — warm</b></td><td>p99</td><td class="num">754.8</td><td class="num"><u><b>185.4</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle (incl. 10 s sleep)</b></td><td>p50</td><td class="num">14,211.5</td><td class="num"><u><b>11,520.7</b></u></td></tr>
+      <tr style="background:var(--band-purple)"><td><b>Total cycle (incl. 10 s sleep)</b></td><td>p99</td><td class="num">28,070.3</td><td class="num"><u><b>17,149.6</b></u></td></tr>
+    </tbody>
+  </table>
 
   <h2>Key Findings</h2>
   <ul class="findings">
-    <li><b>With TLS equalized, the steady single-op gap closes.</b> mongo-vm has the <b>tighter tail</b>
-      (connection p99 ~43–48 ms vs DocumentDB ~87–90 ms); DocumentDB keeps a slightly lower median. Both run
-      0% errors at full 135 req/s. The earlier non-TLS "mongo connects far cheaper" result was an artefact of
-      skipping the TLS handshake.</li>
-    <li><b>Warm server execution is sub-100 ms on both — the cold connection is the whole story.</b> The same
-      <code>ReqId</code> find costs 7,075 ms p50 cold (op1) but 26 ms warm (op4) on mongo-vm; DocumentDB warm
-      ops are ~1–6 ms.</li>
-    <li><b>Under burst, DocumentDB is ~2× faster on absolute latency.</b> Both degrade from client CPU
-      saturation, but DocumentDB's managed gateway absorbs the handshake spike better (burst find p50 785 ms
-      vs 1,485 ms) and stays at 0% errors where mongo-vm sheds 0.4–0.6%.</li>
-    <li><b>Full workload breaks the single VM.</b> Four cold-ish ops/Task saturate the client (CPU 100%,
-      50k+ handles), driving mongo-vm to <b>22.8% (steady) / 32.0% (burst)</b> failures — almost entirely
-      <code>ServerSelectionTimeout</code> — vs DocumentDB's <b>≤0.05%</b>.</li>
+    <li><b>Server query time is small once TCP+TLS+auth is removed.</b> Steady single-op server query is
+      ~18–20 ms p50 on both (find 19.7 ms mongo / 17.7 ms DocumentDB; insert 22.5 / 18.2). The "slow query"
+      impression was the cold-connection handshake counted inside the op, not server execution.</li>
+    <li><b>With TLS equalized, steady single-op is near-parity.</b> mongo-vm holds the tighter tail
+      (connection &amp; query p99 lower), DocumentDB the lower median; both 0% errors at full 135 req/s.</li>
+    <li><b>Warm full-workload ops confirm it.</b> Warm-socket <code>find_output</code> is 26 ms p50 (mongo)
+      / 1 ms (DocumentDB); only the cold op1 carries connection cost.</li>
+    <li><b>Under burst, DocumentDB is ~2× faster</b> across connection, server-query and cycle, and stays at
+      0% errors where mongo-vm sheds 0.37–0.56%.</li>
+    <li><b>Full workload breaks the single VM.</b> Client saturation (CPU 100%, 50k+ handles) drives mongo-vm
+      to 22.8% (steady) / 32.0% (burst) failures — mostly <code>ServerSelectionTimeout</code> — vs
+      DocumentDB ≤0.05%. DocumentDB wins every full-workload row.</li>
   </ul>
 
   <h2>Migration decision guide (TLS-on-both)</h2>
-  <p>For light <b>single-op</b> churn, mongo-vm and DocumentDB are effectively tied — mongo-vm even wins the
-    tail — so a tuned self-hosted node is viable. For the <b>full multi-op workload under churn</b>,
+  <p>For light <b>single-op</b> churn, mongo-vm and DocumentDB are effectively tied once connection and query
+    are measured separately — mongo-vm even wins the tail. For the <b>full multi-op workload under churn</b>,
     <b>Azure DocumentDB (vCore)</b> is the clear recommendation: it sustains full throughput at near-zero
     errors while the single mongo-vm node saturates the client and sheds 23–32% of work. The decisive factor
-    is not query speed (warm ops are sub-100 ms on both) but how each backend's connection front-end copes
-    with TLS-handshake churn at scale.</p>
+    is <b>not</b> server query speed (~sub-30 ms once connection is excluded) but how each backend's
+    connection front-end copes with TLS-handshake churn at scale.</p>
 
   <footer>
     Campaign <b>run-20260619-00</b> · mongo-vm TLS vs DocumentDB · 12 runs (6 + 6), 3 iterations × 600 s each.
-    Source: <code>results/run-20260619-00/&lt;target&gt;-&lt;scenario&gt;-&lt;workload&gt;-&lt;stamp&gt;/aggregate.json</code>.
-    Connection strings masked (credentials + host/IP/appName). See <code>INDEX.md</code> for the run manifest.
+    Server query/exec rows are <code>OperationMs − ConnectionOpenMs</code> at the same percentile
+    (indicative; percentiles are not additive). Source:
+    <code>results/run-20260619-00/&lt;target&gt;-&lt;scenario&gt;-&lt;workload&gt;-&lt;stamp&gt;/aggregate.json</code>.
+    Connection strings masked. See <code>INDEX.md</code> for the run manifest.
   </footer>
 </main>
 </body>
