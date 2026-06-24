@@ -25,6 +25,7 @@ public sealed class TaskConnectionFactory
     private readonly bool _disableRetryWrites;
     private readonly IConnectionEventObserver? _observer;
     private readonly ClientConfig _tuning;
+    private int _rrCounter = -1;
 
     public TaskConnectionFactory(
         TargetKey target,
@@ -87,15 +88,39 @@ public sealed class TaskConnectionFactory
             settings.SocketTimeout = TimeSpan.FromMilliseconds(_tuning.SocketTimeoutMs);
         }
 
-        // Single-node mongo-vm only: connect directly to the one node so each fresh per-Task client
-        // skips replica-set topology discovery + its background heartbeat monitor. At thousands of
-        // concurrent clients that per-client monitor (not the DB) becomes the bottleneck. The no-reuse
-        // model is unchanged; we just avoid paying topology-discovery overhead per Task on a single
-        // node. Managed targets (SRV / gateway) are left exactly as their connection string specifies.
-        if (_tuning.DirectConnectionForSingleNode && Target == TargetKey.MongoVm)
+        // Direct, single-server per-Task connections so each fresh client skips topology discovery +
+        // its background heartbeat (SDAM) monitor. At thousands of concurrent clients that per-client
+        // monitor (not the DB) becomes the bottleneck. The no-reuse model is unchanged; we just avoid
+        // paying topology-discovery overhead per Task. Managed targets (SRV / gateway) are left exactly
+        // as their connection string specifies.
+        if (_tuning.DirectConnectionForSingleNode)
         {
-            settings.DirectConnection = true;
-            settings.ReplicaSetName = null;
+            if (Target == TargetKey.MongoVm)
+            {
+                // Single node: connect directly to the one replica-set member.
+                settings.DirectConnection = true;
+                settings.ReplicaSetName = null;
+            }
+            else if (Target == TargetKey.MongoShard)
+            {
+                // Sharded cluster: the connection string lists BOTH mongos routers. Keeping the full
+                // sharded topology per Task makes every per-Task client spin up an SDAM monitor for
+                // each mongos (~2 monitor threads/client); under churn that explodes into a runaway
+                // 48k-thread meltdown on the generator host (see INCIDENT-runaway-concurrency-meltdown).
+                // Instead we round-robin: pin each per-Task client to ONE mongos as a DIRECT
+                // single-server connection. Tasks alternate between the two mongos seeds, so 2x router
+                // fan-out is preserved, while each client pays zero topology-monitoring overhead — the
+                // exact same mitigation mongo-vm gets, keeping the two mongo targets methodologically
+                // comparable.
+                var servers = settings.Servers?.ToList();
+                if (servers is { Count: > 0 })
+                {
+                    var idx = (int)((uint)Interlocked.Increment(ref _rrCounter) % (uint)servers.Count);
+                    settings.Server = servers[idx];
+                    settings.DirectConnection = true;
+                    settings.ReplicaSetName = null;
+                }
+            }
         }
 
         // Cosmos RU does not support retryable writes (handoff §3).

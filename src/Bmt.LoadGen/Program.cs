@@ -131,7 +131,7 @@ public sealed class RunOptions
 
         if (targetRaw is null)
         {
-            throw new ArgumentException("Missing required --target (cosmos-ru | documentdb | mongo-vm).");
+            throw new ArgumentException("Missing required --target (cosmos-ru | documentdb | mongo-vm | mongo-shard).");
         }
 
         options.Target = TargetConnection.Parse(targetRaw);
@@ -168,7 +168,7 @@ public sealed class RunOptions
 
     public static void PrintUsage()
     {
-        Console.WriteLine("Usage: test --target <cosmos-ru|documentdb|mongo-vm> --scenario <steady|burst|both> [options]");
+        Console.WriteLine("Usage: test --target <cosmos-ru|documentdb|mongo-vm|mongo-shard> --scenario <steady|burst|both> [options]");
         Console.WriteLine();
         Console.WriteLine("  --config, -c        Path to config.json (default: config.json).");
         Console.WriteLine("  --target, -t        Backend key (resolves the connection string from its env var).");

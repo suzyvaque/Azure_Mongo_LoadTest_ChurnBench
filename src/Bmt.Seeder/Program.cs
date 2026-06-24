@@ -121,7 +121,7 @@ internal sealed class SeederOptions
 
         if (!targetSeen || targetRaw is null)
         {
-            throw new ArgumentException("Missing required --target (cosmos-ru | documentdb | mongo-vm).");
+            throw new ArgumentException("Missing required --target (cosmos-ru | documentdb | mongo-vm | mongo-shard).");
         }
 
         options.Target = TargetConnection.Parse(targetRaw);
@@ -140,7 +140,7 @@ internal sealed class SeederOptions
 
     public static void PrintUsage()
     {
-        Console.WriteLine("Usage: seeder <prepare-data|clean-output> --config <config.json> --target <cosmos-ru|documentdb|mongo-vm> [--force]");
+        Console.WriteLine("Usage: seeder <prepare-data|clean-output> --config <config.json> --target <cosmos-ru|documentdb|mongo-vm|mongo-shard> [--force]");
         Console.WriteLine();
         Console.WriteLine("Commands:");
         Console.WriteLine("  prepare-data   Seed calc_input + create ReqId indexes on both collections.");
@@ -153,6 +153,7 @@ internal sealed class SeederOptions
         Console.WriteLine("                   cosmos-ru  -> BMT_CONN_COSMOS");
         Console.WriteLine("                   documentdb -> BMT_CONN");
         Console.WriteLine("                   mongo-vm   -> BMT_CONN_MONGO");
+        Console.WriteLine("                   mongo-shard-> BMT_CONN_MONGO_SHARD");
         Console.WriteLine("  --force, -f    (prepare-data only) Empty calc_input first, then reseed from scratch.");
         Console.WriteLine("  --help, -h     Show this help.");
         Console.WriteLine();

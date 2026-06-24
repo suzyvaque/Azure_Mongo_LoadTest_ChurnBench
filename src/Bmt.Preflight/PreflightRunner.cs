@@ -129,7 +129,7 @@ public sealed class PreflightRunner
         report.ServerConfig.CosmosExpectedRuPerSec = _target == TargetKey.CosmosRu ? _config.Preflight.CosmosExpectedRuPerSec : null;
         report.ServerConfig.DocumentDbExpectedTier = _target == TargetKey.DocumentDb ? _config.Preflight.DocumentDbExpectedTier : null;
         report.ServerConfig.MongoExpectedMaxIncomingConnections =
-            _target == TargetKey.MongoVm ? _config.Preflight.MongoExpectedMaxIncomingConnections : null;
+            _target is TargetKey.MongoVm or TargetKey.MongoShard ? _config.Preflight.MongoExpectedMaxIncomingConnections : null;
     }
 
     // 1. Dataset present & complete (exactly 100,000 docs, queryable by ReqId).
@@ -391,6 +391,7 @@ public sealed class PreflightRunner
                     "(verify in Azure; not introspectable over the wire).");
 
             case TargetKey.MongoVm:
+            case TargetKey.MongoShard:
                 return await CheckMongoConnLimitAsync(admin, report, ct).ConfigureAwait(false);
 
             default:
@@ -419,7 +420,7 @@ public sealed class PreflightRunner
             // bmt_db. The server is already confirmed up (buildInfo), so this is a non-blocking PASS:
             // the connection ceiling is just unavailable to record here.
             return PreflightCheckResult.Pass(6, "Server/throughput config",
-                $"mongo-vm v{report.ServerConfig.ServerVersion} is up; connection ceiling not readable " +
+                $"{TargetConnection.CliName(_target)} v{report.ServerConfig.ServerVersion} is up; connection ceiling not readable " +
                 $"(serverStatus needs clusterMonitor): {ex.Message.Split('.', ',')[0]}." +
                 (_config.Preflight.MongoExpectedMaxIncomingConnections is { } expMax
                     ? $" Expected maxIncomingConnections {expMax:N0} — verify in mongod.conf."
@@ -430,11 +431,11 @@ public sealed class PreflightRunner
         if (expected is { } exp && ceiling is { } cap && cap < exp)
         {
             return PreflightCheckResult.Warn(6, "Server/throughput config",
-                $"mongo-vm connection ceiling ≈ {cap:N0} is below expected maxIncomingConnections {exp:N0}.");
+                $"{TargetConnection.CliName(_target)} connection ceiling ≈ {cap:N0} is below expected maxIncomingConnections {exp:N0}.");
         }
 
         return PreflightCheckResult.Pass(6, "Server/throughput config",
-            $"mongo-vm v{report.ServerConfig.ServerVersion}; live connection ceiling ≈ {ceiling?.ToString("N0") ?? "?"}" +
+            $"{TargetConnection.CliName(_target)} v{report.ServerConfig.ServerVersion}; live connection ceiling ≈ {ceiling?.ToString("N0") ?? "?"}" +
             (expected is { } e ? $" (expected ≥ {e:N0})" : string.Empty) + ".");
     }
 

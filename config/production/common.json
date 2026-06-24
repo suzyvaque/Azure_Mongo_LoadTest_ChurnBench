@@ -5,7 +5,8 @@
   // file: repeat any key in a child to override it (scalars/arrays replace; nested objects merge).
   //
   // Secrets are NOT stored here — connection strings are read at runtime from env vars:
-  //   cosmos-ru -> BMT_CONN_COSMOS,  documentdb -> BMT_CONN,  mongo-vm -> BMT_CONN_MONGO
+  //   cosmos-ru -> BMT_CONN_COSMOS,  documentdb -> BMT_CONN,  mongo-vm -> BMT_CONN_MONGO,
+  //   mongo-shard -> BMT_CONN_MONGO_SHARD
 
   // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6). Full-workload uses 10 s;
   // single-op configs override this to 0.

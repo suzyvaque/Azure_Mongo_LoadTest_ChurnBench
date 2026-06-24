@@ -1,14 +1,17 @@
 namespace Bmt.Core;
 
 /// <summary>
-/// The three benchmark targets. CLI names follow test_instruction.md §5
+/// The benchmark targets. CLI names follow test_instruction.md §5
 /// (<c>cosmos-ru</c> / <c>documentdb</c> / <c>mongo-vm</c>); each maps to a handoff env var.
+/// <c>mongo-shard</c> is the sharded-cluster sibling of <c>mongo-vm</c> (mongos routers in front of
+/// multiple shards) used to answer the IaaS-scaling question without disturbing the single-node target.
 /// </summary>
 public enum TargetKey
 {
     CosmosRu,
     DocumentDb,
     MongoVm,
+    MongoShard,
 }
 
 /// <summary>
@@ -23,6 +26,7 @@ public static class TargetConnection
         TargetKey.CosmosRu => "cosmos-ru",
         TargetKey.DocumentDb => "documentdb",
         TargetKey.MongoVm => "mongo-vm",
+        TargetKey.MongoShard => "mongo-shard",
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
     };
 
@@ -32,6 +36,7 @@ public static class TargetConnection
         TargetKey.CosmosRu => "BMT_CONN_COSMOS",
         TargetKey.DocumentDb => "BMT_CONN",
         TargetKey.MongoVm => "BMT_CONN_MONGO",
+        TargetKey.MongoShard => "BMT_CONN_MONGO_SHARD",
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
     };
 
@@ -44,8 +49,9 @@ public static class TargetConnection
             "cosmos-ru" => TargetKey.CosmosRu,
             "documentdb" => TargetKey.DocumentDb,
             "mongo-vm" => TargetKey.MongoVm,
+            "mongo-shard" => TargetKey.MongoShard,
             _ => throw new ArgumentException(
-                $"Unknown --target '{cliName}'. Expected one of: cosmos-ru, documentdb, mongo-vm.",
+                $"Unknown --target '{cliName}'. Expected one of: cosmos-ru, documentdb, mongo-vm, mongo-shard.",
                 nameof(cliName)),
         };
     }

@@ -22,8 +22,15 @@ public static class ReqIdIndex
     public const string FieldName = "ReqId";
     public const string IndexName = "ReqId_1";
 
-    /// <summary>True if the input <c>ReqId</c> index should be unique for the given backend.</summary>
-    public static bool UniqueForTarget(TargetKey target) => target != TargetKey.CosmosRu;
+    /// <summary>
+    /// True if the input <c>ReqId</c> index should be unique for the given backend. Unique on
+    /// <c>mongo-vm</c>/<c>documentdb</c>; NON-unique on <c>cosmos-ru</c> (platform constraint) and
+    /// <c>mongo-shard</c> (a collection sharded on <c>{ReqId:"hashed"}</c> cannot carry a unique index
+    /// on <c>ReqId</c> — MongoDB forbids a unique constraint on a hashed shard key). Distinct ReqId is
+    /// still guaranteed by the sequential seeder and the ReqId-keyed remove+insert workload.
+    /// </summary>
+    public static bool UniqueForTarget(TargetKey target) =>
+        target != TargetKey.CosmosRu && target != TargetKey.MongoShard;
 
     /// <summary><c>{ ReqId: 1 }</c> index model for <c>calc_input</c>; unique per <paramref name="unique"/>.</summary>
     public static CreateIndexModel<CalcInputDoc> InputModel(bool unique) =>

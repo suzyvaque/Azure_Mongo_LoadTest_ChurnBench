@@ -156,7 +156,7 @@ internal sealed class PreflightOptions
 
         if (targetRaw is null)
         {
-            throw new ArgumentException("Missing required --target (cosmos-ru | documentdb | mongo-vm).");
+            throw new ArgumentException("Missing required --target (cosmos-ru | documentdb | mongo-vm | mongo-shard).");
         }
 
         options.Target = TargetConnection.Parse(targetRaw);
@@ -175,7 +175,7 @@ internal sealed class PreflightOptions
 
     public static void PrintUsage()
     {
-        Console.WriteLine("Usage: preflight --config <config.json> --target <cosmos-ru|documentdb|mongo-vm> [options]");
+        Console.WriteLine("Usage: preflight --config <config.json> --target <cosmos-ru|documentdb|mongo-vm|mongo-shard> [options]");
         Console.WriteLine();
         Console.WriteLine("  --config, -c        Path to config.json (default: config.json).");
         Console.WriteLine("  --target, -t        Backend key (resolves the connection string from its env var).");
