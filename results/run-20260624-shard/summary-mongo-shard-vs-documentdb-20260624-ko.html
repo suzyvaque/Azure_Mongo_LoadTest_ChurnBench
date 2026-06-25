@@ -61,6 +61,7 @@
       <li><b>단일 op</b><code>insert-output</code>: Output Collection에 쓰기 수행</li>
       <li><b>전체 4op</b><code>find→remove→insert→find</code>: Input Collection에서 읽기 → Output Collection에서 삭제 → Output Collection에 쓰기 → Output Collection에서 읽기. 각 작업 사이에 10초 pseudo-sleep 포함.</li>
     </ul>
+  </li>
   <li><b>비교 대상</b>: 자체 운영 <b>샤딩 MongoDB</b> vs 관리형 <b>Azure DocumentDB</b></li>
   <li><b>클라이언트 모델</b>: 작업당 새 <code>MongoClient</code> 1개(<code>maxPoolSize=1</code>), 2개 mongos에 <b>라운드로빈 단일 서버 직결</b>(<code>directConnection=true</code>)</li>
 </ul>
@@ -86,6 +87,7 @@
       <li><b>warm</b> op = 이미 열린 소켓의 작업으로, 순수 서버 실행 시간</li>
     </ul>
   </li>
+  <li><b>Throughput는 용량이 아니라 투입 부하(offered load)</b>: <code>Throughput (tasks/s)</code>는 성공 Task ÷ 시간이며, 부하 모델이 <b>open-loop</b>(고정 도착률: steady 135/s, burst ~147/s)이라 두 DB 모두 포화되지 않으면(~0% 오류) 처리량이 동일한 도착률로 수렴함. 따라서 처리량이 거의 같은 것은 둘 다 뒤처지지 않았다는 의미일 뿐이고, 실제 차별 요소는 <b>지연(latency)</b>임. 포화 시에는 갈라짐(단일 노드 mongo-vm은 101/93 tasks/s, 오류 23–32%).</li>
 </ul>
 
 <!-- (4) 각 테스트 결과 -->
@@ -96,7 +98,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">22.2</td><td class="num"><span class="good">11.7</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">31.9</td><td class="num"><span class="good">23.8</span></td></tr>
@@ -114,7 +116,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">147.0</span></td><td class="num">146.4</td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">147.0</span></td><td class="num">146.4</td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">529.9</td><td class="num"><span class="good">189.5</span></td></tr>
     <tr class="band"><td>p90</td><td class="num"><span class="good">1,185.2</span></td><td class="num">1,256.1</td></tr>
@@ -132,7 +134,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">22.2</td><td class="num"><span class="good">11.5</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">32.0</td><td class="num"><span class="good">22.9</span></td></tr>
@@ -150,7 +152,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">147.3</span></td><td class="num">147.2</td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">147.3</span></td><td class="num">147.2</td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">554.1</td><td class="num"><span class="good">187.4</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">1,316.4</td><td class="num"><span class="good">1,146.9</span></td></tr>
@@ -169,7 +171,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">132.8</span></td><td class="num"><span class="good">132.8</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">132.8</span></td><td class="num"><span class="good">132.8</span></td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.005%</span></td><td class="num">0.006%</td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">35.5</td><td class="num"><span class="good">13.9</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">89.7</td><td class="num"><span class="good">30.9</span></td></tr>
@@ -196,7 +198,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num">128.4</td><td class="num"><span class="good">135.3</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num">128.4</td><td class="num"><span class="good">135.3</span></td></tr>
     <tr><td>Error rate</td><td class="num">0.16%</td><td class="num"><span class="good">0.033%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">466.5</td><td class="num"><span class="good">336.6</span></td></tr>
     <tr class="band"><td>p90</td><td class="num"><span class="good">1,059.1</span></td><td class="num">1,605.5</td></tr>
@@ -226,7 +228,7 @@
   <li><b>연결 비용을 제외하면 작업 자체는 두 DB 모두에서 빠름</b>: 단일 operation은 MongoDB ~19–22ms p50, DocumentDB ~12–13ms p50. 쿼리가 느리다는 인상은 cold 연결 핸드셰이크가 측정 시간에 포함됐기 때문</li>
   <li><b>[DocumentDB 강점] Steady 중앙값 우위</b>: 모든 steady 행에서 연결·작업 p50/p90이 <b>약 2배 빠름</b>(핸드셰이크 ~12ms vs ~22ms).</li>
   <li><b>[DocumentDB 강점] warm 작업 우위</b>: 소켓이 열린 뒤 remove/insert/find가 <b>2–10배 빠름</b>(sub-6ms p50 vs 4–29ms), burst에서도 tail이 더 작음</li>
-  <li><b>[DocumentDB 강점] burst 처리량·오류율</b>: burst 전체 워크로드에서 처리량 135.3 vs 128.4 req/s, 오류 0.033% vs 0.16%로 우위</li>
+  <li><b>[DocumentDB 강점] burst 처리량·오류율</b>: burst 전체 워크로드에서 처리량 135.3 vs 128.4 tasks/s, 오류 0.033% vs 0.16%로 우위</li>
   <li><b>[MongoDB 강점] burst 연결 tail</b>: 2×mongos 팬아웃으로 burst 연결 p90/p99가 더 좋음(전체 워크로드 p90 1,059 vs 1,606ms, p99 2,022 vs 3,236ms)</li>
   <li>HPC는 연결 재사용이 없는 Connection Churn 패턴이므로 <b>연결 frontend(핸드셰이크 처리량)</b>가 중요한 요소</li>
 </ul>

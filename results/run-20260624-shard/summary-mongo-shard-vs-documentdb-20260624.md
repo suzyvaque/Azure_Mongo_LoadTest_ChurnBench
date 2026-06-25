@@ -30,6 +30,15 @@ first database operation triggers TCP + TLS + auth. The benchmark records two **
     connect+query; the figure shown is `op − ConnectionOpenMs` at the same percentile.
   - A **warm** op runs on an already-open socket, so it is pure server execution and is shown as-is.
 
+> **Throughput is offered-load, not capacity.** The `Throughput (tasks/s)` row is **successful Tasks ÷
+> duration**, and the load model is **open-loop**: tasks are injected at a fixed arrival rate (steady
+> 135/s; burst's Poisson arrivals pack slightly more, ~147/s). Because both backends are fed the **same
+> arrival schedule** and neither saturates (~0% errors), completed tasks/s converges to that offered rate
+> on both — so the near-identical throughput only confirms neither system fell behind. The real
+> differentiator here is **latency** (connection + operation percentiles), not throughput. Throughput
+> *would* diverge under saturation — as it did for the single-node `mongo-vm`, which dropped to 101/93
+> tasks/s with 23–32% errors.
+
 > **Approximation note.** Percentiles are not additive, so `op − connection` at a given percentile is an
 > **indicative** decomposition, not an exact per-request subtraction (it can occasionally make a higher
 > percentile look slightly lower than a neighbouring one). The raw `ConnectionOpenMs` and `OperationMs`
@@ -49,7 +58,7 @@ row is the operation time with connection (TCP+TLS+auth) excluded.
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td><u><b style="color:#1a7f37">135.0</b></u></td><td><u><b style="color:#1a7f37">135.0</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">135.0</b></u></td><td><u><b style="color:#1a7f37">135.0</b></u></td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
     <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>22.2</td><td><u><b style="color:#1a7f37">11.7</b></u></td></tr>
     <tr><td>p90</td><td>31.9</td><td><u><b style="color:#1a7f37">23.8</b></u></td></tr>
@@ -68,7 +77,7 @@ row is the operation time with connection (TCP+TLS+auth) excluded.
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td><u><b style="color:#1a7f37">147.0</b></u></td><td>146.4</td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">147.0</b></u></td><td>146.4</td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
     <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>529.9</td><td><u><b style="color:#1a7f37">189.5</b></u></td></tr>
     <tr><td>p90</td><td><u><b style="color:#1a7f37">1,185.2</b></u></td><td>1,256.1</td></tr>
@@ -94,7 +103,7 @@ the operation time with connection (TCP+TLS+auth) excluded.
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td><u><b style="color:#1a7f37">135.0</b></u></td><td><u><b style="color:#1a7f37">135.0</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">135.0</b></u></td><td><u><b style="color:#1a7f37">135.0</b></u></td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
     <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>22.2</td><td><u><b style="color:#1a7f37">11.5</b></u></td></tr>
     <tr><td>p90</td><td>32.0</td><td><u><b style="color:#1a7f37">22.9</b></u></td></tr>
@@ -113,7 +122,7 @@ the operation time with connection (TCP+TLS+auth) excluded.
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td><u><b style="color:#1a7f37">147.3</b></u></td><td>147.2</td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">147.3</b></u></td><td>147.2</td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
     <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>554.1</td><td><u><b style="color:#1a7f37">187.4</b></u></td></tr>
     <tr><td>p90</td><td>1,316.4</td><td><u><b style="color:#1a7f37">1,146.9</b></u></td></tr>
@@ -140,7 +149,7 @@ includes the fixed **10,000 ms** `taskSleepMs`.
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td><u><b style="color:#1a7f37">132.8</b></u></td><td><u><b style="color:#1a7f37">132.8</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">132.8</b></u></td><td><u><b style="color:#1a7f37">132.8</b></u></td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.005%</b></u></td><td>0.006%</td></tr>
     <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>35.5</td><td><u><b style="color:#1a7f37">13.9</b></u></td></tr>
     <tr><td>p90</td><td>89.7</td><td><u><b style="color:#1a7f37">30.9</b></u></td></tr>
@@ -168,7 +177,7 @@ includes the fixed **10,000 ms** `taskSleepMs`.
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td>128.4</td><td><u><b style="color:#1a7f37">135.3</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td>128.4</td><td><u><b style="color:#1a7f37">135.3</b></u></td></tr>
     <tr><td>Error rate</td><td>0.16%</td><td><u><b style="color:#1a7f37">0.033%</b></u></td></tr>
     <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>466.5</td><td><u><b style="color:#1a7f37">336.6</b></u></td></tr>
     <tr><td>p90</td><td><u><b style="color:#1a7f37">1,059.1</b></u></td><td>1,605.5</td></tr>
@@ -197,7 +206,7 @@ includes the fixed **10,000 ms** `taskSleepMs`.
 
 - **Sharding fixes the full-workload collapse.** This is the headline change vs `run-20260619-00`. The
   single `mongo-vm` node shed **22.8% (steady) / 32.0% (burst)** of the full 4-op workload as the client
-  saturated; the **2-shard `mongo-shard` cluster sustains the full load at 132.8 / 128.4 req/s with
+  saturated; the **2-shard `mongo-shard` cluster sustains the full load at 132.8 / 128.4 tasks/s with
   0.005% / 0.16% errors** — matching DocumentDB on steady throughput and errors.
 - **Operation time is small once TCP+TLS+auth is removed.** Steady single-op work is ~19–22 ms p50 on
   mongo-shard and ~12–13 ms on DocumentDB. The "slow query" impression was always the cold-connection

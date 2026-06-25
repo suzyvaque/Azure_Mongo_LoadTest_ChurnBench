@@ -77,6 +77,15 @@
     an already-open socket and is pure server execution shown as-is.</li>
 </ul>
 <div class="note">
+  <b>Throughput is offered-load, not capacity.</b> The <code>Throughput (tasks/s)</code> row is
+  <b>successful Tasks &divide; duration</b>, and the load model is <b>open-loop</b>: tasks are injected at a
+  fixed arrival rate (steady 135/s; burst's Poisson arrivals pack ~147/s). Because both backends are fed the
+  <b>same arrival schedule</b> and neither saturates (~0% errors), completed tasks/s converges to that offered
+  rate on both — so the near-identical throughput only confirms neither system fell behind. The real
+  differentiator here is <b>latency</b> (connection + operation percentiles). Throughput <i>would</i> diverge
+  under saturation, as it did for the single-node <code>mongo-vm</code> (101/93 tasks/s, 23–32% errors).
+</div>
+<div class="note">
   <b>Approximation note.</b> Percentiles are not additive, so <code>op − connection</code> at a given
   percentile is an <b>indicative</b> decomposition, not an exact per-request subtraction (it can occasionally
   make a higher percentile look slightly lower than a neighbour). The raw <code>ConnectionOpenMs</code> and
@@ -95,7 +104,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">22.2</td><td class="num"><span class="good">11.7</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">31.9</td><td class="num"><span class="good">23.8</span></td></tr>
@@ -113,7 +122,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">147.0</span></td><td class="num">146.4</td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">147.0</span></td><td class="num">146.4</td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">529.9</td><td class="num"><span class="good">189.5</span></td></tr>
     <tr class="band"><td>p90</td><td class="num"><span class="good">1,185.2</span></td><td class="num">1,256.1</td></tr>
@@ -135,7 +144,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">22.2</td><td class="num"><span class="good">11.5</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">32.0</td><td class="num"><span class="good">22.9</span></td></tr>
@@ -153,7 +162,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">147.3</span></td><td class="num">147.2</td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">147.3</span></td><td class="num">147.2</td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">554.1</td><td class="num"><span class="good">187.4</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">1,316.4</td><td class="num"><span class="good">1,146.9</span></td></tr>
@@ -176,7 +185,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">132.8</span></td><td class="num"><span class="good">132.8</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num"><span class="good">132.8</span></td><td class="num"><span class="good">132.8</span></td></tr>
     <tr><td>Error rate</td><td class="num"><span class="good">0.005%</span></td><td class="num">0.006%</td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">35.5</td><td class="num"><span class="good">13.9</span></td></tr>
     <tr class="band"><td>p90</td><td class="num">89.7</td><td class="num"><span class="good">30.9</span></td></tr>
@@ -203,7 +212,7 @@
 <table>
   <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
   <tbody>
-    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num">128.4</td><td class="num"><span class="good">135.3</span></td></tr>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td class="num">128.4</td><td class="num"><span class="good">135.3</span></td></tr>
     <tr><td>Error rate</td><td class="num">0.16%</td><td class="num"><span class="good">0.033%</span></td></tr>
     <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">466.5</td><td class="num"><span class="good">336.6</span></td></tr>
     <tr class="band"><td>p90</td><td class="num"><span class="good">1,059.1</span></td><td class="num">1,605.5</td></tr>
@@ -231,7 +240,7 @@
   <li><b>Sharding fixes the full-workload collapse.</b> This is the headline change vs
     <code>run-20260619-00</code>. The single <code>mongo-vm</code> node shed <b>22.8% (steady) / 32.0%
     (burst)</b> of the full 4-op workload as the client saturated; the <b>2-shard <code>mongo-shard</code>
-    cluster sustains the full load at 132.8 / 128.4 req/s with 0.005% / 0.16% errors</b> — matching
+    cluster sustains the full load at 132.8 / 128.4 tasks/s with 0.005% / 0.16% errors</b> — matching
     DocumentDB on steady throughput and errors.</li>
   <li><b>Operation time is small once TCP+TLS+auth is removed.</b> Steady single-op work is ~19–22 ms p50
     on mongo-shard and ~12–13 ms on DocumentDB. The "slow query" impression was always the cold-connection
