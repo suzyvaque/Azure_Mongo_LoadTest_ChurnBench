@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>샤딩 MongoDB vs DocumentDB — 연결 처닝 벤치마크 요약</title>
+<style>
+  :root {
+    --fg: #1f2328;
+    --muted: #57606a;
+    --line: #d0d7de;
+    --bg: #ffffff;
+    --good: #1a7f37;
+    --band: #f6f8fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif;
+    color: var(--fg); background: var(--bg);
+    max-width: 1000px; margin: 0 auto; padding: 2rem 1.25rem 4rem; line-height: 1.6;
+  }
+  h1 { font-size: 1.7rem; border-bottom: 2px solid var(--line); padding-bottom: .4rem; }
+  h2 { font-size: 1.25rem; margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  h3 { font-size: 1.02rem; margin-top: 1.4rem; color: var(--muted); }
+  p, li { color: var(--fg); }
+  .meta { color: var(--muted); font-size: .94rem; }
+  ul { margin: .5rem 0 1rem; }
+  li { margin: .2rem 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0 1.6rem; font-size: .9rem; }
+  th, td { border: 1px solid var(--line); padding: .4rem .6rem; text-align: left; vertical-align: middle; }
+  th { background: #eaeef2; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .good { color: var(--good); font-weight: 700; text-decoration: underline; }
+  .note { background: #fff8e6; border: 1px solid #eed9a6; border-radius: 6px; padding: .7rem 1rem; margin: 1rem 0; }
+  code { background: #eff1f3; padding: .1rem .35rem; border-radius: 4px; font-size: .9em; }
+  tr.band td { background: var(--band); }
+  .en { color: var(--muted); font-size: .86rem; }
+</style>
+</head>
+<body>
+
+<h1>샤딩 MongoDB vs DocumentDB — Connection Churn 벤치마크 요약</h1>
+<p class="meta">
+  테스트 <code>run-20260624-shard</code> · 양쪽 모두 TLS 적용 · 각 DB와 동일 AZ VM에서 단일 실행 ·
+  각 시나리오 <b>3회 반복 × 600초</b> · 값은 3회 반복 백분위수의 평균(p50 / p90 / p99), 단위 ms.
+</p>
+
+<!-- (1) 테스트 시나리오 -->
+<h2>1. 테스트 시나리오</h2>
+<ul>
+  <li><b>대상 워크로드</b>: HPC Connection Churn으로 매 작업(Task)마다 <b>새 연결을 열고 작업 후 끊는</b> 단일 사용 연결 패턴(연결 풀링/재사용 없음)</li>
+  <li><b>부하 시나리오</b>:
+    <ul>
+      <li><b>Steady</b>: 일정한 135 Tasks/s</li>
+      <li><b>Burst</b>: 푸아송 도착(λ=0.57), Job당 14~500 Tasks의 스파이크</li>
+    </ul>
+  </li>
+  <li><b>워크로드</b>:
+    <ul>
+      <li><b>단일 op</b><code>find-input</code>: Input Collection에서 읽기 수행</li>
+      <li><b>단일 op</b><code>insert-output</code>: Output Collection에 쓰기 수행</li>
+      <li><b>전체 4op</b><code>find→remove→insert→find</code>: Input Collection에서 읽기 → Output Collection에서 삭제 → Output Collection에 쓰기 → Output Collection에서 읽기. 각 작업 사이에 10초 pseudo-sleep 포함.</li>
+    </ul>
+  <li><b>비교 대상</b>: 자체 운영 <b>샤딩 MongoDB</b> vs 관리형 <b>Azure DocumentDB</b></li>
+  <li><b>클라이언트 모델</b>: 작업당 새 <code>MongoClient</code> 1개(<code>maxPoolSize=1</code>), 2개 mongos에 <b>라운드로빈 단일 서버 직결</b>(<code>directConnection=true</code>)</li>
+</ul>
+
+<!-- (2) 리소스 사양 -->
+<h2>2. 리소스 사양</h2>
+<ul>
+  <li><b>MongoDB</b>: Shard 클러스터 2개, mongos 라우터 2개, config server 1개. hashed <code>ReqId</code>로 샤딩(샤드 간 ~50/50 분산), 서버측 TLS(<code>allowTLS</code>, 자체 서명 인증서, 클라이언트 <code>tlsInsecure=true</code>)</li>
+  <li><b>Azure VM</b>: Windows Server, E32as v6 (32 vcpus, 256 GiB memory)</li>
+  <li><b>DocumentDB</b>: Azure DocumentDB(vCore), <b>HA 활성화</b>, 관리형 TLS.</li>
+  <li><b>공통 스택</b>: MongoDB Server 7.0 / wire 7.0, .NET 8(LTS), MongoDB C# Driver 2.30</li>
+  <li><b>부하 생성기</b>: Windows Server, D8ds v5 (8 vcpus, 32 GiB memory)</li>
+</ul>
+
+<!-- (3) 연결 vs 작업 핵심 지표 -->
+<h2>3. 핵심 지표: 연결(Connection) vs 작업(Operation)</h2>
+<ul>
+  <li>각 작업은 <b>새 연결</b>을 사용하며, 드라이버는 <b>지연(lazy) 연결</b>이라 첫 DB 작업 시 TCP+TLS+인증이 함께 발생</li>
+  <li><b>Connection(TCP+TLS+auth)</b> = <code>ConnectionOpenMs</code>: 핸드셰이크 시간으로, 연결 비용은 여기에만 집계</li>
+  <li><b>Operation 시간</b>: <b>연결 시간을 제외</b>한 서버 실행 시간
+    <ul>
+      <li><b>cold</b> op = 새 연결의 첫 작업으로, <code>op − ConnectionOpenMs</code> 시간으로 표시</li>
+      <li><b>warm</b> op = 이미 열린 소켓의 작업으로, 순수 서버 실행 시간</li>
+    </ul>
+  </li>
+</ul>
+
+<!-- (4) 각 테스트 결과 -->
+<h2>4. 테스트별 결과</h2>
+<p class="en">Best value per row is <span class="good">bold/underlined/green</span>. Latency in ms.</p>
+
+<h3>4-1. Single-op: find-input — STEADY</h3>
+<table>
+  <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
+    <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">22.2</td><td class="num"><span class="good">11.7</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">31.9</td><td class="num"><span class="good">23.8</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">43.7</span></td><td class="num">75.6</td></tr>
+    <tr><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td class="num">19.0</td><td class="num"><span class="good">12.2</span></td></tr>
+    <tr><td>p90</td><td class="num">23.9</td><td class="num"><span class="good">19.2</span></td></tr>
+    <tr><td>p99</td><td class="num"><span class="good">26.4</span></td><td class="num">31.3</td></tr>
+    <tr class="band"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td class="num">42.3</td><td class="num"><span class="good">30.6</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num"><span class="good">56.9</span></td><td class="num">60.1</td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">71.7</span></td><td class="num">121.9</td></tr>
+  </tbody>
+</table>
+
+<h3>4-2. Single-op: find-input — BURST</h3>
+<table>
+  <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">147.0</span></td><td class="num">146.4</td></tr>
+    <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">529.9</td><td class="num"><span class="good">189.5</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num"><span class="good">1,185.2</span></td><td class="num">1,256.1</td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">1,901.5</span></td><td class="num">2,408.1</td></tr>
+    <tr><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td class="num">737.0</td><td class="num"><span class="good">230.7</span></td></tr>
+    <tr><td>p90</td><td class="num">1,355.5</td><td class="num"><span class="good">970.6</span></td></tr>
+    <tr><td>p99</td><td class="num">1,886.2</td><td class="num"><span class="good">1,884.1</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td class="num">1,287.9</td><td class="num"><span class="good">452.4</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">2,569.4</td><td class="num"><span class="good">2,255.9</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">3,813.1</span></td><td class="num">4,328.5</td></tr>
+  </tbody>
+</table>
+
+<h3>4-3. Single-op: insert-output — STEADY</h3>
+<table>
+  <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">135.0</span></td><td class="num"><span class="good">135.0</span></td></tr>
+    <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">22.2</td><td class="num"><span class="good">11.5</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">32.0</td><td class="num"><span class="good">22.9</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">47.5</span></td><td class="num">71.6</td></tr>
+    <tr><td rowspan="3"><b>insert (cold)</b></td><td>p50</td><td class="num">22.0</td><td class="num"><span class="good">13.2</span></td></tr>
+    <tr><td>p90</td><td class="num">26.6</td><td class="num"><span class="good">18.6</span></td></tr>
+    <tr><td>p99</td><td class="num">37.4</td><td class="num"><span class="good">26.7</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td class="num">45.2</td><td class="num"><span class="good">31.1</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">59.9</td><td class="num"><span class="good">58.2</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">92.4</span></td><td class="num">111.8</td></tr>
+  </tbody>
+</table>
+
+<h3>4-4. Single-op: insert-output — BURST</h3>
+<table>
+  <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">147.3</span></td><td class="num">147.2</td></tr>
+    <tr><td>Error rate</td><td class="num"><span class="good">0.00%</span></td><td class="num"><span class="good">0.00%</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">554.1</td><td class="num"><span class="good">187.4</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">1,316.4</td><td class="num"><span class="good">1,146.9</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">2,064.2</span></td><td class="num">2,208.7</td></tr>
+    <tr><td rowspan="3"><b>insert (cold)</b></td><td>p50</td><td class="num">778.6</td><td class="num"><span class="good">237.6</span></td></tr>
+    <tr><td>p90</td><td class="num">1,520.7</td><td class="num"><span class="good">883.6</span></td></tr>
+    <tr><td>p99</td><td class="num">2,357.6</td><td class="num"><span class="good">1,670.4</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td class="num">1,353.8</td><td class="num"><span class="good">464.5</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">2,864.4</td><td class="num"><span class="good">2,078.4</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num">4,451.3</td><td class="num"><span class="good">3,926.0</span></td></tr>
+  </tbody>
+</table>
+
+<h3>4-5. Full 4-op workload — STEADY</h3>
+<p class="en">find → remove → insert → find. Total cycle includes fixed 10,000 ms taskSleepMs.</p>
+<table>
+  <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num"><span class="good">132.8</span></td><td class="num"><span class="good">132.8</span></td></tr>
+    <tr><td>Error rate</td><td class="num"><span class="good">0.005%</span></td><td class="num">0.006%</td></tr>
+    <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">35.5</td><td class="num"><span class="good">13.9</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">89.7</td><td class="num"><span class="good">30.9</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num">137.1</td><td class="num"><span class="good">113.0</span></td></tr>
+    <tr><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td class="num">34.7</td><td class="num"><span class="good">15.1</span></td></tr>
+    <tr><td>p90</td><td class="num"><span class="good">51.3</span></td><td class="num">62.3</td></tr>
+    <tr><td>p99</td><td class="num">74.6</td><td class="num"><span class="good">46.0</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>remove (warm)</b></td><td>p50</td><td class="num">4.1</td><td class="num"><span class="good">2.4</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">6.5</td><td class="num"><span class="good">5.0</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num">80.2</td><td class="num"><span class="good">77.1</span></td></tr>
+    <tr><td rowspan="3"><b>insert (warm)</b></td><td>p50</td><td class="num">4.5</td><td class="num"><span class="good">2.8</span></td></tr>
+    <tr><td>p90</td><td class="num">7.3</td><td class="num"><span class="good">5.1</span></td></tr>
+    <tr><td>p99</td><td class="num">83.2</td><td class="num"><span class="good">79.1</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>find (warm)</b></td><td>p50</td><td class="num">1.1</td><td class="num"><span class="good">0.7</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">4.2</td><td class="num"><span class="good">2.9</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">16.0</span></td><td class="num">53.6</td></tr>
+    <tr><td rowspan="3"><b>Total cycle<br>(incl. 10 s sleep)</b></td><td>p50</td><td class="num">10,110.4</td><td class="num"><span class="good">10,056.0</span></td></tr>
+    <tr><td>p90</td><td class="num">10,185.0</td><td class="num"><span class="good">10,138.8</span></td></tr>
+    <tr><td>p99</td><td class="num">10,265.1</td><td class="num"><span class="good">10,245.1</span></td></tr>
+  </tbody>
+</table>
+
+<h3>4-6. Full 4-op workload — BURST</h3>
+<table>
+  <thead><tr><th>Metric group</th><th>Pctile</th><th>mongo-shard</th><th>documentdb</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><b>Headline</b></td><td>Throughput (req/s)</td><td class="num">128.4</td><td class="num"><span class="good">135.3</span></td></tr>
+    <tr><td>Error rate</td><td class="num">0.16%</td><td class="num"><span class="good">0.033%</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td class="num">466.5</td><td class="num"><span class="good">336.6</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num"><span class="good">1,059.1</span></td><td class="num">1,605.5</td></tr>
+    <tr class="band"><td>p99</td><td class="num"><span class="good">2,022.1</span></td><td class="num">3,235.9</td></tr>
+    <tr><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td class="num">1,112.9</td><td class="num"><span class="good">399.9</span></td></tr>
+    <tr><td>p90</td><td class="num">2,396.0</td><td class="num"><span class="good">1,433.5</span></td></tr>
+    <tr><td>p99</td><td class="num">3,300.8</td><td class="num"><span class="good">2,589.7</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>remove (warm)</b></td><td>p50</td><td class="num">7.9</td><td class="num"><span class="good">4.3</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">136.6</td><td class="num"><span class="good">22.3</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num">268.2</td><td class="num"><span class="good">153.5</span></td></tr>
+    <tr><td rowspan="3"><b>insert (warm)</b></td><td>p50</td><td class="num">18.2</td><td class="num"><span class="good">5.2</span></td></tr>
+    <tr><td>p90</td><td class="num">149.7</td><td class="num"><span class="good">26.1</span></td></tr>
+    <tr><td>p99</td><td class="num">309.2</td><td class="num"><span class="good">139.3</span></td></tr>
+    <tr class="band"><td rowspan="3"><b>find (warm)</b></td><td>p50</td><td class="num">29.2</td><td class="num"><span class="good">3.5</span></td></tr>
+    <tr class="band"><td>p90</td><td class="num">191.9</td><td class="num"><span class="good">21.9</span></td></tr>
+    <tr class="band"><td>p99</td><td class="num">381.7</td><td class="num"><span class="good">144.8</span></td></tr>
+    <tr><td rowspan="3"><b>Total cycle<br>(incl. 10 s sleep)</b></td><td>p50</td><td class="num">12,547.8</td><td class="num"><span class="good">11,177.1</span></td></tr>
+    <tr><td>p90</td><td class="num">14,998.9</td><td class="num"><span class="good">13,650.7</span></td></tr>
+    <tr><td>p99</td><td class="num">17,108.8</td><td class="num"><span class="good">16,551.7</span></td></tr>
+  </tbody>
+</table>
+
+<!-- (5) 결과 요약 -->
+<h2>5. 결과 요약</h2>
+<ul>
+  <li><b>MongoDB의 샤딩이 요구됨</b>: 기존 단일 <code>mongo-vm</code>은 전체 워크로드에서 <b>22.8%(steady)/32.0%(burst)</b>의 작업이 실패</li>
+  <li><b>연결 비용을 제외하면 작업 자체는 두 DB 모두에서 빠름</b>: 단일 operation은 MongoDB ~19–22ms p50, DocumentDB ~12–13ms p50. 쿼리가 느리다는 인상은 cold 연결 핸드셰이크가 측정 시간에 포함됐기 때문</li>
+  <li><b>[DocumentDB 강점] Steady 중앙값 우위</b>: 모든 steady 행에서 연결·작업 p50/p90이 <b>약 2배 빠름</b>(핸드셰이크 ~12ms vs ~22ms).</li>
+  <li><b>[DocumentDB 강점] warm 작업 우위</b>: 소켓이 열린 뒤 remove/insert/find가 <b>2–10배 빠름</b>(sub-6ms p50 vs 4–29ms), burst에서도 tail이 더 작음</li>
+  <li><b>[DocumentDB 강점] burst 처리량·오류율</b>: burst 전체 워크로드에서 처리량 135.3 vs 128.4 req/s, 오류 0.033% vs 0.16%로 우위</li>
+  <li><b>[MongoDB 강점] burst 연결 tail</b>: 2×mongos 팬아웃으로 burst 연결 p90/p99가 더 좋음(전체 워크로드 p90 1,059 vs 1,606ms, p99 2,022 vs 3,236ms)</li>
+  <li>HPC는 연결 재사용이 없는 Connection Churn 패턴이므로 <b>연결 frontend(핸드셰이크 처리량)</b>가 중요한 요소</li>
+</ul>
+
+<!-- (6) 부록: 비용 분석 -->
+<h2>6. 부록: 비용 분석</h2>
+<div class="note">
+  <b>성능은 유사(DocumentDB가 약간 우위)</b>하지만, HA를 반영한 <b>운영 비용에서는 관리형 DocumentDB가 유리</b>.
+  실제 운영 시에는 MongoDB HA를 위해 인스턴스 수가 2배로 늘어나며, 패치·백업·모니터링 등 운영 부담 및 일부 지연 시간도 추가됨.
+</div>
+<table>
+  <thead><tr><th>항목 (Item)</th><th>구성 (Config)</th><th>월 비용 (USD/mo)</th><th>비고 (Notes)</th></tr></thead>
+  <tbody>
+    <tr><td><b>MongoDB (BMT)</b></td><td>Windows VM <b>E32as v6</b> × 2 instances</td><td class="num">$5,583</td><td>3년 RI 시 62% 할인율, $3,454</td></tr>
+    <tr class="band"><td><b>MongoDB (Prod)</b></td><td>E32as v6 × <b>4 instances</b> (HA 이중화 구성)</td><td class="num">~$11,166</td><td>운영 시 HA로 인스턴스 2배. 3년 RI 시 62% 할인율, $6,908</td></tr>
+    <tr class="band"><td><b>DocumentDB (BMT, Prod)</b></td><td><b>M80</b> (HA enabled)</td><td class="num">$4,006</td><td>1년 Savings Plan 시 $3,232</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><b>운영 비용(TCO)</b>: 위 금액은 인프라만 포함. 자체 MongoDB는 OS/엔진 패치, 백업, 샤드·mongos·config 서버 모니터링, 장애 대응 등 <b>인력 운영 비용이 추가</b>되지만, 관리형 DocumentDB는 해당 부담 없음</li>
+  <li><b>결론</b>: 성능은 비슷하나, <b>HA 반영 비용·운영 부담까지 고려하면 DocumentDB의 종합 비용 효율이 우수</b></li>
+</ul>
+
+<p class="meta">생성: 2026-06-25 · 데이터 출처: <code>results/run-20260624-shard/</code> (각 테스트 <code>aggregate.json</code>의 3회 반복 평균).</p>
+
+</body>
+</html>
