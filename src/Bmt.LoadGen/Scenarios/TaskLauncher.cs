@@ -24,12 +24,18 @@ public sealed class TaskLauncher : IDisposable
     }
 
     /// <summary>
-    /// Inject one Task. Blocks (asynchronously) when the concurrency cap is reached — back-pressure
-    /// that keeps the client host from unbounded socket growth while still surfacing real saturation.
+    /// Inject one Task. When <paramref name="gated"/> is true (closed-loop), this blocks (asynchronously)
+    /// once the concurrency cap is reached — back-pressure that keeps the client host from unbounded
+    /// socket growth while still surfacing real saturation. When false (open-loop), the gate is bypassed
+    /// so the realized injection rate matches the offered schedule regardless of backend completion speed.
     /// </summary>
-    public async Task InjectAsync(CancellationToken ct)
+    public async Task InjectAsync(CancellationToken ct, bool gated = true)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        if (gated)
+        {
+            await _gate.WaitAsync(ct).ConfigureAwait(false);
+        }
+
         var reqId = _reqIdSelector();
         var task = Task.Run(async () =>
         {
@@ -39,7 +45,10 @@ public sealed class TaskLauncher : IDisposable
             }
             finally
             {
-                _gate.Release();
+                if (gated)
+                {
+                    _gate.Release();
+                }
             }
         }, CancellationToken.None);
 

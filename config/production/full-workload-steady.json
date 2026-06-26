@@ -1,6 +1,6 @@
 {
   // PRODUCTION config — full 4-op workload, STEADY scenario only. Inherits everything from
-  // full-workload.json (Mode=FullWorkload, TaskSleepMs=10000) and just flips the scenario envelope
+  // full-workload.json (Mode=FullWorkload, TaskSleepMs=2000) and just flips the scenario envelope
   // to Steady-only so `test --scenario steady` has an active scenario.
   // Burst is disabled here so running steady never stacks the two arrival rates.
   "Extends": "full-workload.json",

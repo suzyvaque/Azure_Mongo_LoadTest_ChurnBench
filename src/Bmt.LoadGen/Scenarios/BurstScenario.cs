@@ -30,8 +30,10 @@ public sealed class BurstScenario
         var durationSeconds = _durationSecondsOverride > 0 ? _durationSecondsOverride : _config.DurationSeconds;
         var deadline = TimeSpan.FromSeconds(durationSeconds);
 
+        var gated = !_config.OpenLoop;
         ConsoleLog.Info($"[Burst] Poisson lambda={_config.JobsPerSecondLambda} Job/s, " +
-                        $"{_config.MinTasksPerJob}..{_config.MaxTasksPerJob} Tasks/Job, for {durationSeconds}s.");
+                        $"{_config.MinTasksPerJob}..{_config.MaxTasksPerJob} Tasks/Job, for {durationSeconds}s, " +
+                        $"mode={(gated ? "closed-loop (gated)" : "open-loop (ungated)")}.");
 
         var clock = Stopwatch.StartNew();
         var jobs = 0L;
@@ -58,12 +60,14 @@ public sealed class BurstScenario
             jobs++;
             tasks += n;
 
-            // Inject the Job's Tasks simultaneously (each InjectAsync may block on the concurrency cap;
-            // we fire them concurrently so the burst is not serialized into a trickle).
+            // Inject the Job's Tasks simultaneously. Closed-loop: each InjectAsync may block on the
+            // concurrency cap; fired concurrently so the burst is not serialized into a trickle.
+            // Open-loop (gated:false): the cap is bypassed so the realized conn/sec matches the offered
+            // schedule identically across targets.
             var injections = new Task[n];
             for (var i = 0; i < n; i++)
             {
-                injections[i] = launcher.InjectAsync(ct);
+                injections[i] = launcher.InjectAsync(ct, gated);
             }
 
             try

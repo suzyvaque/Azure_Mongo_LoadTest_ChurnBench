@@ -102,6 +102,15 @@ public sealed class BurstScenarioConfig
     /// <summary>How long to run the burst phase, seconds.</summary>
     public int DurationSeconds { get; set; } = 600;
 
+    /// <summary>
+    /// Open-loop injection. When <c>true</c>, the (seed-deterministic) Poisson arrival schedule is
+    /// injected WITHOUT the <see cref="ScenarioConfig.MaxConcurrentTasks"/> back-pressure gate, so the
+    /// realized conn/sec equals the offered schedule identically for every target regardless of backend
+    /// speed — the burst becomes a controlled INPUT for fair cross-target comparison. When <c>false</c>
+    /// (default) the gate applies (closed-loop), bounding client-host socket growth.
+    /// </summary>
+    public bool OpenLoop { get; set; }
+
     public void Validate()
     {
         if (JobsPerSecondLambda <= 0)

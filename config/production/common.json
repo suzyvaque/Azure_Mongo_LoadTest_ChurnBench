@@ -8,9 +8,9 @@
   //   cosmos-ru -> BMT_CONN_COSMOS,  documentdb -> BMT_CONN,  mongo-vm -> BMT_CONN_MONGO,
   //   mongo-shard -> BMT_CONN_MONGO_SHARD
 
-  // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6). Full-workload uses 10 s;
+  // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6). Full-workload uses 2 s;
   // single-op configs override this to 0.
-  "TaskSleepMs": 10000,
+  "TaskSleepMs": 2000,
 
   // Dataset: exactly 100,000 docs, fixed seed 42, four whole-document size buckets.
   "Dataset": {
@@ -53,7 +53,13 @@
       "JobsPerSecondLambda": 0.57,
       "MaxTasksPerJob": 500,
       "MinTasksPerJob": 14,
-      "DurationSeconds": 600
+      "DurationSeconds": 600,
+      // Open-loop mode: when true, the (seed-deterministic) Poisson arrival schedule is injected
+      // WITHOUT the MaxConcurrentTasks back-pressure gate, so the realized conn/sec equals the
+      // offered schedule identically for every target regardless of backend speed. This makes the
+      // burst a controlled INPUT (fair cross-target comparison) instead of a closed-loop OUTPUT.
+      // Closed-loop (false, default) keeps the gate so the client host cannot grow sockets unbounded.
+      "OpenLoop": false
     }
   },
 
