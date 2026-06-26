@@ -60,14 +60,11 @@ row is the operation time with connection (TCP+TLS+auth) excluded.
   <tbody>
     <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">135.0</b></u></td><td><u><b style="color:#1a7f37">135.0</b></u></td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>22.2</td><td><u><b style="color:#1a7f37">11.7</b></u></td></tr>
-    <tr><td>p90</td><td>31.9</td><td><u><b style="color:#1a7f37">23.8</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p90</td><td>31.9</td><td><u><b style="color:#1a7f37">23.8</b></u></td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">43.7</b></u></td><td>75.6</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td>19.0</td><td><u><b style="color:#1a7f37">12.2</b></u></td></tr>
-    <tr><td>p90</td><td>23.9</td><td><u><b style="color:#1a7f37">19.2</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>find (cold)</b></td><td>p90</td><td>23.9</td><td><u><b style="color:#1a7f37">19.2</b></u></td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">26.4</b></u></td><td>31.3</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td>42.3</td><td><u><b style="color:#1a7f37">30.6</b></u></td></tr>
-    <tr><td>p90</td><td><u><b style="color:#1a7f37">56.9</b></u></td><td>60.1</td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Total cycle</b></td><td>p90</td><td><u><b style="color:#1a7f37">56.9</b></u></td><td>60.1</td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">71.7</b></u></td><td>121.9</td></tr>
   </tbody>
 </table>
@@ -79,14 +76,11 @@ row is the operation time with connection (TCP+TLS+auth) excluded.
   <tbody>
     <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">147.0</b></u></td><td>146.4</td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>529.9</td><td><u><b style="color:#1a7f37">189.5</b></u></td></tr>
-    <tr><td>p90</td><td><u><b style="color:#1a7f37">1,185.2</b></u></td><td>1,256.1</td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p90</td><td><u><b style="color:#1a7f37">1,185.2</b></u></td><td>1,256.1</td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">1,901.5</b></u></td><td>2,408.1</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td>737.0</td><td><u><b style="color:#1a7f37">230.7</b></u></td></tr>
-    <tr><td>p90</td><td>1,355.5</td><td><u><b style="color:#1a7f37">970.6</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>find (cold)</b></td><td>p90</td><td>1,355.5</td><td><u><b style="color:#1a7f37">970.6</b></u></td></tr>
     <tr><td>p99</td><td>1,886.2</td><td><u><b style="color:#1a7f37">1,884.1</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td>1,287.9</td><td><u><b style="color:#1a7f37">452.4</b></u></td></tr>
-    <tr><td>p90</td><td>2,569.4</td><td><u><b style="color:#1a7f37">2,255.9</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Total cycle</b></td><td>p90</td><td>2,569.4</td><td><u><b style="color:#1a7f37">2,255.9</b></u></td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">3,813.1</b></u></td><td>4,328.5</td></tr>
   </tbody>
 </table>
@@ -105,14 +99,11 @@ the operation time with connection (TCP+TLS+auth) excluded.
   <tbody>
     <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">135.0</b></u></td><td><u><b style="color:#1a7f37">135.0</b></u></td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>22.2</td><td><u><b style="color:#1a7f37">11.5</b></u></td></tr>
-    <tr><td>p90</td><td>32.0</td><td><u><b style="color:#1a7f37">22.9</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p90</td><td>32.0</td><td><u><b style="color:#1a7f37">22.9</b></u></td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">47.5</b></u></td><td>71.6</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>insert (cold)</b></td><td>p50</td><td>22.0</td><td><u><b style="color:#1a7f37">13.2</b></u></td></tr>
-    <tr><td>p90</td><td>26.6</td><td><u><b style="color:#1a7f37">18.6</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>insert (cold)</b></td><td>p90</td><td>26.6</td><td><u><b style="color:#1a7f37">18.6</b></u></td></tr>
     <tr><td>p99</td><td>37.4</td><td><u><b style="color:#1a7f37">26.7</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td>45.2</td><td><u><b style="color:#1a7f37">31.1</b></u></td></tr>
-    <tr><td>p90</td><td>59.9</td><td><u><b style="color:#1a7f37">58.2</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Total cycle</b></td><td>p90</td><td>59.9</td><td><u><b style="color:#1a7f37">58.2</b></u></td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">92.4</b></u></td><td>111.8</td></tr>
   </tbody>
 </table>
@@ -124,14 +115,11 @@ the operation time with connection (TCP+TLS+auth) excluded.
   <tbody>
     <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">147.3</b></u></td><td>147.2</td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.00%</b></u></td><td><u><b style="color:#1a7f37">0.00%</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>554.1</td><td><u><b style="color:#1a7f37">187.4</b></u></td></tr>
-    <tr><td>p90</td><td>1,316.4</td><td><u><b style="color:#1a7f37">1,146.9</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p90</td><td>1,316.4</td><td><u><b style="color:#1a7f37">1,146.9</b></u></td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">2,064.2</b></u></td><td>2,208.7</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>insert (cold)</b></td><td>p50</td><td>778.6</td><td><u><b style="color:#1a7f37">237.6</b></u></td></tr>
-    <tr><td>p90</td><td>1,520.7</td><td><u><b style="color:#1a7f37">883.6</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>insert (cold)</b></td><td>p90</td><td>1,520.7</td><td><u><b style="color:#1a7f37">883.6</b></u></td></tr>
     <tr><td>p99</td><td>2,357.6</td><td><u><b style="color:#1a7f37">1,670.4</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Total cycle</b></td><td>p50</td><td>1,353.8</td><td><u><b style="color:#1a7f37">464.5</b></u></td></tr>
-    <tr><td>p90</td><td>2,864.4</td><td><u><b style="color:#1a7f37">2,078.4</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Total cycle</b></td><td>p90</td><td>2,864.4</td><td><u><b style="color:#1a7f37">2,078.4</b></u></td></tr>
     <tr><td>p99</td><td>4,451.3</td><td><u><b style="color:#1a7f37">3,926.0</b></u></td></tr>
   </tbody>
 </table>
@@ -142,7 +130,7 @@ the operation time with connection (TCP+TLS+auth) excluded.
 
 Op1 (`find (cold)`) runs first on the fresh socket, so its row is net of connection (TCP+TLS+auth). Ops 2–4
 (`remove`, `insert`, `find` again) run on the **warm** socket and are pure server execution. Total cycle
-includes the fixed **10,000 ms** `taskSleepMs`.
+excludes the fixed **10,000 ms** `taskSleepMs`.
 
 ### 3a. full-workload — STEADY (135 Tasks/s)
 
@@ -151,24 +139,18 @@ includes the fixed **10,000 ms** `taskSleepMs`.
   <tbody>
     <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td><u><b style="color:#1a7f37">132.8</b></u></td><td><u><b style="color:#1a7f37">132.8</b></u></td></tr>
     <tr><td>Error rate</td><td><u><b style="color:#1a7f37">0.005%</b></u></td><td>0.006%</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>35.5</td><td><u><b style="color:#1a7f37">13.9</b></u></td></tr>
-    <tr><td>p90</td><td>89.7</td><td><u><b style="color:#1a7f37">30.9</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p90</td><td>89.7</td><td><u><b style="color:#1a7f37">30.9</b></u></td></tr>
     <tr><td>p99</td><td>137.1</td><td><u><b style="color:#1a7f37">113.0</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td>34.7</td><td><u><b style="color:#1a7f37">15.1</b></u></td></tr>
-    <tr><td>p90</td><td><u><b style="color:#1a7f37">51.3</b></u></td><td>62.3</td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>find (cold)</b></td><td>p90</td><td><u><b style="color:#1a7f37">51.3</b></u></td><td>62.3</td></tr>
     <tr><td>p99</td><td>74.6</td><td><u><b style="color:#1a7f37">46.0</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>remove (warm)</b></td><td>p50</td><td>4.1</td><td><u><b style="color:#1a7f37">2.4</b></u></td></tr>
-    <tr><td>p90</td><td>6.5</td><td><u><b style="color:#1a7f37">5.0</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>remove (warm)</b></td><td>p90</td><td>6.5</td><td><u><b style="color:#1a7f37">5.0</b></u></td></tr>
     <tr><td>p99</td><td>80.2</td><td><u><b style="color:#1a7f37">77.1</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>insert (warm)</b></td><td>p50</td><td>4.5</td><td><u><b style="color:#1a7f37">2.8</b></u></td></tr>
-    <tr><td>p90</td><td>7.3</td><td><u><b style="color:#1a7f37">5.1</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>insert (warm)</b></td><td>p90</td><td>7.3</td><td><u><b style="color:#1a7f37">5.1</b></u></td></tr>
     <tr><td>p99</td><td>83.2</td><td><u><b style="color:#1a7f37">79.1</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>find (warm)</b></td><td>p50</td><td>1.1</td><td><u><b style="color:#1a7f37">0.7</b></u></td></tr>
-    <tr><td>p90</td><td>4.2</td><td><u><b style="color:#1a7f37">2.9</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>find (warm)</b></td><td>p90</td><td>4.2</td><td><u><b style="color:#1a7f37">2.9</b></u></td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">16.0</b></u></td><td>53.6</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Total cycle<br>(incl. 10 s sleep)</b></td><td>p50</td><td>10,110.4</td><td><u><b style="color:#1a7f37">10,056.0</b></u></td></tr>
-    <tr><td>p90</td><td>10,185.0</td><td><u><b style="color:#1a7f37">10,138.8</b></u></td></tr>
-    <tr><td>p99</td><td>10,265.1</td><td><u><b style="color:#1a7f37">10,245.1</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Total cycle<br>excludes fixed 10,000 ms taskSleepMs</b></td><td>p90</td><td>185.0</td><td><u><b style="color:#1a7f37">138.8</b></u></td></tr>
+    <tr><td>p99</td><td>265.1</td><td><u><b style="color:#1a7f37">245.1</b></u></td></tr>
   </tbody>
 </table>
 
@@ -179,24 +161,18 @@ includes the fixed **10,000 ms** `taskSleepMs`.
   <tbody>
     <tr style="border-top:2px solid #555"><td rowspan="2"><b>Headline</b></td><td>Throughput (tasks/s)</td><td>128.4</td><td><u><b style="color:#1a7f37">135.3</b></u></td></tr>
     <tr><td>Error rate</td><td>0.16%</td><td><u><b style="color:#1a7f37">0.033%</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p50</td><td>466.5</td><td><u><b style="color:#1a7f37">336.6</b></u></td></tr>
-    <tr><td>p90</td><td><u><b style="color:#1a7f37">1,059.1</b></u></td><td>1,605.5</td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Connection<br>(TCP+TLS+auth)</b></td><td>p90</td><td><u><b style="color:#1a7f37">1,059.1</b></u></td><td>1,605.5</td></tr>
     <tr><td>p99</td><td><u><b style="color:#1a7f37">2,022.1</b></u></td><td>3,235.9</td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>find (cold)</b></td><td>p50</td><td>1,112.9</td><td><u><b style="color:#1a7f37">399.9</b></u></td></tr>
-    <tr><td>p90</td><td>2,396.0</td><td><u><b style="color:#1a7f37">1,433.5</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>find (cold)</b></td><td>p90</td><td>2,396.0</td><td><u><b style="color:#1a7f37">1,433.5</b></u></td></tr>
     <tr><td>p99</td><td>3,300.8</td><td><u><b style="color:#1a7f37">2,589.7</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>remove (warm)</b></td><td>p50</td><td>7.9</td><td><u><b style="color:#1a7f37">4.3</b></u></td></tr>
-    <tr><td>p90</td><td>136.6</td><td><u><b style="color:#1a7f37">22.3</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>remove (warm)</b></td><td>p90</td><td>136.6</td><td><u><b style="color:#1a7f37">22.3</b></u></td></tr>
     <tr><td>p99</td><td>268.2</td><td><u><b style="color:#1a7f37">153.5</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>insert (warm)</b></td><td>p50</td><td>18.2</td><td><u><b style="color:#1a7f37">5.2</b></u></td></tr>
-    <tr><td>p90</td><td>149.7</td><td><u><b style="color:#1a7f37">26.1</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>insert (warm)</b></td><td>p90</td><td>149.7</td><td><u><b style="color:#1a7f37">26.1</b></u></td></tr>
     <tr><td>p99</td><td>309.2</td><td><u><b style="color:#1a7f37">139.3</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>find (warm)</b></td><td>p50</td><td>29.2</td><td><u><b style="color:#1a7f37">3.5</b></u></td></tr>
-    <tr><td>p90</td><td>191.9</td><td><u><b style="color:#1a7f37">21.9</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>find (warm)</b></td><td>p90</td><td>191.9</td><td><u><b style="color:#1a7f37">21.9</b></u></td></tr>
     <tr><td>p99</td><td>381.7</td><td><u><b style="color:#1a7f37">144.8</b></u></td></tr>
-    <tr style="border-top:2px solid #555"><td rowspan="3"><b>Total cycle<br>(incl. 10 s sleep)</b></td><td>p50</td><td>12,547.8</td><td><u><b style="color:#1a7f37">11,177.1</b></u></td></tr>
-    <tr><td>p90</td><td>14,998.9</td><td><u><b style="color:#1a7f37">13,650.7</b></u></td></tr>
-    <tr><td>p99</td><td>17,108.8</td><td><u><b style="color:#1a7f37">16,551.7</b></u></td></tr>
+    <tr style="border-top:2px solid #555"><td rowspan="2"><b>Total cycle<br>excludes fixed 10,000 ms taskSleepMs</b></td><td>p90</td><td>4,998.9</td><td><u><b style="color:#1a7f37">3,650.7</b></u></td></tr>
+    <tr><td>p99</td><td>7,108.8</td><td><u><b style="color:#1a7f37">6,551.7</b></u></td></tr>
   </tbody>
 </table>
 
