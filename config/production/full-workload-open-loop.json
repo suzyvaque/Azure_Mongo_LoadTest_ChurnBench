@@ -1,0 +1,10 @@
+{
+  // PRODUCTION config — full 4-op workload with burst OpenLoop enabled.
+  // Used for open-loop burst benchmarking where offered arrivals are injected ungated.
+  "Extends": "full-workload.json",
+
+  "Scenario": {
+    "Steady": { "Enabled": false },
+    "Burst":  { "Enabled": true, "OpenLoop": true }
+  }
+}
