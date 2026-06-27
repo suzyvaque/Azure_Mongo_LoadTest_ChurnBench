@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocumentDB Sharding 비교 리포트 - Full Workload (2026-06-27)</title>
+<style>
+  body{font-family:'Segoe UI','Malgun Gothic',sans-serif;max-width:1000px;margin:24px auto;padding:0 16px;color:#1b1b1b;line-height:1.65}
+  h1{font-size:1.6rem;border-bottom:3px solid #0067b8;padding-bottom:8px}
+  h2{font-size:1.25rem;margin-top:2rem;color:#0067b8}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:0.92rem}
+  th,td{border:1px solid #d0d0d0;padding:7px 10px;text-align:right}
+  th{background:#f0f6fc;color:#0a3d62}
+  td.op{text-align:left;font-weight:600}
+  td:first-child{text-align:left}
+  td.delta{color:#b00020;font-weight:600}
+  code{background:#f3f3f3;padding:1px 5px;border-radius:4px;font-size:0.9em}
+  .note{background:#fff8e1;border-left:4px solid #f9a825;padding:10px 14px;margin:12px 0}
+  .key{background:#e8f5e9;border-left:4px solid #2e7d32;padding:10px 14px;margin:12px 0}
+  caption{caption-side:top;text-align:left;font-weight:600;margin-bottom:6px;color:#333}
+  footer{margin-top:2rem;color:#888;font-size:0.85rem}
+</style>
+</head>
+<body>
+<h1>DocumentDB Sharding 비교 리포트 — Full Workload (2026-06-27)</h1>
+
+<p><strong>비교 대상:</strong> <code>run-20260627-00</code> (baseline) 와 <code>run-20260627-01-resharded-reqid</code> (ReqId 기준 resharding) 의 DocumentDB 결과를 비교하고, 같은 폴더의 <code>mongo-vm</code> 결과를 참고용(reference)으로 함께 표기합니다.</p>
+
+<h2>1. 테스트 환경 (Test setup)</h2>
+<table>
+<tr><th style="text-align:left">항목</th><th style="text-align:left">값</th></tr>
+<tr><td class="op">Cluster</td><td style="text-align:left"><code>docdb-dbtest-hpc-0</code> (Azure DocumentDB / Cosmos vCore, M80, server 7.0)</td></tr>
+<tr><td class="op">Physical shards</td><td style="text-align:left">2개 (<code>shard_0</code>, <code>shard_1</code>)</td></tr>
+<tr><td class="op">Workload</td><td style="text-align:left">full-workload (4-op cycle: find_input → remove → insert → find_output)</td></tr>
+<tr><td class="op">Scenario</td><td style="text-align:left">Steady (135 tasks/s) 와 Burst (Poisson, closed-loop)</td></tr>
+<tr><td class="op">Duration</td><td style="text-align:left">시나리오당 3 × 10분</td></tr>
+<tr><td class="op">Dataset</td><td style="text-align:left"><code>calc_input</code> 문서 100,000개 (약 4.4 GiB, 평균 약 44 KB/doc)</td></tr>
+<tr><td class="op">Connection model</td><td style="text-align:left">task당 새 connection 1개 생성 후 종료 (no-reuse, connection churn 벤치마크)</td></tr>
+</table>
+
+<h2>2. 핵심 결론 (Key findings)</h2>
+<div class="key">
+<ul>
+<li>컬렉션을 <code>{ReqId:"hashed"}</code> 로 sharding 해도 <strong>latency 와 throughput 에 미치는 영향은 사실상 없었습니다.</strong> 두 DocumentDB 구성의 차이는 run 간 변동(run-to-run variance) 범위 안에 있습니다.</li>
+<li><strong>이유:</strong> Azure DocumentDB (Cosmos vCore) 는 <code>shardCollection</code> 시점에 logical shard key 만 정의하며, preview 단계의 rebalancer (<code>by_disk_size</code> 전략)는 작고 균일하게 저장된 데이터셋을 <strong>물리적으로 재분배하지 않습니다.</strong> resharding + reseed 이후에도 <code>explain()</code> 결과 100k 문서가 <strong>단일 physical shard</strong> 에 그대로 남아 있음을 확인했습니다.</li>
+<li>resharding 후 ReqId 기준 <code>find_input</code> 은 router 가 ReqId 를 hashing 하는 <strong>targeted single-shard</strong> 쿼리가 되지만, 모든 데이터가 한 shard 에 있으므로 routing 이점은 관측되지 않습니다.</li>
+<li>connection 처리(churn rate, peak concurrency)는 shard key 와 <strong>무관</strong> 합니다. 이는 데이터 배치가 아니라 client host 와 cluster gateway 에 의해 결정됩니다.</li>
+</ul>
+</div>
+
+<h2>3. Latency — p90 / p99 (3회 iteration 평균, ms)</h2>
+
+<table>
+<caption>3.1 Steady</caption>
+<tr><th style="text-align:left">Operation</th><th>Baseline p90</th><th>Baseline p99</th><th>Resharded p90</th><th>Resharded p99</th><th>p99 변화</th></tr>
+<tr><td class='op'>Task cycle</td><td>2117.8</td><td>2229.1</td><td>2133.1</td><td>2282</td><td class='delta'>+2.4%</td></tr>
+<tr><td class='op'>find_input</td><td>78.6</td><td>150.5</td><td>89.3</td><td>185.7</td><td class='delta'>+23.4%</td></tr>
+<tr><td class='op'>remove</td><td>5</td><td>59</td><td>6.4</td><td>67.7</td><td class='delta'>+14.7%</td></tr>
+<tr><td class='op'>insert</td><td>4.3</td><td>54.4</td><td>6.5</td><td>65.7</td><td class='delta'>+20.8%</td></tr>
+<tr><td class='op'>find_output</td><td>1.9</td><td>24</td><td>2.5</td><td>31.1</td><td class='delta'>+29.6%</td></tr>
+<tr><td class='op'>connection_open</td><td>34.5</td><td>95.8</td><td>37.5</td><td>110</td><td class='delta'>+14.8%</td></tr>
+
+</table>
+
+<table>
+<caption>3.2 Burst</caption>
+<tr><th style="text-align:left">Operation</th><th>Baseline p90</th><th>Baseline p99</th><th>Resharded p90</th><th>Resharded p99</th><th>p99 변화</th></tr>
+<tr><td class='op'>Task cycle</td><td>5515.4</td><td>8888.8</td><td>5071.2</td><td>7773</td><td class='delta'>-12.6%</td></tr>
+<tr><td class='op'>find_input</td><td>2787.9</td><td>5015</td><td>2363.7</td><td>4540</td><td class='delta'>-9.5%</td></tr>
+<tr><td class='op'>remove</td><td>39.4</td><td>137.9</td><td>65.7</td><td>155.5</td><td class='delta'>+12.8%</td></tr>
+<tr><td class='op'>insert</td><td>44.9</td><td>132.8</td><td>74.5</td><td>148.1</td><td class='delta'>+11.5%</td></tr>
+<tr><td class='op'>find_output</td><td>33</td><td>142.2</td><td>40.1</td><td>163.3</td><td class='delta'>+14.8%</td></tr>
+<tr><td class='op'>connection_open</td><td>1497.2</td><td>2781.1</td><td>1343.5</td><td>2437.7</td><td class='delta'>-12.3%</td></tr>
+
+</table>
+
+<h2>4. Connection — 요청률(request rate) 과 동시성(concurrency)</h2>
+<p>본 벤치마크에서는 모든 task 가 정확히 하나의 새 connection 을 열고 닫으므로(no-reuse), <strong>connection requests/sec 은 task throughput 과 동일</strong>합니다. <em>Peak concurrent connections</em> 는 동시에 열려 있는 client socket 의 최대 개수(peak ephemeral ports in use)입니다.</p>
+<table>
+<tr><th style="text-align:left">Campaign</th><th>Scenario</th><th>Throughput (tasks/s)</th><th>Connection requests/sec</th><th>Peak concurrent connections</th><th>Error %</th></tr>
+<tr><td class='op'>DocumentDB Steady (baseline)</td><td>Steady</td><td>134.5</td><td>134.5</td><td>8699</td><td>0.005</td></tr>
+<tr><td class='op'>DocumentDB Steady (ReqId-resharded)</td><td>Steady</td><td>134.5</td><td>134.5</td><td>8955</td><td>0.005</td></tr>
+<tr><td class='op'>DocumentDB Burst (baseline)</td><td>Burst</td><td>141.9</td><td>142</td><td>13724</td><td>0.033</td></tr>
+<tr><td class='op'>DocumentDB Burst (ReqId-resharded)</td><td>Burst</td><td>144</td><td>144.1</td><td>13654</td><td>0.04</td></tr>
+<tr><td class='op'>Mongo-VM Steady (reference)</td><td>Steady</td><td>134.5</td><td>134.5</td><td>9186</td><td>0.001</td></tr>
+<tr><td class='op'>Mongo-VM Burst (reference)</td><td>Burst</td><td>148.7</td><td>148.7</td><td>15677</td><td>0.007</td></tr>
+
+</table>
+
+<h2>5. 주의사항 (Caveats)</h2>
+<div class="note">
+<ul>
+<li>resharded run 은 실제로 데이터가 분산된 2-shard topology 를 나타내지 <strong>않습니다.</strong> 데이터는 물리적으로 한 shard 에 남아 있습니다 (Cosmos vCore preview rebalancer 의 제약). 물리적 분산을 강제하려면 (1) <code>by_disk_size</code> 를 trigger 할 만큼 큰 storage 불균형, (2) 노출되지 않은 <code>by_shard_count</code> 전략, 또는 (3) 생성 시점부터 <code>shardCount=2</code> 인 새 cluster 로 seeding 하는 방법이 필요합니다.</li>
+<li>Burst 의 <code>find_input</code> p99 차이는 데이터 배치가 아니라 client 측 saturation (CPU 약 45%, peak 약 13.6k 동시 socket) 에 의해 주도됩니다.</li>
+<li>모든 run 은 동일한 client host, network path (private endpoint), M80 cluster tier 를 공유합니다.</li>
+</ul>
+</div>
+
+<footer>Generated 2026-06-27 20:56 — aggregate.json 및 iteration 별 JSON 기반. 기술 용어는 영어로 유지함.</footer>
+</body>
+</html>
