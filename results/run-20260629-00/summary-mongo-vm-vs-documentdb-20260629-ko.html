@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mongo-vm vs DocumentDB - HPC Connection Churn 요약 (2026-06-29)</title>
+<style>
+  :root {
+    --fg: #1f2328;
+    --muted: #57606a;
+    --line: #d0d7de;
+    --bg: #ffffff;
+    --good: #1a7f37;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 3rem;
+    line-height: 1.55;
+  }
+  h1 { font-size: 1.7rem; border-bottom: 2px solid var(--line); padding-bottom: .35rem; }
+  h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
+  p.meta { color: var(--muted); font-size: .95rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0 1.4rem; font-size: .92rem; }
+  th, td { border: 1px solid var(--line); padding: .42rem .58rem; text-align: left; vertical-align: middle; }
+  th { background: #eef2f6; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .good { color: var(--good); font-weight: 700; }
+  code { background: #f1f3f5; padding: .1rem .35rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Mongo-vm vs DocumentDB - HPC Connection Churn 요약</h1>
+<p class="meta">
+  캠페인: <code>results/run-20260629-00</code> · 전체 워크로드(<code>find -&gt; remove -&gt; insert -&gt; find</code>) ·
+  연결 재사용 없음(<code>created/task = 1.000</code>) · 3회 반복 x 300초 · <code>taskSleepMs = 2000</code>
+</p>
+<p>이 테스트는 HPC 연결 처닝 패턴에서 가장 중요한 지표인 <b>Connection Open 시간</b>을 기준으로 Mongo-vm과 DocumentDB를 비교합니다.</p>
+
+<h2>1. Connection Open 지연 (핵심 지표)</h2>
+<p>값이 낮을수록 좋습니다.</p>
+<table>
+  <thead><tr><th>시나리오</th><th>대상</th><th>Connection p50 (ms)</th><th>Connection p90 (ms)</th><th>Connection p99 (ms)</th></tr></thead>
+  <tbody>
+    <tr><td>Steady</td><td>mongo-vm</td><td class="num"><span class="good">6.2</span></td><td class="num"><span class="good">11.0</span></td><td class="num"><span class="good">33.0</span></td></tr>
+    <tr><td>Steady</td><td>documentdb</td><td class="num">12.9</td><td class="num">32.7</td><td class="num">92.3</td></tr>
+    <tr><td>Burst (open-loop)</td><td>mongo-vm</td><td class="num"><span class="good">16.7</span></td><td class="num"><span class="good">55.9</span></td><td class="num"><span class="good">163.1</span></td></tr>
+    <tr><td>Burst (open-loop)</td><td>documentdb</td><td class="num">288.1</td><td class="num">1320.0</td><td class="num">2110.7</td></tr>
+    <tr><td>Burst (closed-loop)</td><td>mongo-vm</td><td class="num"><span class="good">19.0</span></td><td class="num"><span class="good">62.0</span></td><td class="num"><span class="good">154.6</span></td></tr>
+    <tr><td>Burst (closed-loop)</td><td>documentdb</td><td class="num">310.7</td><td class="num">1320.9</td><td class="num">2047.6</td></tr>
+  </tbody>
+</table>
+
+<h2>2. Connection created/opened 수치 (avg, max)</h2>
+<p><code>opened</code>는 드라이버의 <code>Connections.Ready</code> 기준이며, 본 캠페인(no-reuse)에서는 created와 동일합니다.</p>
+<table>
+  <thead><tr><th>시나리오</th><th>대상</th><th>Created/Opened 반복 평균</th><th>Created/Opened 반복 최대</th><th>Created 초당 평균</th><th>Created 초당 최대</th></tr></thead>
+  <tbody>
+    <tr><td>Steady</td><td>mongo-vm</td><td class="num">40,500.7</td><td class="num">40,501</td><td class="num">133.67</td><td class="num">140</td></tr>
+    <tr><td>Steady</td><td>documentdb</td><td class="num">40,500.3</td><td class="num">40,501</td><td class="num">133.66</td><td class="num">155</td></tr>
+    <tr><td>Burst (open-loop)</td><td>mongo-vm</td><td class="num">46,024.0</td><td class="num">46,024</td><td class="num">176.56</td><td class="num"><span class="good">712</span></td></tr>
+    <tr><td>Burst (open-loop)</td><td>documentdb</td><td class="num">44,003.7</td><td class="num">44,307</td><td class="num">158.10</td><td class="num">566</td></tr>
+    <tr><td>Burst (closed-loop)</td><td>mongo-vm</td><td class="num">46,024.0</td><td class="num">46,024</td><td class="num">178.16</td><td class="num"><span class="good">681</span></td></tr>
+    <tr><td>Burst (closed-loop)</td><td>documentdb</td><td class="num">43,935.3</td><td class="num">44,564</td><td class="num">155.98</td><td class="num">616</td></tr>
+  </tbody>
+</table>
+
+<h2>3. End-to-end 참고 지표</h2>
+<table>
+  <thead><tr><th>시나리오</th><th>대상</th><th>성공 tasks/s</th><th>Error %</th><th>Cycle p99 (ms)</th><th>find_input p99 (ms)</th></tr></thead>
+  <tbody>
+    <tr><td>Steady</td><td>mongo-vm</td><td class="num">134.10</td><td class="num"><span class="good">0.001</span></td><td class="num">2274.5</td><td class="num"><span class="good">47.0</span></td></tr>
+    <tr><td>Steady</td><td>documentdb</td><td class="num">134.07</td><td class="num">0.004</td><td class="num"><span class="good">2215.4</span></td><td class="num">137.6</td></tr>
+    <tr><td>Burst (open-loop)</td><td>mongo-vm</td><td class="num"><span class="good">151.68</span></td><td class="num"><span class="good">0.007</span></td><td class="num"><span class="good">3882.1</span></td><td class="num"><span class="good">1485.9</span></td></tr>
+    <tr><td>Burst (open-loop)</td><td>documentdb</td><td class="num">144.46</td><td class="num">0.024</td><td class="num">6536.2</td><td class="num">3601.3</td></tr>
+    <tr><td>Burst (closed-loop)</td><td>mongo-vm</td><td class="num"><span class="good">152.62</span></td><td class="num"><span class="good">0.010</span></td><td class="num"><span class="good">3761.4</span></td><td class="num"><span class="good">1416.9</span></td></tr>
+    <tr><td>Burst (closed-loop)</td><td>documentdb</td><td class="num">144.11</td><td class="num">0.030</td><td class="num">6403.8</td><td class="num">3485.4</td></tr>
+  </tbody>
+</table>
+
+<h2>결론 (HPC 연결 처닝 관점)</h2>
+<p>
+  이번 캠페인에서는 핵심 지표인 Connection Open 지연(특히 burst p99)에서 <b>mongo-vm이 DocumentDB보다 명확히 우위</b>입니다.
+  또한 mongo-vm은 더 높은 연결 생성 피크(초당 최대 712 / 681)에서도 cycle 및 cold-op tail을 더 낮게 유지했습니다.
+</p>
+
+</body>
+</html>
+

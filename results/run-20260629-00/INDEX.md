@@ -75,3 +75,8 @@ No-reuse confirmed on every iteration (`created/task = 1.000`).
   - `aggregate.json`
 - Console logs: `steady-console.log`, `burst-console.log`, `burst-closed-console.log`, `seed-console.log` (git-ignored where applicable).
 - Captured console logs: `_steady-console.log`, `_burst-console.log`.
+
+## Comparison report (Mongo vs DocumentDB)
+
+- English markdown: `summary-mongo-vm-vs-documentdb-20260629.md`
+- Korean HTML: `summary-mongo-vm-vs-documentdb-20260629-ko.html`
