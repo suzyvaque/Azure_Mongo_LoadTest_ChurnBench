@@ -40,20 +40,20 @@
   //   * Steady-only: set Steady.Enabled=true and Burst.Enabled=false for the smooth peak-hour case.
   "Scenario": {
     "Iterations": 3,
-    "IterationDurationSeconds": 600,
+    "IterationDurationSeconds": 300,
     "MaxConcurrentTasks": 15000,
     "ResourceSampleIntervalMs": 1000,
     "Steady": {
       "Enabled": false,
       "TasksPerSecond": 135,
-      "DurationSeconds": 600
+      "DurationSeconds": 300
     },
     "Burst": {
       "Enabled": true,
       "JobsPerSecondLambda": 0.57,
       "MaxTasksPerJob": 500,
       "MinTasksPerJob": 14,
-      "DurationSeconds": 600,
+      "DurationSeconds": 300,
       // Open-loop mode: when true, the (seed-deterministic) Poisson arrival schedule is injected
       // WITHOUT the MaxConcurrentTasks back-pressure gate, so the realized conn/sec equals the
       // offered schedule identically for every target regardless of backend speed. This makes the
