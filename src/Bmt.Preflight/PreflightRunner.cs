@@ -26,18 +26,20 @@ public sealed class PreflightRunner
     private readonly TargetKey _target;
     private readonly bool _warmup;
     private readonly bool _verifyDistinct;
+    private readonly int _hostCount;
     private readonly string _connectionString;
 
     private IReadOnlyList<EndPoint> _targetEndpoints = Array.Empty<EndPoint>();
     private IReadOnlyList<IPAddress> _targetIps = Array.Empty<IPAddress>();
     private int _targetPort;
 
-    public PreflightRunner(BmtConfig config, TargetKey target, bool warmup, bool verifyDistinct)
+    public PreflightRunner(BmtConfig config, TargetKey target, bool warmup, bool verifyDistinct, int hostCount = 1)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _target = target;
         _warmup = warmup;
         _verifyDistinct = verifyDistinct;
+        _hostCount = hostCount < 1 ? 1 : hostCount;
         _connectionString = TargetConnection.ResolveConnectionString(target);
     }
 
@@ -453,8 +455,13 @@ public sealed class PreflightRunner
             ChurnCapacityPerSec = Math.Round(capacity, 1),
         };
 
-        var concTarget = _config.Preflight.ConcurrentConnectionTarget;
-        var churnTarget = _config.Preflight.ConnectionChurnPerSecTarget;
+        // In a coordinated multi-host burst the ≥11,000 / ≥1,200 envelope is carried by ALL hosts
+        // combined, so each host only needs to sustain its share (total / host count).
+        var concTarget = (int)Math.Ceiling((double)_config.Preflight.ConcurrentConnectionTarget / _hostCount);
+        var churnTarget = (int)Math.Ceiling((double)_config.Preflight.ConnectionChurnPerSecTarget / _hostCount);
+        var shareNote = _hostCount > 1
+            ? $" (per-host share of {_hostCount} hosts; campaign totals {_config.Preflight.ConcurrentConnectionTarget:N0} concurrent / {_config.Preflight.ConnectionChurnPerSecTarget:N0} conn/s)"
+            : string.Empty;
         var twText = h.TcpTimedWaitDelayIsDefault ? $"{h.TcpTimedWaitDelaySeconds}s (default)" : $"{h.TcpTimedWaitDelaySeconds}s";
         var baseDetail = $"ephemeral ports {h.EphemeralPortStart}..{h.EphemeralPortStart + h.EphemeralPortCount - 1} " +
                          $"(count {h.EphemeralPortCount:N0}), TIME_WAIT {twText} -> churn capacity ~{capacity:N0} conn/s.";
@@ -480,7 +487,7 @@ public sealed class PreflightRunner
         }
 
         return PreflightCheckResult.Pass(7, "Client host headroom",
-            $"{baseDetail} Meets concurrent >= {concTarget:N0} and churn >= {churnTarget:N0} conn/s.");
+            $"{baseDetail} Meets concurrent >= {concTarget:N0} and churn >= {churnTarget:N0} conn/s.{shareNote}");
     }
 
     // 8. Clock & time sync (NTP).

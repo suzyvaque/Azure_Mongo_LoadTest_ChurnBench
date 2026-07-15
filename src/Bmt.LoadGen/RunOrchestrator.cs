@@ -47,7 +47,7 @@ public sealed class RunOrchestrator
         if (_options.RunPreflight)
         {
             ConsoleLog.Info("Running preflight gate...");
-            var preflight = new PreflightRunner(_config, target, warmup: false, verifyDistinct: false);
+            var preflight = new PreflightRunner(_config, target, warmup: false, verifyDistinct: false, hostCount: _options.HostCount);
             var report = await preflight.RunAsync(ct).ConfigureAwait(false);
             gate = new PreflightGateInfo
             {
@@ -108,10 +108,24 @@ public sealed class RunOrchestrator
 
         ConsoleLog.Info($"Active scenarios: Steady={runSteady}, Burst={runBurst}.");
 
+        if (_options.HostCount > 1 || _options.HostId > 1 || !string.IsNullOrEmpty(_options.RunTag))
+        {
+            ConsoleLog.Info(
+                $"Multi-host campaign: host {_options.HostId}/{_options.HostCount}" +
+                (string.IsNullOrEmpty(_options.RunTag) ? "" : $" tag='{_options.RunTag}'") +
+                $". Per-host RNG seed offset = {_options.HostId}.");
+        }
+
+        // ---- Optional coordinated start: all hosts begin the timed phase at the SAME wall-clock
+        // instant so their bursts overlap and combined conn/s + concurrency provably sum (§6.2). ----
+        await WaitForCoordinatedStartAsync(ct).ConfigureAwait(false);
+
         // ---- Campaign folder (shared by all iterations + aggregate) ----
         var campaignStamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
         var scenarioLabel = ScenarioLabel(_options.Scenario.ToString());
-        var campaignId = $"{cliName}-{scenarioLabel}-{workloadToken}-{campaignStamp}";
+        var hostSuffix = _options.HostCount > 1 ? $"-h{_options.HostId:D2}of{_options.HostCount:D2}" : string.Empty;
+        var tagPrefix = string.IsNullOrEmpty(_options.RunTag) ? string.Empty : $"{_options.RunTag}-";
+        var campaignId = $"{tagPrefix}{cliName}-{scenarioLabel}-{workloadToken}{hostSuffix}-{campaignStamp}";
         var campaignDir = Path.Combine(_options.ResultsDirectory, campaignId);
         Directory.CreateDirectory(campaignDir);
         ConsoleLog.Info($"Campaign folder: {campaignDir}");
@@ -169,7 +183,10 @@ public sealed class RunOrchestrator
         var factory = new TaskConnectionFactory(_options.Target, _connectionString, observer, _config.Client);
         var runner = new TaskRunner(factory, metrics, _options.Target, _config.TaskSleepMs, _config.Workload);
 
-        var reqIdRng = new Random(BmtConstants.DatasetSeed);
+        // Per-host RNG seed offset: with independent seeds the Poisson superposition of M hosts is
+        // Poisson(M·λ), so combined offered load scales with host count instead of M identical copies.
+        var hostSeed = BmtConstants.DatasetSeed + _options.HostId;
+        var reqIdRng = new Random(hostSeed);
         var reqIdLock = new object();
         string SelectReqId()
         {
@@ -201,7 +218,7 @@ public sealed class RunOrchestrator
 
             if (runBurst)
             {
-                var burst = new BurstScenario(_config.Scenario.Burst, effectiveDurationSec, BmtConstants.DatasetSeed);
+                var burst = new BurstScenario(_config.Scenario.Burst, effectiveDurationSec, hostSeed);
                 generators.Add(burst.RunAsync(launcher, ct));
             }
 
@@ -223,6 +240,10 @@ public sealed class RunOrchestrator
         var result = metrics.Build(counters, sampler.Samples(), sampler.Peaks());
         result.Target = cliName;
         result.Scenario = _options.Scenario.ToString();
+        result.HostId = _options.HostId;
+        result.HostCount = _options.HostCount;
+        result.RunTag = _options.RunTag;
+        result.StartedUnixSeconds = ((DateTimeOffset)startedUtc).ToUnixTimeSeconds();
         result.WorkloadMode = _config.Workload.Token();
         result.IterationNumber = iterNumber;
         result.IterationCount = totalIters;
@@ -273,6 +294,31 @@ public sealed class RunOrchestrator
         var runBurst = _options.Scenario is RunScenario.Burst or RunScenario.Both
                        && _config.Scenario.Burst.Enabled;
         return (runSteady, runBurst);
+    }
+
+    /// <summary>
+    /// When <c>--start-at</c> is supplied, block until that UTC instant so every host in a multi-host
+    /// campaign begins its timed phase together. A past instant starts immediately (with a warning).
+    /// </summary>
+    private async Task WaitForCoordinatedStartAsync(CancellationToken ct)
+    {
+        if (_options.StartAtUtc is not { } startAt)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var wait = startAt - now;
+        if (wait <= TimeSpan.Zero)
+        {
+            ConsoleLog.Warn($"--start-at {startAt:O} is in the past ({(-wait).TotalSeconds:F1}s ago); starting now. " +
+                            "Combined concurrency across hosts may be misaligned.");
+            return;
+        }
+
+        ConsoleLog.Info($"Coordinated start: waiting {wait.TotalSeconds:F1}s until {startAt:O} (host {_options.HostId}/{_options.HostCount})...");
+        await Task.Delay(wait, ct).ConfigureAwait(false);
+        ConsoleLog.Info("Coordinated start instant reached — beginning timed phase.");
     }
 
     private async Task<long> CountInputAsync(CancellationToken ct)

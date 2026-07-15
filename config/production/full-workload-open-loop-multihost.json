@@ -1,0 +1,46 @@
+{
+  // PRODUCTION config — multi-host OPEN-LOOP burst, sized to actually REACH the measured peak
+  // envelope (test_instruction.md §6.1/§6.2: ≈11,012 concurrent, ≈1,210 conn/s) rather than only the
+  // hourly-average arrival rate. A single generator cannot reach these numbers without hitting
+  // client-side ephemeral-port / TLS-CPU limits, so this campaign is meant to be run on SEVERAL
+  // co-located generator hosts and aggregated with `report merge`.
+  //
+  //   Run each host with:  --host-id N --host-count M --run-tag <campaign> --start-at <UTC>
+  //   Then aggregate with: report merge --input results --tag <campaign>
+  //
+  // WHY λ is raised here (from the measured 0.57 Job/s):
+  //   The measured 0.57 Job/s is the production ARRIVAL rate; the 11,012 concurrent / 1,210 conn/s are
+  //   the measured PEAK INSTANTANEOUS values produced by burst overlap. To reproduce and hold that peak
+  //   as a controlled input, λ is scaled up and injected open-loop (ungated) so realized load equals
+  //   the offered schedule identically for every target.
+  //
+  // CAPACITY MATH (size host count M and λ before running):
+  //   * Per-host sustainable conn/s ≈ ephemeralPortCount / TcpTimedWaitDelay
+  //       e.g. 55,534 ports / 30 s ≈ 1,850 conn/s per host  → need M ≥ ceil(totalConnPerSec / 1,850).
+  //   * Combined concurrency ≈ combinedOfferedTasksPerSec × per-Task hold (~2 s at TaskSleepMs=2000).
+  //       combinedOfferedTasksPerSec ≈ M × λ × mean(MinTasksPerJob..MaxTasksPerJob).
+  //       To sustain ≥ 11,000 concurrent: M × λ × mean ≳ 11,000 / 2 ≈ 5,500 tasks/s.
+  //   With mean(150..500) ≈ 325 and λ=6/host: 3 hosts → 3×6×325 ≈ 5,850 tasks/s → ≈ 11,700 concurrent,
+  //   ≈ 5,850 conn/s combined (well past the ≥1,200 spike). Verify the ACTUAL peak with `report merge`.
+  "Extends": "full-workload.json",
+
+  "Scenario": {
+    // Open-loop bypasses this gate, but keep it high so any accidental closed-loop run is not throttled.
+    "MaxConcurrentTasks": 30000,
+
+    "Steady": { "Enabled": false },
+    "Burst": {
+      "Enabled": true,
+      "OpenLoop": true,
+
+      // Per-host arrival rate — scale together with --host-count to hit the combined target (see math above).
+      "JobsPerSecondLambda": 6.0,
+
+      // Fatter minimum so each Job is a meaningful spike; 500 stays the worst-case batch cap.
+      "MinTasksPerJob": 150,
+      "MaxTasksPerJob": 500,
+
+      "DurationSeconds": 300
+    }
+  }
+}

@@ -15,6 +15,29 @@ public sealed class RunResult
 
     public string Scenario { get; set; } = string.Empty;
 
+    /// <summary>
+    /// 1-based identifier of the load-generating host within a coordinated multi-host burst campaign
+    /// (test_instruction.md §6.2 — reaching ≥11,000 concurrent / ≥1,200 conn/s requires several
+    /// co-located generators). Default 1 for a single-host run.
+    /// </summary>
+    public int HostId { get; set; } = 1;
+
+    /// <summary>Total number of load-generating hosts in the campaign (default 1 = single host).</summary>
+    public int HostCount { get; set; } = 1;
+
+    /// <summary>
+    /// Optional shared tag identifying one coordinated multi-host campaign, so per-host artifacts from
+    /// the same wall-clock window can be grouped by the <c>merge</c> command. Empty for solo runs.
+    /// </summary>
+    public string RunTag { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Unix time (whole seconds) at which this iteration's timed clock started. Combined with each
+    /// <see cref="ThroughputPoint.Second"/> it yields the absolute wall-clock second of every sample,
+    /// letting the <c>merge</c> command sum conn/s and in-flight concurrency across hosts precisely.
+    /// </summary>
+    public long StartedUnixSeconds { get; set; }
+
     /// <summary>Workload mode label: "full-workload", "find-input", or "insert-output".</summary>
     public string WorkloadMode { get; set; } = "full-workload";
 

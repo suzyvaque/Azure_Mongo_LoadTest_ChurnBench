@@ -83,6 +83,22 @@ public sealed class RunOptions
 
     public string ResultsDirectory { get; private set; } = "results";
 
+    /// <summary>1-based id of this load-generating host within a coordinated multi-host campaign.</summary>
+    public int HostId { get; private set; } = 1;
+
+    /// <summary>Total number of load-generating hosts in the campaign (per-host share = total/HostCount).</summary>
+    public int HostCount { get; private set; } = 1;
+
+    /// <summary>Shared campaign tag so per-host artifacts can be grouped by the <c>merge</c> command.</summary>
+    public string RunTag { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Optional UTC instant (ISO-8601) at which the timed phase must begin. All hosts pass the SAME
+    /// value so their bursts are wall-clock aligned and their concurrency/conn-s provably sum. Null =
+    /// start immediately.
+    /// </summary>
+    public DateTime? StartAtUtc { get; private set; }
+
     public bool ShowHelp { get; private set; }
 
     public static RunOptions Parse(string[] args)
@@ -117,6 +133,18 @@ public sealed class RunOptions
                 case "--results":
                     options.ResultsDirectory = RequireValue(args, ref i, arg);
                     break;
+                case "--host-id":
+                    options.HostId = ParsePositive(RequireValue(args, ref i, arg), arg);
+                    break;
+                case "--host-count":
+                    options.HostCount = ParsePositive(RequireValue(args, ref i, arg), arg);
+                    break;
+                case "--run-tag":
+                    options.RunTag = RequireValue(args, ref i, arg);
+                    break;
+                case "--start-at":
+                    options.StartAtUtc = ParseUtcInstant(RequireValue(args, ref i, arg));
+                    break;
                 case "--no-preflight":
                     options.RunPreflight = false;
                     break;
@@ -135,6 +163,12 @@ public sealed class RunOptions
         }
 
         options.Target = TargetConnection.Parse(targetRaw);
+        if (options.HostId > options.HostCount)
+        {
+            throw new ArgumentException(
+                $"--host-id ({options.HostId}) must be <= --host-count ({options.HostCount}).");
+        }
+
         return options;
     }
 
@@ -156,6 +190,30 @@ public sealed class RunOptions
         return seconds;
     }
 
+    private static int ParsePositive(string raw, string flag)
+    {
+        if (!int.TryParse(raw, out var v) || v <= 0)
+        {
+            throw new ArgumentException($"{flag} must be a positive integer (got '{raw}').");
+        }
+
+        return v;
+    }
+
+    private static DateTime ParseUtcInstant(string raw)
+    {
+        if (!DateTime.TryParse(
+                raw,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+                out var dt))
+        {
+            throw new ArgumentException($"--start-at must be an ISO-8601 UTC instant (got '{raw}').");
+        }
+
+        return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+    }
+
     private static string RequireValue(string[] args, ref int i, string flag)
     {
         if (i + 1 >= args.Length)
@@ -175,6 +233,12 @@ public sealed class RunOptions
         Console.WriteLine("  --scenario, -s      steady (A) | burst (B) | both (default: both).");
         Console.WriteLine("  --duration-sec, -d  Override each iteration's duration in seconds (for short smoke runs).");
         Console.WriteLine("  --results           Output directory for campaign folder (default: results).");
+        Console.WriteLine("  --host-id N         1-based id of this generator host in a multi-host burst (default 1).");
+        Console.WriteLine("  --host-count M      Total generator hosts in the campaign (default 1). Per-host churn/");
+        Console.WriteLine("                      concurrent preflight target = ceil(total / M). Seeds are offset by host.");
+        Console.WriteLine("  --run-tag TAG       Shared campaign tag stamped into artifacts so `report merge` can group hosts.");
+        Console.WriteLine("  --start-at UTC      ISO-8601 UTC instant to begin the timed phase (all hosts pass the SAME");
+        Console.WriteLine("                      value so bursts align and conn/s + concurrency provably sum across hosts).");
         Console.WriteLine("  --no-preflight      Skip the §6.3 preflight gate (NOT recommended; preconditions unverified).");
         Console.WriteLine("  --help,   -h        Show this help.");
         Console.WriteLine();
