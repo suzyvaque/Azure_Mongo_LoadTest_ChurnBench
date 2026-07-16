@@ -53,7 +53,7 @@ $PINNED_CONFIG    = 'config/production/full-workload-open-loop-2host.json'
 $PINNED_HOSTCOUNT = 2
 $PINNED_SCENARIO  = 'burst'
 $PINNED_RUNTAG    = 'openloop-2host-11k'
-$PINNED_RESULTS   = 'results'
+$PINNED_RESULTS   = 'results/run-20260715-max'
 
 # ---- Auto-detect environment (works on gen1 Desktop repo and gen2 C:\bmt) ----
 $roots = @('C:\bmt','C:\Users\suzyvaque\Desktop\Azure_Mongo_LoadTest_ChurnBench')
