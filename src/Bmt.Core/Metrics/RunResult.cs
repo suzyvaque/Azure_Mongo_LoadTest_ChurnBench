@@ -73,6 +73,20 @@ public sealed class RunResult
     /// <summary>Driver connection-open (handshake/auth) latency (§7.1/§7.2).</summary>
     public LatencySummary ConnectionOpenMs { get; set; } = LatencySummary.Empty();
 
+    /// <summary>
+    /// Handshake wire-negotiation latency: the driver's <c>hello</c>/<c>isMaster</c> command issued on
+    /// each brand-new connection during establishment (subset of <see cref="ConnectionOpenMs"/>).
+    /// </summary>
+    public LatencySummary HandshakeHelloMs { get; set; } = LatencySummary.Empty();
+
+    /// <summary>
+    /// SCRAM authentication latency: the <c>saslStart</c>/<c>saslContinue</c> commands issued on each
+    /// brand-new connection (subset of <see cref="ConnectionOpenMs"/>). Captured uniformly for every
+    /// target — including DocumentDB, which authenticates with SCRAM-SHA-256 — so the auth cost of the
+    /// cold-connection storm is directly comparable across backends.
+    /// </summary>
+    public LatencySummary HandshakeAuthMs { get; set; } = LatencySummary.Empty();
+
     /// <summary>MongoClient object-creation time (§7.1).</summary>
     public LatencySummary ClientCreateMs { get; set; } = LatencySummary.Empty();
 

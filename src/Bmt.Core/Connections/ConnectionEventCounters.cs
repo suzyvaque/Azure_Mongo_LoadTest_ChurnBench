@@ -16,12 +16,20 @@ public sealed class ConnectionEventCounters : IConnectionEventObserver
     private long _checkedOut;
     private long _openDurationTicks;
     private long _openDurationSamples;
+    private long _helloCommands;
+    private long _authCommands;
 
     public long Created => Interlocked.Read(ref _created);
     public long Ready => Interlocked.Read(ref _ready);
     public long Closed => Interlocked.Read(ref _closed);
     public long Failed => Interlocked.Read(ref _failed);
     public long CheckedOut => Interlocked.Read(ref _checkedOut);
+
+    /// <summary>Count of <c>hello</c>/<c>isMaster</c> wire-negotiation commands seen during handshakes.</summary>
+    public long HelloCommands => Interlocked.Read(ref _helloCommands);
+
+    /// <summary>Count of SCRAM <c>saslStart</c>/<c>saslContinue</c> auth commands seen during handshakes.</summary>
+    public long AuthCommands => Interlocked.Read(ref _authCommands);
 
     /// <summary>Mean connection-open (handshake) duration across all <c>OnConnectionReady</c> samples.</summary>
     public TimeSpan MeanOpenDuration
@@ -57,4 +65,20 @@ public sealed class ConnectionEventCounters : IConnectionEventObserver
 
     public void OnConnectionCheckedOut(ConnectionId connectionId) =>
         Interlocked.Increment(ref _checkedOut);
+
+    public void OnHandshakeCommand(string commandName, TimeSpan duration, bool success)
+    {
+        if (IsAuthCommand(commandName))
+        {
+            Interlocked.Increment(ref _authCommands);
+        }
+        else
+        {
+            Interlocked.Increment(ref _helloCommands);
+        }
+    }
+
+    /// <summary>True for SCRAM auth commands (<c>saslStart</c>/<c>saslContinue</c>); false for hello/isMaster.</summary>
+    public static bool IsAuthCommand(string commandName) =>
+        commandName.StartsWith("sasl", StringComparison.OrdinalIgnoreCase);
 }

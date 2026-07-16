@@ -351,6 +351,8 @@ public static class HtmlReportBuilder
 
         LatencyRow(sb, "full cycle", r.TaskCycleLatencyMs);
         LatencyRow(sb, "connection open", r.ConnectionOpenMs);
+        LatencyRow(sb, "handshake hello", r.HandshakeHelloMs);
+        LatencyRow(sb, "handshake auth (SCRAM)", r.HandshakeAuthMs);
         LatencyRow(sb, "client create", r.ClientCreateMs);
         sb.Append("</tbody></table>");
     }

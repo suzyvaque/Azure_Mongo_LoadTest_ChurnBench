@@ -54,4 +54,12 @@ public sealed class CompositeConnectionObserver : IConnectionEventObserver
             s.OnConnectionCheckedOut(connectionId);
         }
     }
+
+    public void OnHandshakeCommand(string commandName, TimeSpan duration, bool success)
+    {
+        foreach (var s in _sinks)
+        {
+            s.OnHandshakeCommand(commandName, duration, success);
+        }
+    }
 }

@@ -23,6 +23,8 @@ public sealed class MetricsCollector : IConnectionEventObserver
     private readonly LatencyDigest _cycle = new();
     private readonly LatencyDigest _clientCreate = new();
     private readonly LatencyDigest _connectionOpen = new();
+    private readonly LatencyDigest _handshakeHello = new();
+    private readonly LatencyDigest _handshakeAuth = new();
 
     private readonly ConcurrentDictionary<BmtErrorType, long> _errors = new();
     private readonly ConcurrentDictionary<int, SecondBucket> _seconds = new();
@@ -124,6 +126,25 @@ public sealed class MetricsCollector : IConnectionEventObserver
     {
     }
 
+    void IConnectionEventObserver.OnHandshakeCommand(string commandName, TimeSpan duration, bool success)
+    {
+        // Only successful handshake commands carry meaningful latency; failures are counted in the error
+        // taxonomy. Split SCRAM auth (saslStart/saslContinue) from the hello/isMaster wire negotiation.
+        if (!success)
+        {
+            return;
+        }
+
+        if (Bmt.Core.Connections.ConnectionEventCounters.IsAuthCommand(commandName))
+        {
+            _handshakeAuth.Record(duration.TotalMilliseconds);
+        }
+        else
+        {
+            _handshakeHello.Record(duration.TotalMilliseconds);
+        }
+    }
+
     private LatencyDigest Digest(string opName) => opName switch
     {
         OpNames.FindInput => _findInput,
@@ -164,6 +185,8 @@ public sealed class MetricsCollector : IConnectionEventObserver
             },
             TaskCycleLatencyMs = _cycle.Summarize(),
             ConnectionOpenMs = _connectionOpen.Summarize(),
+            HandshakeHelloMs = _handshakeHello.Summarize(),
+            HandshakeAuthMs = _handshakeAuth.Summarize(),
             ClientCreateMs = _clientCreate.Summarize(),
             OperationLatencyMs = new Dictionary<string, LatencySummary>
             {

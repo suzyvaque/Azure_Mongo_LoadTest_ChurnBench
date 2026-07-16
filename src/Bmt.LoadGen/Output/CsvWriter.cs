@@ -68,6 +68,8 @@ public static class CsvWriter
 
         AppendRow(sb, "task_cycle", result.TaskCycleLatencyMs);
         AppendRow(sb, "connection_open", result.ConnectionOpenMs);
+        AppendRow(sb, "handshake_hello", result.HandshakeHelloMs);
+        AppendRow(sb, "handshake_auth", result.HandshakeAuthMs);
         AppendRow(sb, "client_create", result.ClientCreateMs);
 
         await File.WriteAllTextAsync(path, sb.ToString(), ct).ConfigureAwait(false);

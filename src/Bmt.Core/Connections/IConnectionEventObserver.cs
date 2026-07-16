@@ -25,4 +25,13 @@ public interface IConnectionEventObserver
     /// (one fresh connection per Task); a higher count hints at unexpected reuse/retries.
     /// </summary>
     void OnConnectionCheckedOut(ConnectionId connectionId);
+
+    /// <summary>
+    /// A handshake command completed while a brand-new connection was being established: the
+    /// <c>hello</c>/<c>isMaster</c> wire-negotiation, or a SCRAM <c>saslStart</c>/<c>saslContinue</c>
+    /// authentication round. Lets the run isolate the authentication cost from the raw TCP+TLS portion
+    /// of connection-open. Fires uniformly for every target (mongo and DocumentDB both do SCRAM-SHA-256),
+    /// so the auth breakdown stays methodologically comparable across backends.
+    /// </summary>
+    void OnHandshakeCommand(string commandName, TimeSpan duration, bool success);
 }

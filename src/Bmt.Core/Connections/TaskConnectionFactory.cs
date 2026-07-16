@@ -21,6 +21,11 @@ namespace Bmt.Core.Connections;
 /// </summary>
 public sealed class TaskConnectionFactory
 {
+    // The commands the MongoDB driver issues while establishing a NEW connection: wire negotiation
+    // (hello/isMaster) and SCRAM authentication (saslStart/saslContinue). Everything else is workload.
+    private static readonly HashSet<string> HandshakeCommands =
+        new(StringComparer.OrdinalIgnoreCase) { "hello", "isMaster", "saslStart", "saslContinue" };
+
     private readonly string _connectionString;
     private readonly bool _disableRetryWrites;
     private readonly IConnectionEventObserver? _observer;
@@ -148,8 +153,32 @@ public sealed class TaskConnectionFactory
             cb.Subscribe<ConnectionClosedEvent>(e => observer.OnConnectionClosed(e.ConnectionId));
             cb.Subscribe<ConnectionFailedEvent>(e => observer.OnConnectionFailed(e.ConnectionId, e.Exception));
             cb.Subscribe<ConnectionPoolCheckedOutConnectionEvent>(e => observer.OnConnectionCheckedOut(e.ConnectionId));
+
+            // Handshake/auth timing (§7.2): the driver emits a command event for every command, including
+            // the connection-establishment handshake (hello/isMaster wire negotiation + SCRAM
+            // saslStart/saslContinue auth). We filter to just those so the run can report auth cost
+            // separately from the raw TCP+TLS portion of connection-open. Command bodies are redacted by
+            // the driver for security; only the name + duration are used here. Applied uniformly to every
+            // target (DocumentDB authenticates with SCRAM-SHA-256 too), so the breakdown stays comparable.
+            cb.Subscribe<CommandSucceededEvent>(e =>
+            {
+                if (IsHandshakeCommand(e.CommandName))
+                {
+                    observer.OnHandshakeCommand(e.CommandName, e.Duration, success: true);
+                }
+            });
+            cb.Subscribe<CommandFailedEvent>(e =>
+            {
+                if (IsHandshakeCommand(e.CommandName))
+                {
+                    observer.OnHandshakeCommand(e.CommandName, e.Duration, success: false);
+                }
+            });
         };
 
         return settings;
     }
+
+    /// <summary>True when the command is part of connection establishment (wire negotiation or SCRAM auth).</summary>
+    private static bool IsHandshakeCommand(string commandName) => HandshakeCommands.Contains(commandName);
 }
