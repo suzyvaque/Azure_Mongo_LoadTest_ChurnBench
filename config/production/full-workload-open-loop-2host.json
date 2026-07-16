@@ -1,0 +1,37 @@
+{
+  // PRODUCTION config — 2-HOST open-loop burst, sized to REACH ≈11,000 concurrent / ≥1,210 conn/s using
+  // exactly the two co-located generators per target AZ (gen1 + gen2), WITHOUT exceeding either host's
+  // ephemeral-port churn ceiling (~55,535 ports / 30 s TIME_WAIT ≈ 1,850 conn/s per host).
+  //
+  //   Run each host with:  --host-id N --host-count 2 --run-tag <campaign> --start-at <UTC>
+  //   Then aggregate with: report merge --input results --tag <campaign>
+  //
+  // SIZING MATH (2 hosts):
+  //   * Offered conn/s per host  ≈ λ × mean(MinTasksPerJob..MaxTasksPerJob) = 5.0 × mean(150..500=325)
+  //                              ≈ 1,625 conn/s/host  (< 1,850 ceiling → NO client meltdown).
+  //   * Combined offered conn/s  ≈ 2 × 1,625 = 3,250 conn/s   (≫ the ≥1,210 conn/s requirement).
+  //   * Concurrency ≈ combined conn/s × per-Task hold. Hold = TaskSleepMs (3.5 s) + ~0.1 s op ≈ 3.6 s.
+  //                  3,250 × 3.6 ≈ 11,700 concurrent  (≥ 11,000 requirement, with headroom).
+  //   NOTE: hold is raised from the 2 s calc-substitute to 3.5 s BECAUSE two hosts cannot reach 11,000
+  //   concurrent via churn alone without pushing each host past its 1,850 conn/s ceiling. 3.5 s keeps
+  //   churn safe while still holding the target concurrency. Verify the ACTUAL peak with `report merge`.
+  "Extends": "full-workload-open-loop-multihost.json",
+
+  // Longer hold so 2 hosts sustain ≈11,700 concurrent at a safe ~3,250 conn/s (see math above).
+  "TaskSleepMs": 3500,
+
+  "Scenario": {
+    "Burst": {
+      "Enabled": true,
+      "OpenLoop": true,
+
+      // Per-host arrival rate kept so each host offers ≈1,625 conn/s (< 1,850 ceiling).
+      "JobsPerSecondLambda": 5.0,
+
+      "MinTasksPerJob": 150,
+      "MaxTasksPerJob": 500,
+
+      "DurationSeconds": 300
+    }
+  }
+}
