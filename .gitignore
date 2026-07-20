@@ -428,8 +428,7 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# Handoff of previous test environment
-handoff/
+# Local connection-string dumps (secrets stay in machine env vars, never in the repo)
 connection-strings.json
 # Benchmark run artifacts (preflight JSON, raw run output)
 artifacts/
@@ -439,7 +438,7 @@ artifacts/
 results/**/*.log
 
 # Cosmos RU scaling audit log (operational, echoes account/RG) - keep out of repo
-scripts/cosmos-ru.log
+scripts/ops/cosmos-ru.log
 
 # Terraform state (contains secrets) + local provider cache
 **/.terraform/
