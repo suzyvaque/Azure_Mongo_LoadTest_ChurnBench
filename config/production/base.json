@@ -1,0 +1,64 @@
+{
+  // ============================================================================================
+  // BASE production config — PLUMBING ONLY. Rarely edited.
+  //
+  // This file holds the stable envelope shared by every production run: the dataset shape, seeder
+  // batch sizes, per-Task MongoClient tuning, and the preflight gate. The OPERATOR HOT KNOBS
+  // (durations, iterations, arrival rates, open/closed loop) live in run.json, which Extends this
+  // file. Per-test configs (full-workload*, single-*) Extends run.json.
+  //
+  //   base.json  (this file — plumbing)
+  //     └── run.json            (hot knobs: iterations / duration / rates / open-loop)
+  //           ├── full-workload.json      → full-workload-{steady,burst,open-loop,...}.json
+  //           ├── single-find.json        → single-find-{steady,burst}.json
+  //           └── single-insert.json      → single-insert-{steady,burst}.json
+  //
+  // Child configs deep-merge OVER this file: repeat any key in a child to override it
+  // (scalars/arrays replace; nested objects merge key-by-key).
+  //
+  // Secrets are NOT stored here — connection strings are read at runtime from env vars:
+  //   cosmos-ru -> BMT_CONN_COSMOS,  documentdb -> BMT_CONN,  mongo-vm -> BMT_CONN_MONGO,
+  //   mongo-shard -> BMT_CONN_MONGO_SHARD,  monitor user -> BMT_CONN_MONGO_MONITOR
+  // ============================================================================================
+
+  // Dataset: exactly 100,000 docs, fixed seed 42, four whole-document size buckets.
+  "Dataset": {
+    "DocumentCount": 100000,
+    "Seed": 42,
+    "Buckets": [
+      { "Name": "Small",  "SizeBytes": 6144,  "Count": 10000 },
+      { "Name": "Medium", "SizeBytes": 16384, "Count": 15000 },
+      { "Name": "Large",  "SizeBytes": 51200, "Count": 35000 },
+      { "Name": "XL",     "SizeBytes": 59392, "Count": 40000 }
+    ]
+  },
+
+  // Seeder tuning. Cosmos uses smaller insert batches to ease RU throttling; RU/s is never changed.
+  "Seeder": {
+    "InsertBatchSize": 1000,
+    "CosmosInsertBatchSize": 100,
+    "DeleteBatchSize": 500
+  },
+
+  // Per-Task MongoClient tuning (applied uniformly; does NOT relax the no-reuse model).
+  "Client": {
+    "ServerSelectionTimeoutMs": 5000,
+    "ConnectTimeoutMs": 5000,
+    "SocketTimeoutMs": 0,
+    "DirectConnectionForSingleNode": true
+  },
+
+  // Preflight gate (§6.3).
+  "Preflight": {
+    "ResultsDirectory": "artifacts",
+    "MinFreeDiskBytes": 1073741824,
+    "ConcurrentConnectionTarget": 11000,
+    "ConnectionChurnPerSecTarget": 1200,
+    "RequirePrivateNetwork": true,
+    "SampleSize": 1000,
+    "WarmupMaxAgeMinutes": 360,
+    "CosmosExpectedRuPerSec": 100000,
+    "DocumentDbExpectedTier": "M80",
+    "MongoExpectedMaxIncomingConnections": null
+  }
+}

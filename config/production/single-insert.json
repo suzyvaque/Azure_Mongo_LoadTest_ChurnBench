@@ -1,7 +1,7 @@
 {
   // PRODUCTION config — single-op insert-output. Each fresh per-Task connection performs exactly ONE
   // op: insert into calc_output (no prior remove). Isolates cold-connection WRITE cost across all
-  // three backends. Inherits the scenario/dataset/seeder/preflight/client envelope from common.json.
+  // three backends. Inherits the run knobs from run.json (which Extends base.json for plumbing).
   //
   // ⚠ ACCUMULATION: insert-only never removes, so calc_output GROWS for the whole campaign (~millions
   // of docs over 3x10 min). Implications:
@@ -10,7 +10,7 @@
   //   * each Task inserts with a fresh ObjectId _id (no collision with the seeded ReqId==_id docs).
   // Recommended: run `clean-output` before AND after this campaign to empty calc_output without
   // re-seeding the 100k input, so iteration 1 starts from the seeded baseline; record the start count.
-  "Extends": "common.json",
+  "Extends": "run.json",
 
   // SingleOp skips the calc-time sleep.
   "TaskSleepMs": 0,

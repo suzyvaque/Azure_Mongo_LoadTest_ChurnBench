@@ -1,7 +1,7 @@
 {
   // PRODUCTION single-op find-input, BURST-only. Extends single-find.json (SingleOp/FindInput,
   // TaskSleepMs=0) and enables ONLY the Burst scenario. Keeping Steady and Burst separate avoids
-  // stacking their arrival rates (see common.json + test_instruction.md §6.2).
+  // stacking their arrival rates (see run.json + test_instruction.md §6.2).
   "Extends": "single-find.json",
 
   "Scenario": {

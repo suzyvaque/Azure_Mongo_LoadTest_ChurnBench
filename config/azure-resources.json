@@ -1,0 +1,40 @@
+{
+  // ============================================================================================
+  // Azure resource identifiers for POST-RUN metric pulls (server-side capture, handoff Package B5).
+  // Identifiers ONLY — NO secrets. Connection strings stay in BMT_CONN* env vars.
+  //
+  // Consumed by scripts/run/Invoke-LocalCampaign.ps1 -> the Azure metric-pull hook, which is a NO-OP
+  // when `az` is not logged in or when the fields below are left empty (so the runner is testable
+  // without any Azure dependency). Fill these in before running Package B on the AZ1 host set.
+  // ============================================================================================
+
+  "Subscription": "",
+  "ResourceGroup": "rg-db-test-hpc",
+
+  // DocumentDB (PaaS) — Azure Cosmos DB for MongoDB vCore cluster.
+  "DocumentDb": {
+    "ClusterName": "",
+    "Tier": "M80",
+    "MetricsResourceId": ""
+  },
+
+  // Cosmos DB for MongoDB (RU) account (out of scope for server RU capture this round; identifiers kept).
+  "CosmosRu": {
+    "AccountName": "",
+    "Region": "koreacentral",
+    "MetricsResourceId": ""
+  },
+
+  // Self-managed MongoDB on Azure VMs. Used for VM host metrics (CPU/mem/net via Azure Monitor) and
+  // for locating the mongod.log slice per target. serverStatus/connPoolStats come from the bmt_monitor
+  // user (BMT_CONN_MONGO_MONITOR), not from these identifiers.
+  "MongoVm": {
+    "ActiveVmName": "vm-dbtest-hpc-mongo",
+    "MongodLogPath": "E:\\mongo\\log\\mongod.log"
+  },
+  "MongoShard": {
+    "MongosVmNames": [],
+    "ShardVmNames": [],
+    "MongodLogPath": "E:\\mongo\\log\\mongod.log"
+  }
+}

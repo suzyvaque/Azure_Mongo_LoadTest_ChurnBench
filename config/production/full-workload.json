@@ -1,11 +1,11 @@
 {
   // PRODUCTION config — full 4-op workload (find-input -> remove-output -> insert-output -> find-output).
   // This is the canonical benchmark run. Inherits the scenario/dataset/seeder/preflight/client envelope
-  // from common.json; only the workload + calc-time sleep differ here.
+  // from run.json; only the workload + calc-time sleep differ here.
   //
-  // Scenario selection (Steady vs Burst) lives in common.json via the per-scenario "Enabled" flags
-  // — enable just one at a time to keep them separate. Override here only if this run needs to differ.
-  "Extends": "common.json",
+  // Scenario selection (Steady vs Burst) and all run knobs live in run.json (which Extends base.json)
+  // — enable just one scenario at a time to keep them separate. Override here only if this run differs.
+  "Extends": "run.json",
 
   // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6).
   "TaskSleepMs": 2000,

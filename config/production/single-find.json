@@ -1,8 +1,8 @@
 {
   // PRODUCTION config — single-op find-input. Each fresh per-Task connection performs exactly ONE op:
   // find(calc_input by ReqId). Isolates cold-connection READ cost across all three backends.
-  // Inherits the scenario/dataset/seeder/preflight/client envelope from common.json.
-  "Extends": "common.json",
+  // Inherits the run knobs from run.json (which Extends base.json for dataset/seeder/preflight/client).
+  "Extends": "run.json",
 
   // SingleOp skips the calc-time sleep.
   "TaskSleepMs": 0,

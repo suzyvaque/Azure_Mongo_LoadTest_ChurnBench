@@ -38,9 +38,7 @@
 
       // Fatter minimum so each Job is a meaningful spike; 500 stays the worst-case batch cap.
       "MinTasksPerJob": 150,
-      "MaxTasksPerJob": 500,
-
-      "DurationSeconds": 300
+      "MaxTasksPerJob": 500
     }
   }
 }

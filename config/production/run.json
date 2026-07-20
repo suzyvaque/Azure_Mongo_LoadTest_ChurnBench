@@ -1,0 +1,56 @@
+{
+  // ============================================================================================
+  // RUN config — OPERATOR HOT KNOBS. This is the ONE file you edit to shape a campaign.
+  // Inherits all plumbing (dataset / seeder / client / preflight) from base.json.
+  //
+  // Per-test configs Extends THIS file and override only Workload (+ TaskSleepMs for single-op)
+  // and the scenario Enabled/OpenLoop flags. Edit the values under the banner below to change
+  // test length, load, and loop mode for every production run at once.
+  // ============================================================================================
+  "Extends": "base.json",
+
+  // ================================ ==== EDIT THESE ==== =======================================
+  // Per-Task calc-time substitute sleep, in ms (test_instruction.md §6.6). Full-workload holds the
+  // connection ~2 s to emulate calc time; single-op configs override this to 0.
+  "TaskSleepMs": 2000,
+
+  "Scenario": {
+    // How many back-to-back timed iterations per invocation. Each writes its own artifacts; an
+    // aggregate.json is written at the campaign root after the last iteration.
+    "Iterations": 3,
+
+    // SINGLE canonical duration (seconds) applied to EVERY scenario generator per iteration.
+    // This is the one duration knob — it overrides any per-scenario default. CLI --duration-sec
+    // still wins over this for quick smoke runs.
+    "IterationDurationSeconds": 300,
+
+    // Client-side back-pressure cap on concurrently in-flight Tasks (one fresh connection each).
+    // Bypassed when Burst.OpenLoop = true; keep it at/above the ≥11,000 concurrent target otherwise.
+    "MaxConcurrentTasks": 15000,
+
+    // ---- Scenario A: steady peak-hour sustained load. Enable ONLY one of Steady/Burst at a time;
+    //      running both STACKS their arrival rates (~2x the measured peak). ----
+    "Steady": {
+      "Enabled": false,
+      "TasksPerSecond": 135
+    },
+
+    // ---- Scenario B: Poisson-arrival burst (default). Reproduces the full peak envelope on its own. ----
+    "Burst": {
+      "Enabled": true,
+      "JobsPerSecondLambda": 0.57,
+      "MinTasksPerJob": 14,
+      "MaxTasksPerJob": 500,
+
+      // Open-loop: inject the (seed-deterministic) Poisson schedule WITHOUT the MaxConcurrentTasks
+      // gate, so realized conn/sec == the offered schedule identically for every target (a controlled
+      // INPUT for fair cross-target comparison). false = closed-loop (gate on, bounds socket growth).
+      "OpenLoop": false
+    },
+    // ============================== ==== END EDIT THESE ==== ===================================
+
+    // Period (ms) for sampling client-host resources (ports/TIME_WAIT/handles/CPU/mem), §7.3.
+    // Leave as-is unless you need finer/coarser host telemetry.
+    "ResourceSampleIntervalMs": 1000
+  }
+}

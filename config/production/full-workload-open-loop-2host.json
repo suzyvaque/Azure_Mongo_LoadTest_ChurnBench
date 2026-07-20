@@ -29,9 +29,7 @@
       "JobsPerSecondLambda": 5.0,
 
       "MinTasksPerJob": 150,
-      "MaxTasksPerJob": 500,
-
-      "DurationSeconds": 300
+      "MaxTasksPerJob": 500
     }
   }
 }
