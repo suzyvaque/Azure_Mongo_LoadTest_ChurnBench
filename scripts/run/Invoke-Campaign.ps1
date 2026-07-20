@@ -77,7 +77,7 @@ Write-Host "  start-at   : $startAt  (T+${LeadSeconds}s)"
 Write-Host "  config     : $Config"
 Write-Host "===================================" -ForegroundColor Cyan
 
-$scriptPath = "$RepoDir\scripts\multihost\Run-BurstHost.ps1"
+$scriptPath = "$RepoDir\scripts\run\Run-BurstHost.ps1"
 $pushFlag   = if ($PushResults) { '-PushResults' } else { '' }
 $noPfFlag   = if ($NoPreflight) { '-NoPreflight' } else { '' }
 

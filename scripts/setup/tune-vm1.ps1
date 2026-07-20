@@ -33,11 +33,11 @@
 
 .EXAMPLE
     # Apply benchmark tuning:
-    powershell -ExecutionPolicy Bypass -File scripts\tune-vm1.ps1
+    powershell -ExecutionPolicy Bypass -File scripts\setup\tune-vm1.ps1
 
 .EXAMPLE
     # Restore defaults after the benchmark:
-    powershell -ExecutionPolicy Bypass -File scripts\tune-vm1.ps1 -Revert
+    powershell -ExecutionPolicy Bypass -File scripts\setup\tune-vm1.ps1 -Revert
 #>
 [CmdletBinding()]
 param(

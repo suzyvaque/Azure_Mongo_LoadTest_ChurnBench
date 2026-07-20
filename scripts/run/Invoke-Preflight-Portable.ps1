@@ -4,7 +4,7 @@
   (C:\dotnet or PATH), injects the target's Machine-scope conn env var into the process, and runs the
   preflight against the 2-host open-loop config. Works on both gen1 (Desktop repo, system dotnet) and
   gen2 (C:\bmt, C:\dotnet) hosts.
-    az vm run-command invoke ... --scripts @scripts/multihost/Invoke-Preflight-Portable.ps1 --parameters Target=mongo-shard
+    az vm run-command invoke ... --scripts @scripts/run/Invoke-Preflight-Portable.ps1 --parameters Target=mongo-shard
 #>
 param([Parameter(Mandatory)][string]$Target)
 $roots = @('C:\bmt','C:\Users\suzyvaque\Desktop\Azure_Mongo_LoadTest_ChurnBench')

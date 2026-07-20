@@ -19,7 +19,7 @@
     To reach $0 you would have to DELETE the database/collections and re-seed 100k + reindex before
     the next run — not what this script does (it preserves the byte-identical seed-42 dataset).
 
-    Every action is appended to scripts\cosmos-ru.log for an audit trail (timestamp, old -> new RU/s,
+    Every action is appended to scripts\ops\cosmos-ru.log for an audit trail (timestamp, old -> new RU/s,
     who/where). The log is git-ignored (see .gitignore) because it is operational, not a result.
 
 .PARAMETER Show
@@ -50,15 +50,15 @@
 
 .EXAMPLE
     # Before a Cosmos run (raise to the test value and wait until it's live):
-    pwsh -File scripts\cosmos-ru.ps1 -Set 100000 -Wait
+    pwsh -File scripts\ops\cosmos-ru.ps1 -Set 100000 -Wait
 
 .EXAMPLE
     # After the Cosmos run + buffer (drop to the real minimum to save cost):
-    pwsh -File scripts\cosmos-ru.ps1 -Min
+    pwsh -File scripts\ops\cosmos-ru.ps1 -Min
 
 .EXAMPLE
     # Just inspect, change nothing:
-    pwsh -File scripts\cosmos-ru.ps1 -Show
+    pwsh -File scripts\ops\cosmos-ru.ps1 -Show
 #>
 [CmdletBinding(DefaultParameterSetName = 'Show')]
 param(

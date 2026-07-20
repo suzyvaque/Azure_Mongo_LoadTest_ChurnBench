@@ -2,7 +2,7 @@
 .SYNOPSIS
   Run the loadgen preflight for one target on a generator VM, injecting the target's Machine-scope
   connection env var into the process (run-command's agent env may predate the var being set).
-  Example: az vm run-command invoke ... --scripts @scripts/multihost/Invoke-Preflight.ps1 --parameters Target=mongo-vm
+  Example: az vm run-command invoke ... --scripts @scripts/run/Invoke-Preflight.ps1 --parameters Target=mongo-vm
 #>
 param([Parameter(Mandatory)][string]$Target)
 $env:DOTNET_ROOT = 'C:\dotnet'

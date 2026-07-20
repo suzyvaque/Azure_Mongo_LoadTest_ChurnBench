@@ -4,7 +4,7 @@
   Uses --force so calc_input/calc_output are emptied (batched deletes, sharding preserved) then reseeded
   from scratch (seed 42, byte-identical). Injects the Machine-scope BMT_CONN_MONGO_SHARD into the process
   (run-command's agent env may predate the var). Run on a generator VM that has the repo built at C:\bmt.
-    az vm run-command invoke ... --scripts @scripts/multihost/Reseed-MongoShard.ps1
+    az vm run-command invoke ... --scripts @scripts/ops/Reseed-MongoShard.ps1
 #>
 $env:DOTNET_ROOT = 'C:\dotnet'
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')

@@ -14,7 +14,7 @@ wall-clock start, then merge each host's per-second series to prove the combined
 | `documentdb` | 2 | `vm-dbtest-hpc-0-az2`, `vm-dbtest-hpc-0-az2-gen2` | `vm-dbtest-hpc-0-az2-vnet` (peered to docdb PE) |
 
 Each host reads its own connection string from a **machine env var** (set once per host — see
-`scripts/vm1-az2-setup-and-run.ps1` STEP 4). Secrets are never passed through these scripts.
+`scripts/setup/vm1-az2-setup-and-run.ps1` STEP 4). Secrets are never passed through these scripts.
 
 ## Scripts
 
@@ -31,20 +31,20 @@ Each host reads its own connection string from a **machine env var** (set once p
 ```powershell
 # 1) Launch a 2-host DocumentDB burst (starts 2 min from now, hosts push results to the shared repo):
 az login
-cd C:\bmt\scripts\multihost
+cd C:\bmt\scripts\run
 .\Invoke-Campaign.ps1 -Target documentdb -RunTag docdb-m80-burst -PushResults
 
 # 2) After all hosts finish and pushed, pull the repo so results/ has EVERY host, then merge:
 cd C:\bmt
 git pull --rebase origin main
-.\scripts\multihost\Merge-Campaign.ps1 -RunTag docdb-m80-burst -InputDir results
+.\scripts\run\Merge-Campaign.ps1 -RunTag docdb-m80-burst -InputDir results
 ```
 
 For Mongo:
 
 ```powershell
 .\Invoke-Campaign.ps1 -Target mongo-vm -RunTag mongo-burst -PushResults
-.\scripts\multihost\Merge-Campaign.ps1 -RunTag mongo-burst -InputDir results
+.\scripts\run\Merge-Campaign.ps1 -RunTag mongo-burst -InputDir results
 ```
 
 ## Running a host manually (without the orchestrator)
@@ -73,7 +73,7 @@ upper-bound estimate.
 
 The new `*-gen2` VMs need the same setup as the originals before they can run:
 1. TCP tuning (ephemeral 10000–65534, `TcpTimedWaitDelay=30`) + reboot — see
-   `scripts/vm1-az2-setup-and-run.ps1` STEP 1.
+   `scripts/setup/vm1-az2-setup-and-run.ps1` STEP 1.
 2. .NET 8 SDK, clone repo to `C:\bmt`, `dotnet build -c Release`.
 3. Set the target's connection env var at **Machine** scope (so `az vm run-command`'s SYSTEM context
    sees it): e.g. `[Environment]::SetEnvironmentVariable("BMT_CONN", "<conn>", "Machine")`.
