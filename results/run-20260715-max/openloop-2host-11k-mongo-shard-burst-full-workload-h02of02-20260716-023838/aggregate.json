@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\openloop-2host-11k-mongo-shard-burst-full-workload-h02of02-20260716-023838-iter-01-20260716-023838.json",
+      "ArtifactPath": "iter-01\\iter-01-20260716-023838.json",
       "DurationSeconds": 321.694,
       "TotalTasks": 138668,
       "SuccessfulTasks": 13797,
@@ -90,7 +90,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\openloop-2host-11k-mongo-shard-burst-full-workload-h02of02-20260716-023838-iter-02-20260716-024359.json",
+      "ArtifactPath": "iter-02\\iter-02-20260716-024359.json",
       "DurationSeconds": 321.42,
       "TotalTasks": 139744,
       "SuccessfulTasks": 9004,
@@ -173,7 +173,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\openloop-2host-11k-mongo-shard-burst-full-workload-h02of02-20260716-023838-iter-03-20260716-024921.json",
+      "ArtifactPath": "iter-03\\iter-03-20260716-024921.json",
       "DurationSeconds": 313.832,
       "TotalTasks": 141536,
       "SuccessfulTasks": 10426,

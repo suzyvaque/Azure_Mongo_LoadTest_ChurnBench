@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\openloop-2host-11k-documentdb-burst-full-workload-h02of02-20260716-030601-iter-01-20260716-030601.json",
+      "ArtifactPath": "iter-01\\iter-01-20260716-030601.json",
       "DurationSeconds": 322.436,
       "TotalTasks": 63441,
       "SuccessfulTasks": 16815,
@@ -92,7 +92,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\openloop-2host-11k-documentdb-burst-full-workload-h02of02-20260716-030601-iter-02-20260716-031123.json",
+      "ArtifactPath": "iter-02\\iter-02-20260716-031123.json",
       "DurationSeconds": 323.787,
       "TotalTasks": 43804,
       "SuccessfulTasks": 35275,
@@ -175,7 +175,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\openloop-2host-11k-documentdb-burst-full-workload-h02of02-20260716-030601-iter-03-20260716-031647.json",
+      "ArtifactPath": "iter-03\\iter-03-20260716-031647.json",
       "DurationSeconds": 339.871,
       "TotalTasks": 39055,
       "SuccessfulTasks": 31843,
