@@ -64,24 +64,32 @@ src/
   Bmt.Report/      # report       : results JSON/CSV -> self-contained HTML
 config/
   production/      # full 100k dataset, 3 iterations x 10 min:
-    full-workload.json   #   4-op cycle: find-input -> remove -> insert -> find-output (canonical; burst-only via common.json)
+    full-workload.json   #   4-op cycle: find-input -> remove -> insert -> find-output (canonical; burst-only via run.json)
     single-find.json     #   single-op: find(calc_input) only — isolates cold read latency (burst-only)
     single-insert.json   #   single-op: insert(calc_output) only — isolates cold write latency (burst-only)
     # Per-scenario variants (pin exactly ONE scenario so an individual run never stacks arrival rates):
     full-workload-steady.json / full-workload-burst.json
     single-find-steady.json   / single-find-burst.json
     single-insert-steady.json / single-insert-burst.json
-    common.json          #   shared envelope (dataset/seeder/preflight/client + scenario defaults: burst on, steady off)
+    base.json            #   plumbing envelope (dataset/seeder/preflight/client) — rarely edited
+    run.json             #   operator hot knobs (iterations/duration/rates/open-loop; burst on, steady off)
   smoke/           # tiny/fast configs for validation (30 s or 40 docs), one per mode:
     connectivity.json    #   40-doc connectivity/sizing/index check
     full-workload.json   #   30 s 4-op cycle
     single-find.json     #   30 s single-op find
     single-insert.json   #   30 s single-op insert
 scripts/
-  tune-vm1.ps1     # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
-  cosmos-ru.ps1    # show/raise/min the shared Cosmos RU/s for cost control between rounds (-Set/-Min/-Show)
-  vm1-az2-setup-and-run.ps1  # end-to-end VM1 runbook: tune -> prepare-data -> preflight -> test ->
-                   #   clean-output -> commit results (DocumentDB AZ2 host; adapt per target)
+  setup/           # one-time host & backend setup: TCP tuning, gen-host bootstrap, TLS, monitor user
+    tune-vm1.ps1                 # §7.3 host TCP tuning (ephemeral ports + TcpTimedWaitDelay); -Revert to undo
+    vm1-az2-setup-and-run.ps1    # end-to-end host runbook: tune -> prepare-data -> preflight -> test ->
+                                 #   clean-output -> commit results (adapt per target)
+    Setup-Gen2Host.ps1 / Raise-MongoMaxConn.ps1 / Reset-MongoPassword.ps1 / enable-mongo-tls.ps1
+  run/             # campaign execution: preflight, per-host burst, multi-host orchestration, merge
+    Invoke-Campaign.ps1 / Run-BurstHost.ps1 / Run-Campaign2Host.ps1 / Merge-Campaign.ps1
+    Invoke-Preflight.ps1 / Invoke-Preflight-Portable.ps1
+  ops/             # operational helpers between/around runs
+    cosmos-ru.ps1                # show/raise/min the shared Cosmos RU/s for cost control (-Set/-Min/-Show)
+    diag-mongo-start.ps1 / read-mongo-log.ps1 / Reseed-MongoShard.ps1
 infra/             # provision/destroy the Azure backends + private networking (each subfolder is self-contained)
   cosmos/          # Terraform to recreate the cosmos-ru account + bmt_db + collections + PE/DNS
   documentdb-private-endpoint/  # VNet peering + private DNS so VM1 reaches DocumentDB privately
@@ -141,7 +149,7 @@ runs a full distinct-ReqId aggregation (RU-heavy on `cosmos-ru`).
 > per Task; each closed socket holds an ephemeral port in `TIME_WAIT`, so sustainable churn ≈
 > `ephemeral_port_count / TcpTimedWaitDelay`. Windows defaults (16,384 ports / 120 s ≈ **137 conn/s**) are
 > far below the Scenario B target of **≥ 1,200 conn/s** and preflight check 7 will WARN. Run
-> `scripts\tune-vm1.ps1` (elevated) on VM1 before a real run — it widens the ephemeral range to
+> `scripts\setup\tune-vm1.ps1` (elevated) on VM1 before a real run — it widens the ephemeral range to
 > 10000–65534 and sets `TcpTimedWaitDelay=30 s` (≈ 1,851 conn/s); `-Revert` restores defaults.
 
 ### 3. `test` — the timed churn run (Bmt.LoadGen)
@@ -187,7 +195,7 @@ there is no CLI flag for it:
 
 > **Running an individual scenario (steady *or* burst).** A run executes a scenario only when the CLI
 > `--scenario` selects it **and** that scenario's `Enabled` flag is true in config (they are ANDed —
-> running both at once would stack the arrival rates). `common.json` ships **burst on, steady off**, so the
+> running both at once would stack the arrival rates). `run.json` ships **burst on, steady off**, so the
 > three base configs above run **burst-only**. To run a single scenario explicitly, pass the matching
 > `*-steady.json` / `*-burst.json` variant (which pins exactly one scenario) with the same `--scenario`:
 >

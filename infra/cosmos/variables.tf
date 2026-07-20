@@ -38,7 +38,7 @@ variable "throughput" {
   description = <<-EOT
     SHARED manual RU/s provisioned on the database. Start a FRESH account cheap (the floor on a brand-new
     account is 400 RU/s). Raise to the test value (e.g. 100000) just before a run with
-    scripts/cosmos-ru.ps1 -Set 100000 -Wait, then drop back afterwards. Do NOT bake 100000 in here unless
+    scripts/ops/cosmos-ru.ps1 -Set 100000 -Wait, then drop back afterwards. Do NOT bake 100000 in here unless
     you want to pay for it from the moment of apply.
   EOT
   type        = number

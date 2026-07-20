@@ -29,7 +29,7 @@ tier, zone redundancy and network flags reproduce exactly; the database, collect
 endpoint use the standard `azurerm` provider.
 
 > **Throughput is intentionally 400 RU/s here**, not 100,000. Apply cheap, then raise to the test value
-> just before a run with `scripts/cosmos-ru.ps1 -Set 100000 -Wait`, and drop back with `-Min` afterwards.
+> just before a run with `scripts/ops/cosmos-ru.ps1 -Set 100000 -Wait`, and drop back with `-Min` afterwards.
 > Baking 100,000 into Terraform would bill it from the moment of `apply`.
 
 ---
@@ -75,11 +75,11 @@ terraform output -raw bmt_conn_cosmos |
 
 ```powershell
 # 1) raise RU to the test value and wait until live:
-pwsh -File ..\..\scripts\cosmos-ru.ps1 -Set 100000 -Wait
+pwsh -File ..\..\scripts\ops\cosmos-ru.ps1 -Set 100000 -Wait
 # 2) seed 100k + create ReqId indexes:
 dotnet run --project ..\..\src\Bmt.Seeder -- prepare-data --config ..\..\config\production\full-workload.json --target cosmos-ru
 # 3) preflight + run as usual, then drop RU back afterwards:
-pwsh -File ..\..\scripts\cosmos-ru.ps1 -Min
+pwsh -File ..\..\scripts\ops\cosmos-ru.ps1 -Min
 ```
 
 ---

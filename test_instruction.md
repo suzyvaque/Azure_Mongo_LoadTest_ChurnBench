@@ -253,7 +253,7 @@ Before starting a load test against any `--target`, the tool MUST run an automat
 
 The benchmark is run as **two complementary test types**, each executed under both the **Steady**
 (Scenario A) and **Burst** (Scenario B) envelopes from Section 6.2. Every run is **3 iterations × 600 s
-(10 min) per target** (the production envelope in `config/production/common.json`), and targets are run
+(10 min) per target** (the production envelope in `config/production/run.json`), and targets are run
 **one at a time** (Section 4.1). Run the single-operation tests and the full workload independently —
 they answer different questions and are not phases of one another.
 

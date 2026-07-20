@@ -14,7 +14,7 @@ output "document_endpoint" {
 }
 
 output "current_throughput_ru" {
-  description = "Shared RU/s currently provisioned on the database by this config. Raise to the test value with scripts/cosmos-ru.ps1 before a run."
+  description = "Shared RU/s currently provisioned on the database by this config. Raise to the test value with scripts/ops/cosmos-ru.ps1 before a run."
   value       = var.throughput
 }
 

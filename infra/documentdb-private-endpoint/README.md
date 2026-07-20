@@ -251,7 +251,7 @@ If the benchmark fails with a connection error after verifying DNS and TCP:
 - [ ] Preflight check passes (or at least no connectivity errors)
 - [ ] Environment variable `$env:BMT_CONN` is set on VM1-az2
 
-Once all checks pass, you can proceed with running the benchmark on VM1-az2 using the runbook in `scripts/vm1-az2-setup-and-run.ps1`.
+Once all checks pass, you can proceed with running the benchmark on VM1-az2 using the runbook in `scripts/setup/vm1-az2-setup-and-run.ps1`.
 
 ---
 
@@ -259,7 +259,7 @@ Once all checks pass, you can proceed with running the benchmark on VM1-az2 usin
 
 After private connection is established:
 
-1. **Set up VM1-az2** following `scripts/vm1-az2-setup-and-run.ps1`
+1. **Set up VM1-az2** following `scripts/setup/vm1-az2-setup-and-run.ps1`
 2. **Run the benchmark** with `dotnet run --project src/Bmt.LoadGen -- test --config config/production/full-workload.json --target documentdb --scenario both`
 3. **Collect results** and commit to the repo
 

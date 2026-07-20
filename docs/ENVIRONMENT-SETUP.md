@@ -68,13 +68,13 @@ Use the committed script — it widens the ephemeral range to **10000–65534 (5
 
 ```powershell
 # Elevated PowerShell on each load-generator host:
-powershell -ExecutionPolicy Bypass -File scripts\tune-vm1.ps1
+powershell -ExecutionPolicy Bypass -File scripts\setup\tune-vm1.ps1
 # Reboot to guarantee TcpTimedWaitDelay is fully in effect, then verify:
 netsh int ipv4 show dynamicport tcp          # Start=10000, Number=55535
 (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters").TcpTimedWaitDelay  # 30
 
 # To restore Windows defaults after a campaign:
-powershell -ExecutionPolicy Bypass -File scripts\tune-vm1.ps1 -Revert
+powershell -ExecutionPolicy Bypass -File scripts\setup\tune-vm1.ps1 -Revert
 ```
 
 What the script changes (registry: `HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters`):
@@ -87,7 +87,7 @@ What the script changes (registry: `HKLM\SYSTEM\CurrentControlSet\Services\Tcpip
 
 > The ephemeral range change is live immediately; `TcpTimedWaitDelay` applies to new connections, but a
 > **reboot** is the only way to be 100% certain it's in force. **Both generator VMs must use identical
-> values** — `scripts\vm1-az2-setup-and-run.ps1` STEP 1 applies the same settings on VM1-az2.
+> values** — `scripts\setup\vm1-az2-setup-and-run.ps1` STEP 1 applies the same settings on VM1-az2.
 
 ### 2.3 Operational gotchas
 
@@ -172,10 +172,10 @@ Azure portal → Private DNS zones → privatelink.mongocluster.cosmos.azure.com
 > [`infra/documentdb-private-endpoint/`](../infra/documentdb-private-endpoint/README.md).
 
 Verify both DNS resolution and TCP reachability **before** a timed run — see
-`scripts\vm1-az2-setup-and-run.ps1` STEP 5 (it tests the private IP and the hostname independently).
+`scripts\setup\vm1-az2-setup-and-run.ps1` STEP 5 (it tests the private IP and the hostname independently).
 
 > Full step-by-step for the AZ2 generator (TCP tuning, .NET install, clone, env var, reachability,
-> run, push) is in **[`scripts/vm1-az2-setup-and-run.ps1`](../scripts/vm1-az2-setup-and-run.ps1)**.
+> run, push) is in **[`scripts/setup/vm1-az2-setup-and-run.ps1`](../scripts/setup/vm1-az2-setup-and-run.ps1)**.
 
 ---
 
@@ -204,21 +204,21 @@ Verify both DNS resolution and TCP reachability **before** a timed run — see
 > The RU/s in force for a given run is recorded in that campaign's `INDEX.md`. The first Phase-1 campaign
 > ran at **40,000 RU/s** (RU-bound); from 2026-06-18 onward Cosmos runs at **100,000 RU/s**.
 
-### 5.2 Cost control — scale down between rounds (`scripts/cosmos-ru.ps1`)
+### 5.2 Cost control — scale down between rounds (`scripts/ops/cosmos-ru.ps1`)
 
 100,000 RU/s is expensive to leave idle. Because the throughput is **manual and shared at the database
 level**, you can scale the whole `bmt_db` budget up and down with one operation. Use the committed helper
-(it logs every change to `scripts/cosmos-ru.log`, which is git-ignored):
+(it logs every change to `scripts/ops/cosmos-ru.log`, which is git-ignored):
 
 ```powershell
 # Inspect only (no change):
-pwsh -File scripts\cosmos-ru.ps1 -Show
+pwsh -File scripts\ops\cosmos-ru.ps1 -Show
 
 # BEFORE a Cosmos run — raise to the test value and block until it is actually live:
-pwsh -File scripts\cosmos-ru.ps1 -Set 100000 -Wait
+pwsh -File scripts\ops\cosmos-ru.ps1 -Set 100000 -Wait
 
 # AFTER the Cosmos run (+ your buffer) — drop to the real Azure minimum to save cost:
-pwsh -File scripts\cosmos-ru.ps1 -Min
+pwsh -File scripts\ops\cosmos-ru.ps1 -Min
 ```
 
 **Recommended cost-saving cycle (one Cosmos round):**
@@ -276,7 +276,7 @@ known budget. The embedded preflight gate in each run's JSON also captures the e
    (Terraform for the Cosmos RU account) and
    [`infra/documentdb-private-endpoint/`](../infra/documentdb-private-endpoint/README.md) (DocumentDB
    private connection).
-2. **Tune** every generator host: `scripts\tune-vm1.ps1` (elevated) + reboot (§2.2). Verify the ephemeral
+2. **Tune** every generator host: `scripts\setup\tune-vm1.ps1` (elevated) + reboot (§2.2). Verify the ephemeral
    range and `TcpTimedWaitDelay`.
 3. **Install** .NET 8 SDK; clone the repo; `dotnet build -c Release`.
 4. **Set** the connection-string env var for the target on its generator host (never commit it).

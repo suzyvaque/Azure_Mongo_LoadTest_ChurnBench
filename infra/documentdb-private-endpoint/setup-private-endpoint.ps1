@@ -472,7 +472,7 @@ if ($Cleanup) {
     Write-Success "Private endpoint setup complete!"
     Write-Info "Next steps:"
     Write-Info "  1. Verify connectivity from VM1-az2 (see commands above)"
-    Write-Info "  2. Follow the runbook in scripts/vm1-az2-setup-and-run.ps1"
+    Write-Info "  2. Follow the runbook in scripts/setup/vm1-az2-setup-and-run.ps1"
 }
 
 Write-Host ""

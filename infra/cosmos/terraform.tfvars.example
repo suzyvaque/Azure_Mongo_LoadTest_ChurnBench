@@ -10,7 +10,7 @@ database_name = "bmt_db"
 collections   = ["calc_input", "calc_output"]
 
 # Start cheap on a brand-new account (floor is 400 RU/s). Raise to 100000 just before a run with
-# scripts/cosmos-ru.ps1 -Set 100000 -Wait, then drop back with -Min afterwards.
+# scripts/ops/cosmos-ru.ps1 -Set 100000 -Wait, then drop back with -Min afterwards.
 throughput = 400
 
 # Private endpoint + DNS
