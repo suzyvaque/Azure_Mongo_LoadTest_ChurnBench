@@ -51,6 +51,16 @@ Runs from an operator box or an AZ1 VM with the Azure CLI.
 3. Set per-host machine env vars, including the `BMT_CONN_*` masked connection strings.
 4. Run `scripts/setup/New-MongoMonitorUser.ps1` against the mongos routers + shard to create `bmt_monitor`
    (`clusterMonitor`); set `BMT_CONN_MONGO_MONITOR` on the generator VMs.
+5. **TLS posture — FAIR + HONEST (Option A). Every target pays a *validated* TLS handshake so the
+   connection-churn cost is comparable to DocumentDB/Cosmos (TLS-only).**
+   - On each mongo VM / shard node, run `scripts/setup/enable-mongo-tls.ps1` with `BMT_MONGO_HOST` set to
+     the DNS name the clients will use (must match the cert SAN and the connection string) and
+     `BMT_MONGO_IP` to its private IP. It sets `mode: requireTLS` (no plaintext) and exports
+     `E:\mongo\tls\mongod-ca.cer`.
+   - Copy `mongod-ca.cer` to each generator host and import it into the trusted root store:
+     `Import-Certificate -FilePath mongod-ca.cer -CertStoreLocation Cert:\LocalMachine\Root`.
+   - Set every mongo `BMT_CONN_*` with `tls=true` and connect by the cert's DNS host name.
+     **Do NOT use `tlsInsecure=true`** — validation must be ON (that was the old "encryption theater").
 
 ---
 
