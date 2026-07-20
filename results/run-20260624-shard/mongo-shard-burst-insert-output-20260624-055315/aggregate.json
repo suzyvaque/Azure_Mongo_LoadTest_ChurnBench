@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\mongo-shard-burst-insert-output-20260624-055315-iter-01-20260624-055315.json",
+      "ArtifactPath": "iter-01\\iter-01-20260624-055315.json",
       "DurationSeconds": 600.34,
       "TotalTasks": 88905,
       "SuccessfulTasks": 88905,
@@ -85,7 +85,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\mongo-shard-burst-insert-output-20260624-055315-iter-02-20260624-060316.json",
+      "ArtifactPath": "iter-02\\iter-02-20260624-060316.json",
       "DurationSeconds": 601.95,
       "TotalTasks": 88905,
       "SuccessfulTasks": 88905,
@@ -163,7 +163,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\mongo-shard-burst-insert-output-20260624-055315-iter-03-20260624-061318.json",
+      "ArtifactPath": "iter-03\\iter-03-20260624-061318.json",
       "DurationSeconds": 600.546,
       "TotalTasks": 87712,
       "SuccessfulTasks": 87712,

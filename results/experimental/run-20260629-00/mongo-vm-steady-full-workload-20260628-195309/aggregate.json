@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\mongo-vm-steady-full-workload-20260628-195309-iter-01-20260628-195309.json",
+      "ArtifactPath": "iter-01\\iter-01-20260628-195309.json",
       "DurationSeconds": 302.02,
       "TotalTasks": 40500,
       "SuccessfulTasks": 40499,
@@ -87,7 +87,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\mongo-vm-steady-full-workload-20260628-195309-iter-02-20260628-195811.json",
+      "ArtifactPath": "iter-02\\iter-02-20260628-195811.json",
       "DurationSeconds": 302.015,
       "TotalTasks": 40501,
       "SuccessfulTasks": 40501,
@@ -165,7 +165,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\mongo-vm-steady-full-workload-20260628-195309-iter-03-20260628-200313.json",
+      "ArtifactPath": "iter-03\\iter-03-20260628-200313.json",
       "DurationSeconds": 302.017,
       "TotalTasks": 40501,
       "SuccessfulTasks": 40501,

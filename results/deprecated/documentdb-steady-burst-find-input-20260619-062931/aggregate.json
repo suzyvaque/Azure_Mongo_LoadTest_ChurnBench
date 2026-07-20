@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\documentdb-steady-burst-find-input-20260619-062931-iter-01-20260619-062931.json",
+      "ArtifactPath": "iter-01\\iter-01-20260619-062931.json",
       "DurationSeconds": 1809.766,
       "TotalTasks": 354075,
       "SuccessfulTasks": 326282,
@@ -89,7 +89,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\documentdb-steady-burst-find-input-20260619-062931-iter-02-20260619-065941.json",
+      "ArtifactPath": "iter-02\\iter-02-20260619-065941.json",
       "DurationSeconds": 1808.698,
       "TotalTasks": 351457,
       "SuccessfulTasks": 322580,
@@ -171,7 +171,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\documentdb-steady-burst-find-input-20260619-062931-iter-03-20260619-072950.json",
+      "ArtifactPath": "iter-03\\iter-03-20260619-072950.json",
       "DurationSeconds": 1815.18,
       "TotalTasks": 354119,
       "SuccessfulTasks": 326773,

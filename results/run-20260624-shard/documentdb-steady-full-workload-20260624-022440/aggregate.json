@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\documentdb-steady-full-workload-20260624-022440-iter-01-20260624-022440.json",
+      "ArtifactPath": "iter-01\\iter-01-20260624-022440.json",
       "DurationSeconds": 610.049,
       "TotalTasks": 81001,
       "SuccessfulTasks": 80992,
@@ -88,7 +88,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\documentdb-steady-full-workload-20260624-022440-iter-02-20260624-023451.json",
+      "ArtifactPath": "iter-02\\iter-02-20260624-023451.json",
       "DurationSeconds": 610.031,
       "TotalTasks": 81000,
       "SuccessfulTasks": 80997,
@@ -168,7 +168,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\documentdb-steady-full-workload-20260624-022440-iter-03-20260624-024501.json",
+      "ArtifactPath": "iter-03\\iter-03-20260624-024501.json",
       "DurationSeconds": 610.131,
       "TotalTasks": 80998,
       "SuccessfulTasks": 80995,

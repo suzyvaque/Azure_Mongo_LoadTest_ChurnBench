@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\cosmos-ru-steady-burst-find-input-20260618-094553-iter-01-20260618-094553.json",
+      "ArtifactPath": "iter-01\\iter-01-20260618-094553.json",
       "DurationSeconds": 1818.129,
       "TotalTasks": 311115,
       "SuccessfulTasks": 214769,
@@ -90,7 +90,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\cosmos-ru-steady-burst-find-input-20260618-094553-iter-02-20260618-101611.json",
+      "ArtifactPath": "iter-02\\iter-02-20260618-101611.json",
       "DurationSeconds": 1820.201,
       "TotalTasks": 309592,
       "SuccessfulTasks": 215004,
@@ -173,7 +173,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\cosmos-ru-steady-burst-find-input-20260618-094553-iter-03-20260618-104631.json",
+      "ArtifactPath": "iter-03\\iter-03-20260618-104631.json",
       "DurationSeconds": 1818.042,
       "TotalTasks": 308025,
       "SuccessfulTasks": 215148,

@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\documentdb-burst-full-workload-20260628-202911-iter-01-20260628-202911.json",
+      "ArtifactPath": "iter-01\\iter-01-20260628-202911.json",
       "DurationSeconds": 303.301,
       "TotalTasks": 44564,
       "SuccessfulTasks": 44551,
@@ -87,7 +87,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\documentdb-burst-full-workload-20260628-202911-iter-02-20260628-203415.json",
+      "ArtifactPath": "iter-02\\iter-02-20260628-203415.json",
       "DurationSeconds": 304.631,
       "TotalTasks": 43390,
       "SuccessfulTasks": 43381,
@@ -167,7 +167,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\documentdb-burst-full-workload-20260628-202911-iter-03-20260628-203920.json",
+      "ArtifactPath": "iter-03\\iter-03-20260628-203920.json",
       "DurationSeconds": 306.443,
       "TotalTasks": 43852,
       "SuccessfulTasks": 43835,

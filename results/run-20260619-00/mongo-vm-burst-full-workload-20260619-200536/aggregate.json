@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\mongo-vm-burst-full-workload-20260619-200536-iter-01-20260619-200536.json",
+      "ArtifactPath": "iter-01\\iter-01-20260619-200536.json",
       "DurationSeconds": 616.693,
       "TotalTasks": 84775,
       "SuccessfulTasks": 58500,
@@ -91,7 +91,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\mongo-vm-burst-full-workload-20260619-200536-iter-02-20260619-201553.json",
+      "ArtifactPath": "iter-02\\iter-02-20260619-201553.json",
       "DurationSeconds": 619.425,
       "TotalTasks": 85984,
       "SuccessfulTasks": 57046,
@@ -175,7 +175,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\mongo-vm-burst-full-workload-20260619-200536-iter-03-20260619-202612.json",
+      "ArtifactPath": "iter-03\\iter-03-20260619-202612.json",
       "DurationSeconds": 612.465,
       "TotalTasks": 82867,
       "SuccessfulTasks": 56888,

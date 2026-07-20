@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\mongo-vm-burst-find-input-20260619-161219-iter-01-20260619-161219.json",
+      "ArtifactPath": "iter-01\\iter-01-20260619-161219.json",
       "DurationSeconds": 601.509,
       "TotalTasks": 90831,
       "SuccessfulTasks": 90831,
@@ -85,7 +85,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\mongo-vm-burst-find-input-20260619-161219-iter-02-20260619-162221.json",
+      "ArtifactPath": "iter-02\\iter-02-20260619-162221.json",
       "DurationSeconds": 602.771,
       "TotalTasks": 92075,
       "SuccessfulTasks": 92075,
@@ -163,7 +163,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\mongo-vm-burst-find-input-20260619-161219-iter-03-20260619-163224.json",
+      "ArtifactPath": "iter-03\\iter-03-20260619-163224.json",
       "DurationSeconds": 601.471,
       "TotalTasks": 91307,
       "SuccessfulTasks": 91307,

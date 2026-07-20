@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\documentdb-steady-find-input-20260619-154428-iter-01-20260619-154428.json",
+      "ArtifactPath": "iter-01\\iter-01-20260619-154428.json",
       "DurationSeconds": 600.024,
       "TotalTasks": 81000,
       "SuccessfulTasks": 81000,
@@ -85,7 +85,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\documentdb-steady-find-input-20260619-154428-iter-02-20260619-155428.json",
+      "ArtifactPath": "iter-02\\iter-02-20260619-155428.json",
       "DurationSeconds": 600.095,
       "TotalTasks": 81001,
       "SuccessfulTasks": 81001,
@@ -163,7 +163,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\documentdb-steady-find-input-20260619-154428-iter-03-20260619-160428.json",
+      "ArtifactPath": "iter-03\\iter-03-20260619-160428.json",
       "DurationSeconds": 600.018,
       "TotalTasks": 81000,
       "SuccessfulTasks": 81000,

@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\documentdb-burst-insert-output-20260619-180607-iter-01-20260619-180607.json",
+      "ArtifactPath": "iter-01\\iter-01-20260619-180607.json",
       "DurationSeconds": 605.132,
       "TotalTasks": 87712,
       "SuccessfulTasks": 87712,
@@ -85,7 +85,7 @@
     },
     {
       "IterationNumber": 2,
-      "ArtifactPath": "iter-02\\documentdb-burst-insert-output-20260619-180607-iter-02-20260619-181613.json",
+      "ArtifactPath": "iter-02\\iter-02-20260619-181613.json",
       "DurationSeconds": 601.957,
       "TotalTasks": 87255,
       "SuccessfulTasks": 87255,
@@ -163,7 +163,7 @@
     },
     {
       "IterationNumber": 3,
-      "ArtifactPath": "iter-03\\documentdb-burst-insert-output-20260619-180607-iter-03-20260619-182615.json",
+      "ArtifactPath": "iter-03\\iter-03-20260619-182615.json",
       "DurationSeconds": 602.031,
       "TotalTasks": 86487,
       "SuccessfulTasks": 86487,

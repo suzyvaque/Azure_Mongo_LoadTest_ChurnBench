@@ -7,7 +7,7 @@
   "Iterations": [
     {
       "IterationNumber": 1,
-      "ArtifactPath": "iter-01\\mongo-vm-steady-find-input-20260618-080846-iter-01-20260618-080846.json",
+      "ArtifactPath": "iter-01\\iter-01-20260618-080846.json",
       "DurationSeconds": 30.106,
       "TotalTasks": 301,
       "SuccessfulTasks": 301,
