@@ -37,8 +37,14 @@ internal static class Program
             var outPath = Path.GetFullPath(options.OutputPath);
             Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
             File.WriteAllText(outPath, html);
-
             ConsoleLog.Info($"Wrote self-contained HTML report: {outPath} ({html.Length:N0} bytes)");
+
+            // Also emit a Markdown summary (per-target percentiles + churn verdict + cross-target
+            // comparison) so a campaign no longer has to be summarized by hand.
+            var markdown = MarkdownSummaryBuilder.Build(targets, reportId);
+            var mdPath = Path.ChangeExtension(outPath, ".md");
+            File.WriteAllText(mdPath, markdown);
+            ConsoleLog.Info($"Wrote Markdown summary: {mdPath} ({markdown.Length:N0} bytes)");
             return 0;
         }
         catch (ArgumentException ex)
@@ -267,5 +273,6 @@ public sealed class ReportOptions
         Console.WriteLine("(§8.1): masked conn string, config summary, success/fail, per-second connection + QPS graphs,");
         Console.WriteLine("connection/per-op/total latency graphs, p50/p95/p99/p99.9, error taxonomy, reuse verification,");
         Console.WriteLine("starting-state disclosure, Mongo-VM caveat, and the 3-way comparison + resilience verdict.");
+        Console.WriteLine("A Markdown summary (same base name, .md) with the cross-target comparison is written alongside.");
     }
 }
