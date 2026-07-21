@@ -90,12 +90,10 @@ for ($i = 0; $i -lt $hostCount; $i++) {
     $vm     = $HostVms[$i]
     $hostId = $i + 1
 
-    # The inline script run ON the host: dot-invokes Run-BurstHost.ps1 with this host's parameters.
-    $remote = @"
-& '$scriptPath' -Target '$Target' -HostId $hostId -HostCount $hostCount ``
-    -RunTag '$RunTag' -StartAtUtc '$startAt' -Config '$Config' -Scenario '$Scenario' ``
-    -RepoDir '$RepoDir' $pushFlag $noPfFlag
-"@
+    # The inline script run ON the host: invokes Run-BurstHost.ps1 with this host's parameters. Kept on a
+    # SINGLE line — az vm run-command reassembles the --scripts payload and drops the newlines that PS
+    # backtick line-continuations depend on, which otherwise fails with "Incomplete string token".
+    $remote = "& '$scriptPath' -Target '$Target' -HostId $hostId -HostCount $hostCount -RunTag '$RunTag' -StartAtUtc '$startAt' -Config '$Config' -Scenario '$Scenario' -RepoDir '$RepoDir' $pushFlag $noPfFlag"
 
     Write-Host "[launch] host $hostId/$hostCount -> $vm" -ForegroundColor Green
     $jobs += Start-Job -Name "burst-$vm" -ScriptBlock {
