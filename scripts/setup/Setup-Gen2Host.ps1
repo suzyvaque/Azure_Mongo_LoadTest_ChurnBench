@@ -7,7 +7,7 @@
 #>
 $ErrorActionPreference = 'Stop'
 $RepoUrl    = 'https://github.com/suzyvaque/Azure_Mongo_LoadTest_ChurnBench.git'
-$RepoBranch = 'feat/multihost-burst'
+$RepoBranch = 'main'
 $RepoDir    = 'C:\bmt'
 $DotnetRoot = 'C:\dotnet'
 

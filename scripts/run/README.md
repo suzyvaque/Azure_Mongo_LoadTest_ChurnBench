@@ -6,12 +6,13 @@ exhausting client ephemeral ports / TLS-handshake CPU. These scripts run the **o
 across **multiple co-located generator VMs** (same AZ as the target, for §4 fairness) with a shared
 wall-clock start, then merge each host's per-second series to prove the combined envelope was reached.
 
-## Generator pools (deployed topology, koreacentral)
+## Generator pools (deployed topology, koreacentral zone 1)
+
+All targets run **sequentially** from the same AZ1 trio, so one pool serves every backend.
 
 | Target | AZ | Generator VMs (host-id order) | VNet |
 |--------|----|-------------------------------|------|
-| `mongo-vm` / `mongo-shard` | 3 | `vm-dbtest-hpc-0`, `vm-dbtest-hpc-0-gen2` | `vm-dbtest-hpc-0-vnet` (peered to mongo) |
-| `documentdb` | 2 | `vm-dbtest-hpc-0-az2`, `vm-dbtest-hpc-0-az2-gen2` | `vm-dbtest-hpc-0-az2-vnet` (peered to docdb PE) |
+| `mongo-shard` / `mongo-vm` / `documentdb` | 1 | `vm-hpc-loadgen-az1-0`, `vm-hpc-loadgen-az1-1`, `vm-hpc-loadgen-az1-2` | `vm-hpc-loadgen-az1-0-vnet` (peered to mongo + docdb PE) |
 
 Each host reads its own connection string from a **machine env var** (set once per host — see
 `scripts/setup/vm1-az2-setup-and-run.ps1` STEP 4). Secrets are never passed through these scripts.
@@ -62,8 +63,9 @@ On each generator VM, with the SAME `-StartAtUtc` and `-RunTag` but a distinct `
 
 ## Sizing the load (config)
 
-`config/production/full-workload-open-loop-multihost.json` scales per-host Poisson λ and Job size so
-that **M hosts combined** reach the target. Verify the ACTUAL combined peak with `Merge-Campaign.ps1`
+`config/production/full-workload-open-loop-3host.json` (the pinned default for the AZ1 trio) scales
+per-host Poisson λ and Job size so that **3 hosts combined** reach the target while each host stays under
+its ~1,850 conn/s ephemeral-port ceiling. Verify the ACTUAL combined peak with `Merge-Campaign.ps1`
 and adjust λ / host-count if short — the merge output prints `REACHED` / `NOT reached` for both the
 conn/s and concurrent targets. Corroborate the concurrency peak with the server side (mongod
 `serverStatus.connections`, or DocumentDB metrics) since the client-side merged in-flight is an

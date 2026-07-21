@@ -35,25 +35,24 @@ $Script:Config = @{
     # DocumentDB Resource Details
     DocDBHostname           = "docdb-dbtest-hpc-0.global.mongocluster.cosmos.azure.com"
     DocDBPrivateIP          = "10.2.0.7"
-    DocDBPort               = 27017
+    DocDBPort               = 10260   # vCore SRV-target listener port (27017 is NOT the vCore data port)
     DocDBSrvTarget          = "fc-d3df9fb90605-000.global.mongocluster.cosmos.azure.com"
     
-    # VM1-az2 Details (THIS VM)
+    # AZ1 generator VNet (load-gen pool: vm-hpc-loadgen-az1-0/1/2, koreacentral zone 1)
     VM1ResourceGroup        = "rg-db-test-hpc"
-    VM1VNet                 = "vm-dbtest-hpc-0-az2-vnet"
+    VM1VNet                 = "vm-hpc-loadgen-az1-0-vnet"
     VM1VNetRegion           = "koreacentral"
     VM1Subnet               = "default"
     
-    # Private DNS Zone(s)
+    # Private DNS Zone(s) — cosmos-ru zone excluded this round (mongo-vm + documentdb only)
     DNSZones                = @(
-        "privatelink.mongocluster.cosmos.azure.com",
-        "privatelink.mongo.cosmos.azure.com"
+        "privatelink.mongocluster.cosmos.azure.com"
     )
     DNSResourceGroup        = "rg-db-test-hpc"
     
     # Peering Configuration
-    PeeringName_VM1ToDocDB  = "vm-dbtest-hpc-0-az2-to-docdb"
-    PeeringName_DocDBToVM1  = "vm-dbtest-hpc-0-vnet-to-az2"
+    PeeringName_VM1ToDocDB  = "vm-hpc-loadgen-az1-0-vnet-to-docdb"
+    PeeringName_DocDBToVM1  = "vm-dbtest-hpc-0-vnet-to-az1"
 }
 
 # ============================================================================

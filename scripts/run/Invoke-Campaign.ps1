@@ -10,10 +10,11 @@
   all hosts share the same start instant, their bursts align and the combined conn/s + concurrency sum
   in the same wall-clock second even though the invocations don't fire at the exact same millisecond.
 
-  Generator pools (deduced from the deployed topology; override with -HostVms):
-    documentdb  -> AZ 2: vm-dbtest-hpc-0-az2, vm-dbtest-hpc-0-az2-gen2
-    mongo-vm    -> AZ 3: vm-dbtest-hpc-0,     vm-dbtest-hpc-0-gen2
-    mongo-shard -> AZ 3: vm-dbtest-hpc-0,     vm-dbtest-hpc-0-gen2
+  Generator pools (deployed AZ1 topology, koreacentral zone 1; override with -HostVms):
+    documentdb  -> AZ1: vm-hpc-loadgen-az1-0, vm-hpc-loadgen-az1-1, vm-hpc-loadgen-az1-2
+    mongo-vm    -> AZ1: vm-hpc-loadgen-az1-0, vm-hpc-loadgen-az1-1, vm-hpc-loadgen-az1-2
+    mongo-shard -> AZ1: vm-hpc-loadgen-az1-0, vm-hpc-loadgen-az1-1, vm-hpc-loadgen-az1-2
+  (runs are sequential, so every target shares the same AZ1 trio; host-count = 3).
 
   Connection strings are NOT passed here — each host reads its own machine env var (set once per host,
   see runbook STEP 4), keeping secrets out of run-command logs.
@@ -44,7 +45,7 @@ param(
     [int]$LeadSeconds = 120,
     [string]$ResourceGroup = 'rg-db-test-hpc',
     [string[]]$HostVms,
-    [string]$Config = 'config/production/full-workload-open-loop-multihost.json',
+    [string]$Config = 'config/production/full-workload-open-loop-3host.json',
     [ValidateSet('steady','burst','both')] [string]$Scenario = 'burst',
     [string]$RepoDir = 'C:\bmt',
     [switch]$PushResults,
@@ -55,11 +56,13 @@ $ErrorActionPreference = 'Stop'
 
 # ---- Resolve the same-AZ generator pool for this target ----
 if (-not $HostVms -or $HostVms.Count -eq 0) {
+    # All targets run sequentially from the same AZ1 trio (koreacentral zone 1).
+    $az1Trio = @('vm-hpc-loadgen-az1-0', 'vm-hpc-loadgen-az1-1', 'vm-hpc-loadgen-az1-2')
     $HostVms = switch ($Target) {
-        'documentdb'  { @('vm-dbtest-hpc-0-az2', 'vm-dbtest-hpc-0-az2-gen2') }  # AZ 2
-        'mongo-vm'    { @('vm-dbtest-hpc-0',     'vm-dbtest-hpc-0-gen2') }       # AZ 3
-        'mongo-shard' { @('vm-dbtest-hpc-0',     'vm-dbtest-hpc-0-gen2') }       # AZ 3
-        'cosmos-ru'   { @('vm-dbtest-hpc-0-az2', 'vm-dbtest-hpc-0-az2-gen2') }   # co-located w/ docdb AZ
+        'documentdb'  { $az1Trio }
+        'mongo-vm'    { $az1Trio }
+        'mongo-shard' { $az1Trio }
+        'cosmos-ru'   { $az1Trio }
     }
 }
 $hostCount = $HostVms.Count
