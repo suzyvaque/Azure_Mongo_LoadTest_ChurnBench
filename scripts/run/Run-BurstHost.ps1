@@ -121,13 +121,24 @@ if ($PushResults) {
     git config user.email "host$HostId-$Target@benchmarks.local" | Out-Null
     git add results/
     git commit -m "results: $RunTag $Target host $HostId/$HostCount $(Get-Date -Format 'yyyy-MM-dd HH:mm')" | Out-Null
+    # Never block on an interactive credential prompt. Under az vm run-command this script runs as
+    # SYSTEM, which has no cached git credential, so GCM's `credential get` would hang forever. Force
+    # non-interactive git (GIT_TERMINAL_PROMPT=0 + credential.interactive=false) so a missing credential
+    # fails fast instead of stalling the whole run-command. Still works when a credential IS available.
     # Retry-pull-push in case peer hosts push concurrently. Force HTTP/1.1 on push: HTTP/2 POST stalls
     # indefinitely through the AZ1 NAT gateway (reads/fetch are fine on HTTP/2).
+    $env:GIT_TERMINAL_PROMPT = '0'
+    $pushed = $false
     for ($i = 0; $i -lt 5; $i++) {
-        git -c http.version=HTTP/1.1 pull --rebase origin main
-        git -c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 push origin main
-        if ($LASTEXITCODE -eq 0) { break }
+        git -c http.version=HTTP/1.1 -c credential.interactive=false pull --rebase origin main
+        git -c http.version=HTTP/1.1 -c credential.interactive=false -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 push origin main
+        if ($LASTEXITCODE -eq 0) { $pushed = $true; break }
         Start-Sleep -Seconds (2 + (Get-Random -Maximum 4))
     }
-    Write-Host "[host $HostId/$HostCount] results pushed." -ForegroundColor Green
+    if ($pushed) {
+        Write-Host "[host $HostId/$HostCount] results pushed." -ForegroundColor Green
+    } else {
+        $sha = (git rev-parse --short HEAD)
+        Write-Host "[host $HostId/$HostCount] push skipped (no SYSTEM git credential); results committed locally at $sha for operator collection." -ForegroundColor Yellow
+    }
 }
