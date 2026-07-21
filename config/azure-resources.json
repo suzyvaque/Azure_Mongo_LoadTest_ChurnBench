@@ -3,19 +3,23 @@
   // Azure resource identifiers for POST-RUN metric pulls (server-side capture, handoff Package B5).
   // Identifiers ONLY — NO secrets. Connection strings stay in BMT_CONN* env vars.
   //
-  // Consumed by scripts/run/Invoke-LocalCampaign.ps1 -> the Azure metric-pull hook, which is a NO-OP
-  // when `az` is not logged in or when the fields below are left empty (so the runner is testable
-  // without any Azure dependency). Fill these in before running Package B on the AZ1 host set.
+  // Consumed by scripts/run/Get-AzureMetrics.ps1 (invoked from Invoke-LocalCampaign.ps1 and after a
+  // multi-host Invoke-Campaign.ps1 run). The pull is a clean NO-OP when `az` is not logged in or when
+  // the fields below are left empty, so the runner stays usable without any Azure dependency.
   // ============================================================================================
 
-  "Subscription": "",
+  "Subscription": "01c04f52-ad2b-4cc0-b77b-61508ec58f51",
   "ResourceGroup": "rg-db-test-hpc",
 
   // DocumentDB (PaaS) — Azure Cosmos DB for MongoDB vCore cluster.
+  // vCore publishes: CpuPercent, MemoryPercent, CommittedMemoryPercent, IOPS, StoragePercent,
+  // StorageUsed, NetworkBytesIngress/Egress, MongoRequestDurationMs. (Active-connection count and
+  // 429/throttle counters are NOT published for vCore — server-side connection evidence for docdb
+  // comes from the client-side merged concurrency; request-duration confirms the backend saw load.)
   "DocumentDb": {
-    "ClusterName": "",
+    "ClusterName": "docdb-dbtest-hpc-0",
     "Tier": "M80",
-    "MetricsResourceId": ""
+    "MetricsResourceId": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-0"
   },
 
   // Cosmos DB for MongoDB (RU) account (out of scope for server RU capture this round; identifiers kept).
@@ -28,13 +32,21 @@
   // Self-managed MongoDB on Azure VMs. Used for VM host metrics (CPU/mem/net via Azure Monitor) and
   // for locating the mongod.log slice per target. serverStatus/connPoolStats come from the bmt_monitor
   // user (BMT_CONN_MONGO_MONITOR), not from these identifiers.
+  //
+  // NOTE: mongo-vm (rs0 on vm-dbtest-hpc-1-mongo) is DROPPED as a campaign target this round — its
+  // mongod is shard-1 of the sharded cluster, so it is not an independent dataset. Identifiers kept
+  // for completeness / future single-node work.
   "MongoVm": {
-    "ActiveVmName": "vm-dbtest-hpc-mongo",
+    "ActiveVmName": "vm-dbtest-hpc-1-mongo",
     "MongodLogPath": "E:\\mongo\\log\\mongod.log"
   },
   "MongoShard": {
-    "MongosVmNames": [],
-    "ShardVmNames": [],
-    "MongodLogPath": "E:\\mongo\\log\\mongod.log"
+    // mongos routers: 10.3.0.4:27016 (on -mongo) and 10.3.0.6:27017 (on -mongo-shard).
+    "MongosVmNames": [ "vm-dbtest-hpc-1-mongo", "vm-dbtest-hpc-1-mongo-shard" ],
+    // shards: rs0 (on -mongo) + rsShard2 (on -mongo-shard).
+    "ShardVmNames": [ "vm-dbtest-hpc-1-mongo", "vm-dbtest-hpc-1-mongo-shard" ],
+    // Client connection churn lands on the mongos routers, so the mongos.log is the relevant slice
+    // (present on BOTH router VMs). mongod.log/shard2.log hold intra-cluster connections only.
+    "MongosLogPath": "E:\\mongo\\log\\mongos.log"
   }
 }

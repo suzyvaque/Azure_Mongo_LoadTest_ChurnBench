@@ -82,10 +82,9 @@ function ConnEnvVar([string]$t) {
     }
 }
 
-# ---- Server-side Azure metric pull (Package B5 hook). GUARDED so it is a clean no-op when Azure is not
-#      set up, keeping this runner fully usable in Package A without any az login. When enabled it records
-#      the exact run window + resource identifiers; the detailed `az monitor` / serverStatus queries are
-#      filled in by Package B (which runs on the AZ1 host set with az login + azure-resources.json filled). ----
+# ---- Server-side Azure metric pull (Package B5 hook). Delegates to the standalone Get-AzureMetrics.ps1
+#      (single implementation, reusable by the multi-host path too). GUARDED so it is a clean no-op when
+#      Azure is not set up, keeping this runner fully usable in Package A without any az login. ----
 function Invoke-AzureMetricPull {
     param(
         [string]$CampaignRoot,
@@ -109,29 +108,26 @@ function Invoke-AzureMetricPull {
         return
     }
 
-    try {
-        $res = Get-Content $AzureResources -Raw | ConvertFrom-Json
-    } catch {
-        Log "azure metrics: '$AzureResources' is not valid JSON — skipping." 'DarkGray'
-        return
-    }
-    if ([string]::IsNullOrWhiteSpace($res.Subscription) -or [string]::IsNullOrWhiteSpace($res.ResourceGroup)) {
-        Log 'azure metrics: azure-resources.json has empty Subscription/ResourceGroup — skipping (fill it in Package B).' 'DarkGray'
+    $metricScript = Join-Path $PSScriptRoot 'Get-AzureMetrics.ps1'
+    if (-not (Test-Path $metricScript)) {
+        Log "azure metrics: Get-AzureMetrics.ps1 not found next to this runner — skipping." 'DarkGray'
         return
     }
 
-    # Enabled: record the window + resource identifiers so Package B's detailed pull is a drop-in.
-    $out = [pscustomobject]@{
-        runWindowStartUtc = $StartUtc.UtcDateTime.ToString('o')
-        runWindowEndUtc   = $EndUtc.UtcDateTime.ToString('o')
-        targets           = $Targets
-        subscription      = $res.Subscription
-        resourceGroup     = $res.ResourceGroup
-        note              = 'Run window + resource ids captured. Detailed az monitor / serverStatus queries are performed by Package B5.'
+    try {
+        & $metricScript `
+            -CampaignRoot   $CampaignRoot `
+            -StartUtc       $StartUtc.UtcDateTime.ToString('o') `
+            -EndUtc         $EndUtc.UtcDateTime.ToString('o') `
+            -Targets        $Targets `
+            -AzureResources $AzureResources `
+            -RepoDir        $RepoDir `
+            2>&1 | ForEach-Object { Log "  $_" 'DarkGray' }
+        $metricsPath = Join-Path $CampaignRoot 'azure-metrics.json'
+        if (Test-Path $metricsPath) { Log "azure metrics: server-side capture written -> $metricsPath" 'Cyan' }
+    } catch {
+        Log "azure metrics: capture failed — $($_.Exception.Message.Split([char]10)[0])" 'Yellow'
     }
-    $metricsPath = Join-Path $CampaignRoot 'azure-metrics.json'
-    $out | ConvertTo-Json -Depth 6 | Set-Content -Path $metricsPath -Encoding utf8
-    Log "azure metrics: run window + resource ids recorded -> $metricsPath" 'Cyan'
 }
 
 # ---- Campaign INDEX.md (human entry point for the run) ----

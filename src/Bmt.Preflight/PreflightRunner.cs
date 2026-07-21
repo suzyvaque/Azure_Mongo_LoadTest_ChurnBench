@@ -403,7 +403,73 @@ public sealed class PreflightRunner
 
     private async Task<PreflightCheckResult> CheckMongoConnLimitAsync(IMongoDatabase admin, PreflightReport report, CancellationToken ct)
     {
-        int? ceiling = null;
+        // First try serverStatus over the app connection. The app user (bmt_bench) usually only holds
+        // readWrite on bmt_db, so this typically throws Unauthorized — in which case we retry with the
+        // dedicated bmt_monitor (clusterMonitor) connection if BMT_CONN_MONGO_MONITOR is set.
+        var (ceiling, source, monitorError) = await ReadConnectionCeilingAsync(admin, ct).ConfigureAwait(false);
+
+        if (ceiling is null)
+        {
+            var monitorConn = TargetConnection.ResolveMonitorConnectionString(_target);
+            if (monitorConn is not null)
+            {
+                MongoClient? monitorClient = null;
+                try
+                {
+                    monitorClient = AdminClientFactory.Create(_target, monitorConn);
+                    var monitorAdmin = monitorClient.GetDatabase("admin");
+                    (ceiling, _, _) = await ReadConnectionCeilingAsync(monitorAdmin, ct).ConfigureAwait(false);
+                    if (ceiling is { }) { source = "bmt_monitor"; }
+                }
+                catch (Exception mex)
+                {
+                    monitorError = mex.Message.Split('.', ',')[0];
+                }
+                finally
+                {
+                    if (monitorClient is not null) { MongoClientReleaser.Release(monitorClient); }
+                }
+            }
+        }
+
+        if (ceiling is { } cap)
+        {
+            report.ServerConfig.MongoLiveConnectionCeiling = cap;
+            var expectedC = _config.Preflight.MongoExpectedMaxIncomingConnections;
+            if (expectedC is { } expC && cap < expC)
+            {
+                return PreflightCheckResult.Warn(6, "Server/throughput config",
+                    $"{TargetConnection.CliName(_target)} connection ceiling ≈ {cap:N0} is below expected " +
+                    $"maxIncomingConnections {expC:N0} (read via {source}).");
+            }
+
+            return PreflightCheckResult.Pass(6, "Server/throughput config",
+                $"{TargetConnection.CliName(_target)} v{report.ServerConfig.ServerVersion}; live connection ceiling ≈ {cap:N0} " +
+                $"(serverStatus via {source})" +
+                (expectedC is { } e ? $" (expected ≥ {e:N0})" : string.Empty) + ".");
+        }
+
+        // Neither the app nor the monitor connection could read serverStatus. Non-blocking PASS: the
+        // server is already confirmed up (buildInfo) and the connection ceiling is just unrecorded.
+        var expected = _config.Preflight.MongoExpectedMaxIncomingConnections;
+        var monitorNote = TargetConnection.MonitorEnvVarName(_target) is { } mv
+            ? (TargetConnection.ResolveMonitorConnectionString(_target) is null
+                ? $" Set {mv} (bmt_monitor/clusterMonitor) to record it."
+                : $" bmt_monitor connection also could not read serverStatus{(monitorError is null ? string.Empty : $": {monitorError}")}.")
+            : string.Empty;
+        return PreflightCheckResult.Pass(6, "Server/throughput config",
+            $"{TargetConnection.CliName(_target)} v{report.ServerConfig.ServerVersion} is up; connection ceiling not readable " +
+            $"(serverStatus needs clusterMonitor).{monitorNote}" +
+            (expected is { } expMax ? $" Expected maxIncomingConnections {expMax:N0} — verify in mongod.conf." : string.Empty));
+    }
+
+    /// <summary>
+    /// Run <c>serverStatus</c> against the supplied admin database and return the live connection
+    /// ceiling (<c>current + available</c>). Returns <c>(null, ...)</c> with the first error clause when
+    /// the caller's user lacks the <c>clusterMonitor</c> role (or serverStatus is otherwise refused).
+    /// </summary>
+    private static async Task<(int? Ceiling, string Source, string? Error)> ReadConnectionCeilingAsync(IMongoDatabase admin, CancellationToken ct)
+    {
         try
         {
             var status = await admin.RunCommandAsync<BsonDocument>(new BsonDocument("serverStatus", 1), cancellationToken: ct)
@@ -412,33 +478,14 @@ public sealed class PreflightRunner
             {
                 var current = conns.GetValue("current", 0).ToInt32();
                 var available = conns.GetValue("available", 0).ToInt32();
-                ceiling = current + available;
-                report.ServerConfig.MongoLiveConnectionCeiling = ceiling;
+                return (current + available, "app user", null);
             }
+            return (null, "app user", "serverStatus returned no connections document");
         }
         catch (Exception ex)
         {
-            // serverStatus needs the clusterMonitor role; the app user typically only has readWrite on
-            // bmt_db. The server is already confirmed up (buildInfo), so this is a non-blocking PASS:
-            // the connection ceiling is just unavailable to record here.
-            return PreflightCheckResult.Pass(6, "Server/throughput config",
-                $"{TargetConnection.CliName(_target)} v{report.ServerConfig.ServerVersion} is up; connection ceiling not readable " +
-                $"(serverStatus needs clusterMonitor): {ex.Message.Split('.', ',')[0]}." +
-                (_config.Preflight.MongoExpectedMaxIncomingConnections is { } expMax
-                    ? $" Expected maxIncomingConnections {expMax:N0} — verify in mongod.conf."
-                    : string.Empty));
+            return (null, "app user", ex.Message.Split('.', ',')[0]);
         }
-
-        var expected = _config.Preflight.MongoExpectedMaxIncomingConnections;
-        if (expected is { } exp && ceiling is { } cap && cap < exp)
-        {
-            return PreflightCheckResult.Warn(6, "Server/throughput config",
-                $"{TargetConnection.CliName(_target)} connection ceiling ≈ {cap:N0} is below expected maxIncomingConnections {exp:N0}.");
-        }
-
-        return PreflightCheckResult.Pass(6, "Server/throughput config",
-            $"{TargetConnection.CliName(_target)} v{report.ServerConfig.ServerVersion}; live connection ceiling ≈ {ceiling?.ToString("N0") ?? "?"}" +
-            (expected is { } e ? $" (expected ≥ {e:N0})" : string.Empty) + ".");
     }
 
     // 7. Client host headroom — ephemeral ports + TcpTimedWaitDelay vs. the scenario churn targets.

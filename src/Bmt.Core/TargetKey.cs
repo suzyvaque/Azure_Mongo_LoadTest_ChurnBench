@@ -40,6 +40,19 @@ public static class TargetConnection
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
     };
 
+    /// <summary>
+    /// The env var holding the <c>bmt_monitor</c> (clusterMonitor) connection string used for the
+    /// server-side <c>serverStatus</c>/<c>connPoolStats</c> capture. Only the self-managed mongo
+    /// targets have one; PaaS targets return <c>null</c>. Both mongo targets share the single
+    /// <c>BMT_CONN_MONGO_MONITOR</c> var (pointed at the mongos routers for the sharded cluster).
+    /// </summary>
+    public static string? MonitorEnvVarName(TargetKey target) => target switch
+    {
+        TargetKey.MongoVm => "BMT_CONN_MONGO_MONITOR",
+        TargetKey.MongoShard => "BMT_CONN_MONGO_MONITOR",
+        _ => null,
+    };
+
     /// <summary>Parse a CLI <c>--target</c> token into a <see cref="TargetKey"/>.</summary>
     public static TargetKey Parse(string cliName)
     {
@@ -77,6 +90,28 @@ public static class TargetConnection
         }
 
         return value;
+    }
+
+    /// <summary>
+    /// Resolve the optional <c>bmt_monitor</c> connection string for a target (Process scope first,
+    /// then User scope on Windows). Returns <c>null</c> when the target has no monitor var or the var
+    /// is unset — callers treat that as "monitor capture unavailable" rather than a hard failure.
+    /// </summary>
+    public static string? ResolveMonitorConnectionString(TargetKey target)
+    {
+        var name = MonitorEnvVarName(target);
+        if (name is null)
+        {
+            return null;
+        }
+
+        var value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process);
+        if (string.IsNullOrWhiteSpace(value) && OperatingSystem.IsWindows())
+        {
+            value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+        }
+
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     /// <summary>
