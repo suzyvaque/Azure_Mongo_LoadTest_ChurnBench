@@ -48,6 +48,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# The Azure run-command agent process can predate the machine PATH / DOTNET_ROOT updates written by
+# host bootstrap (Setup-Gen2Host.ps1), so a bare `dotnet` is not resolvable when this script is invoked
+# via `az vm run-command`. Refresh the process env from the registry so the SDK (C:\dotnet) is found.
+$machinePath = [Environment]::GetEnvironmentVariable('PATH', 'Machine')
+$userPath    = [Environment]::GetEnvironmentVariable('PATH', 'User')
+$env:PATH = (@($machinePath, $userPath) | Where-Object { $_ }) -join ';'
+$dotnetRoot = [Environment]::GetEnvironmentVariable('DOTNET_ROOT', 'Machine')
+if ($dotnetRoot) { $env:DOTNET_ROOT = $dotnetRoot }
+
 if ($HostId -lt 1 -or $HostId -gt $HostCount) {
     throw "HostId ($HostId) must be between 1 and HostCount ($HostCount)."
 }
