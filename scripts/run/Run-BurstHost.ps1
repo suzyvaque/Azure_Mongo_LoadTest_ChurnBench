@@ -121,10 +121,11 @@ if ($PushResults) {
     git config user.email "host$HostId-$Target@benchmarks.local" | Out-Null
     git add results/
     git commit -m "results: $RunTag $Target host $HostId/$HostCount $(Get-Date -Format 'yyyy-MM-dd HH:mm')" | Out-Null
-    # Retry-pull-push in case peer hosts push concurrently.
+    # Retry-pull-push in case peer hosts push concurrently. Force HTTP/1.1 on push: HTTP/2 POST stalls
+    # indefinitely through the AZ1 NAT gateway (reads/fetch are fine on HTTP/2).
     for ($i = 0; $i -lt 5; $i++) {
-        git pull --rebase origin main
-        git push origin main
+        git -c http.version=HTTP/1.1 pull --rebase origin main
+        git -c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 push origin main
         if ($LASTEXITCODE -eq 0) { break }
         Start-Sleep -Seconds (2 + (Get-Random -Maximum 4))
     }
