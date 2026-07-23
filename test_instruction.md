@@ -252,10 +252,12 @@ Before starting a load test against any `--target`, the tool MUST run an automat
 ### 6.4 Test execution plan (single-operation isolation + full workload)
 
 The benchmark is run as **two complementary test types**, each executed under both the **Steady**
-(Scenario A) and **Burst** (Scenario B) envelopes from Section 6.2. Every run is **3 iterations × 600 s
-(10 min) per target** (the production envelope in `config/production/run.json`), and targets are run
-**one at a time** (Section 4.1). Run the single-operation tests and the full workload independently —
-they answer different questions and are not phases of one another.
+(Scenario A) and **Burst** (Scenario B) envelopes from Section 6.2. Every run is **3 iterations × a 300 s
+arrival window per target** (new Tasks are scheduled for exactly 300 s, then in-flight Tasks are allowed to
+drain before the iteration ends — the production envelope in `config/production/run.json`,
+`IterationDurationSeconds = 300`), and targets are run **one at a time** (Section 4.1). Run the
+single-operation tests and the full workload independently — they answer different questions and are not
+phases of one another.
 
 **Test type 1 — Single-operation isolation tests** (`TaskSleepMs = 0`, no calc-time sleep)
 
@@ -273,7 +275,9 @@ execution. Two variants split the cost by read vs write:
 > across iterations. Run `clean-output` to reset to the seeded baseline **before/after every insert-only
 > run** so the next run starts from a known state.
 
-**Test type 2 — Full 4-op workload** (`TaskSleepMs = 10,000 ms`; `config/production/full-workload*.json`)
+**Test type 2 — Full 4-op workload** (calc-time sleep `TaskSleepMs`, config-driven — production
+`run.json` = **2,000 ms** (2,900 ms in the 3-host config); code default 10,000 ms;
+`config/production/full-workload*.json`)
 
 Each Task runs the canonical production cycle `find` (input) → `remove` (output) → `insert` (output) →
 `find` (output) on one connection, with the calc-time sleep applied between the input `find` and the
@@ -289,10 +293,12 @@ latency is the primary comparison metric). The single-op tests **separate the co
 execution** (and split it into read vs write); the full workload shows the **combined per-Task cycle** —
 cold connection on op1, warm server execution on ops 2–4.
 
-> **Why 3 × 600 s is enough for this comparison:** the prod data is bucketed hourly, so a steady run at
+> **Why 3 × 300 s is enough for this comparison:** the prod data is bucketed hourly, so a steady run at
 > peak-hour rate plus the Poisson burst reproduces peak throughput and all fast-onset behaviors
 > (connection rejection, throttling, timeouts, port/TIME_WAIT pressure) exactly. Three independent
-> 10-minute iterations give a mean-of-3 with visible run-to-run variance without a multi-hour soak.
+> 300-second arrival windows (each followed by drain) give a mean-of-3 with visible run-to-run variance
+> without a multi-hour soak. The 300 s window is the authoritative denominator for offered/started rates
+> (Section 7); Tasks that finish during drain are still attributed to the window that offered them.
 
 ### 6.5 Starting-state normalization (warm data cache, cold connections)
 
@@ -315,8 +321,8 @@ To keep the cross-DB comparison apples-to-apples, **every measured run starts fr
 
 The real HPC calculation step is replaced in this test by a **fixed `sleep`** so runs are deterministic and identical across all three targets.
 
-- **`taskSleepMs` (config-driven):** the per-Task sleep that stands in for HPC calculation time. It is applied at Task step 3 (between the input `find` and the output `remove`). Default **10,000 ms (10 s)**; override in `config.json` to match the prod calc-time profile being modeled.
-- **Why it matters \u2014 it sets steady-state concurrency.** By Little's Law, average concurrent connections \u2248 **arrival rate \u00d7 per-Task hold time**, where hold time \u2248 connect + 4 ops + `taskSleepMs` + disconnect (sleep dominates). At 135 conn/sec with `taskSleepMs = 10 s`, expected steady concurrency \u2248 **1,350**. Raising `taskSleepMs` raises concurrency proportionally; set it to reproduce the concurrency you want to exercise.
+- **`taskSleepMs` (config-driven):** the per-Task sleep that stands in for HPC calculation time. It is applied at Task step 3 (between the input `find` and the output `remove`). Code default **10,000 ms (10 s)**; production `run.json` uses **2,000 ms** (2,900 ms in the 3-host config) — override in the config to match the prod calc-time profile being modeled.
+- **Why it matters \u2014 it sets steady-state concurrency.** By Little's Law, average concurrent connections \u2248 **arrival rate \u00d7 per-Task hold time**, where hold time \u2248 connect + 4 ops + `taskSleepMs` + disconnect (sleep dominates). At 135 conn/sec with `taskSleepMs = 10 s`, expected steady concurrency \u2248 **1,350** (illustrative; the ~11K burst peak is reached via Scenario B open-loop with a shorter hold across 3 hosts). Raising `taskSleepMs` raises concurrency proportionally; set it to reproduce the concurrency you want to exercise.
 - **Steady vs. Burst concurrency differ.** The Steady row's concurrency is governed by this formula (not a fixed 11K). The **~11K figure is the measured *burst* peak** (many Tasks injected at once), reproduced by Scenario B, not by steady arrival. Do not conflate the two.
 - Keep `taskSleepMs` **identical across all targets** in a given comparison so the cross-DB result stays apples-to-apples.
 
@@ -374,6 +380,29 @@ Classify every exception by type:
 - `DataSetMissing`
 - `IndexMissing` (required `ReqId` index absent on `calc_input` or `calc_output`; preflight failure, do not run the timed test)
 - `Unknown`
+
+### 7.5 Open-loop correctness & connection-lifecycle metrics (extends 7.1–7.3)
+
+In addition to the above, each run captures the benchmark-correctness metrics that separate load-generator
+fidelity from backend behavior (full semantics in [`docs/metrics-reference.md`](docs/metrics-reference.md) §8):
+
+- **Arrival vs drain.** `TasksScheduled` / `TasksStarted` and their per-second rates use the **300 s arrival
+  window** as the denominator (never total process duration, which would understate offered load). Latency is
+  decomposed into **scheduler-queue** (`TaskStarted − Scheduled`), **execution** (`TaskFinished − TaskStarted`),
+  and the authoritative **offered-to-finished** (`TaskFinished − Scheduled`); every Task offered during arrival
+  is included even if it completes during drain. Arrival/drain window bounds, outstanding-at-stop, and maximum
+  drain backlog are recorded.
+- **Connection lifecycle (driver events, authoritative).** States `WaitingForServer → Connecting → Ready →
+  Closing → Closed` with peak gauges (`ActiveConnecting`, `ActiveReady`, `WaitingForServer`), per-second
+  created/ready/failed/closed rates, `DemandToReady` (cold-connection) and `DriverOpen` latency, and a
+  created≈closed reconciliation. The concurrency target (≥ 11,000) is judged on **peak ActiveReady**, and churn
+  (≥ 1,200/s) on peak created/s and ready/s — never on in-flight Task count.
+- **Target-filtered TCP.** TCP states are counted only for sockets to the resolved database endpoints
+  (`TargetSynSent/Established/TimeWait/CloseWait/FinWait1/FinWait2`, distinct local ports); host-wide totals and
+  ephemeral-port utilization are kept as general VM-pressure context only.
+- **Multi-host merge.** `report merge` combines each synchronized iteration requiring the exact host set,
+  reporting start-time skew, combined rates, peak created/s + ready/s + active-ready, failure rate, true e2e
+  p99, and drain duration, then a cross-iteration mean/min/max over the valid iterations.
 
 ---
 

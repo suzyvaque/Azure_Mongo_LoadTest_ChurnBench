@@ -283,8 +283,11 @@ known budget. The embedded preflight gate in each run's JSON also captures the e
 5. **Seed + index** once per backend: `prepare-data` (100k docs, seed 42, `ReqId` indexes).
 6. **Preflight** the target (the 10-check gate; `--warmup`). Resolve any FAIL before timing.
 7. **Confirm** `TIME_WAIT < ~200` and (for `mongo-vm`) `rs.status()` healthy.
-8. **Run** the timed campaign (3×10-min iterations; full-workload or single-op per the chosen config),
-   one target at a time, into a shared `results/<campaign>` folder.
+8. **Run** the timed campaign (3 × 300 s arrival window per iteration — new Tasks scheduled for 300 s, then
+   drain; full-workload or single-op per the chosen config), one target at a time, into a shared
+   `results/<campaign>` folder. For the burst envelope (≥ 1,200 conn/s / ≥ 11,000 concurrent) use the
+   **3-host coordinated campaign** (§9): the coordinator owns the iteration loop and synchronizes all three
+   hosts on one shared start per iteration.
 9. **Clean** `calc_output` after each campaign with `clean-output` (empties only `calc_output`, keeps
    `calc_input` + the `ReqId` index). **Required after a single-insert run** (it accumulates docs without
    bound); harmless after full-workload/find-only. Run it before an insert campaign too, for a clean baseline.
@@ -302,5 +305,59 @@ See the [`README.md`](../README.md) for the per-command CLI details and the metr
 |---|---|
 | TCP tuning values (10000–65534, TIME_WAIT 30 s) | Backend tier (e.g. DocumentDB M-tier, Mongo VM size) |
 | No-reuse Task model, dataset (100k, seed 42) | Cosmos RU/s (40,000 → 100,000 → …) |
-| `ReqId` index on both collections | Run shape (1×60 min vs 3×10 min; full-workload vs single-op) |
+| `ReqId` index on both collections | Run shape (3 × 300 s arrival window; full-workload vs single-op) |
 | Software stack pins (.NET 8, driver 2.30, Server 7.0) | Which AZ each VM/backend sits in |
+
+---
+
+## 9. Multi-host coordinated burst campaign (≥ 1,200 conn/s / ≥ 11,000 concurrent)
+
+A single generator cannot reach the burst envelope without exhausting its own ephemeral ports / TLS CPU, so
+the peak is produced by **three co-located AZ1 generators** (`vm-hpc-loadgen-az1-0/1/2`, Standard E32as v6,
+Windows Server 2025, Accelerated Networking) driven by a central coordinator. This section is the recreation
+blueprint for that setup.
+
+### 9.1 Per-host bootstrap (each of the 3 AZ1 VMs)
+
+1. `scripts\setup\tune-vm1.ps1` (elevated) + reboot — ephemeral ports 10000–65534, `TcpTimedWaitDelay = 30 s`
+   (≈ 1,850 conn/s/host ceiling).
+2. `scripts\setup\Setup-Gen2Host.ps1` — idempotent: install .NET 8, clone the repo to `C:\bmt`, build Release.
+3. Set the per-host machine env vars, including the target `BMT_CONN_*` connection strings (never committed)
+   and `BMT_CONN_MONGO_MONITOR` for the server-side sampler.
+4. **TLS (fair + honest):** every target pays a *validated* TLS handshake so churn cost is comparable to the
+   managed services. On each mongo node run `scripts\setup\enable-mongo-tls.ps1` (`mode: requireTLS`), copy
+   its CA to each generator's trusted root store, and set the mongo `BMT_CONN_*` with `tls=true` connecting by
+   the cert's DNS name. **Never** `tlsInsecure=true` — validation stays on.
+5. Network/DNS: peer the AZ1 VNet to the mongo VNet and link both Private DNS zones to the AZ1 VNet so PE
+   hostnames / SRV resolve to **private** IPs from AZ1. Gate: from an AZ1 host, resolve the docdb SRV and the
+   mongo host to private IPs and confirm a TCP connect before proceeding.
+
+### 9.2 Run the coordinated campaign
+
+The coordinator (`scripts\run\Invoke-Campaign.ps1`) **owns the iteration loop**: for each iteration it
+computes one shared `--start-at` UTC instant, launches **exactly one iteration** on hosts 1/2/3 with that
+start, waits for all three to finish (including drain), validates every host reported, and only then advances
+— rerunning the whole three-host iteration on any failure (never continuing with a partial host set).
+
+```powershell
+# From the operator box (per target, sequential — never two targets at once):
+.\scripts\run\Invoke-Campaign.ps1 -Target documentdb -Iterations 3 -PushResults
+# Then prove the envelope per synchronized iteration:
+.\scripts\run\Merge-Campaign.ps1 -RunTag <campaign> -InputDir results
+```
+
+`report merge` requires the exact host set `{1,2,3}` per iteration and reports start-time skew, combined
+offered/started rates, peak combined **connections-created/s** and **connections-ready/s** (≥ 1,200), peak
+combined **ActiveReady** (authoritative concurrency, ≥ 11,000 — in-flight Task count is a diagnostic only),
+failure rate, true offered-to-finished p99, and drain duration, then a cross-iteration mean/min/max over the
+valid iterations. The 3-host sizing (λ, `TaskSleepMs`) lives in
+`config/production/full-workload-open-loop-3host.json`. Full metric semantics:
+[`metrics-reference.md`](metrics-reference.md) §8.
+
+### 9.3 Server-side evidence (self-managed mongo targets)
+
+`Invoke-Campaign.ps1` starts `scripts\run\Sample-MongoServerStats.ps1` (read-only `serverStatus` via the
+`bmt_monitor` `clusterMonitor` user) during the run and pulls Azure Monitor metrics over the run window
+afterwards, so the injected load is corroborated on the backend. DocumentDB vCore publishes no
+active-connection counter, so its concurrency evidence is client-side (driver ActiveReady) plus Azure Monitor
+request/throttle metrics.

@@ -49,8 +49,10 @@
     },
     // ============================== ==== END EDIT THESE ==== ===================================
 
-    // Period (ms) for sampling client-host resources (ports/TIME_WAIT/handles/CPU/mem), §7.3.
-    // Leave as-is unless you need finer/coarser host telemetry.
+    // Client-host process-metric sampling period (ms) — CPU/mem/handles are sampled once per second (§7.3).
+    // Target-specific TCP state (§4) is sampled at a fixed RAW cadence of 250–500 ms and aggregated into
+    // one-second buckets that retain sub-second peaks; this value is used as the raw cadence only when it
+    // already falls in 250–500 ms, otherwise the sampler defaults to 250 ms. Leave as-is unless tuning.
     "ResourceSampleIntervalMs": 1000
   }
 }

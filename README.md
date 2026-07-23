@@ -61,9 +61,12 @@ src/
                    # clean-output : empty only calc_output after a campaign (batched, Cosmos-429-aware)
   Bmt.Preflight/   # preflight    : the 10 mandatory pre-run checks (gate)
   Bmt.LoadGen/     # test         : the timed connection-churn run (Scenario A steady + B burst)
-  Bmt.Report/      # report       : results JSON/CSV -> self-contained HTML
+  Bmt.Report/      # report / merge: results JSON/CSV -> self-contained HTML; multi-host per-iteration merge
+test/
+  Bmt.Tests/       # xUnit suite: arrival/scheduler/drain decomposition, connection-lifecycle gauges,
+                   #   target-endpoint resolution, and the per-iteration multi-host merge contract
 config/
-  production/      # full 100k dataset, 3 iterations x 10 min:
+  production/      # full 100k dataset, 3 iterations x 300 s arrival window (+ drain):
     full-workload.json   #   4-op cycle: find-input -> remove -> insert -> find-output (canonical; burst-only via run.json)
     single-find.json     #   single-op: find(calc_input) only — isolates cold read latency (burst-only)
     single-insert.json   #   single-op: insert(calc_output) only — isolates cold write latency (burst-only)
@@ -166,7 +169,8 @@ duration for short smoke runs), `--results <dir>`, `--no-preflight` (NOT recomme
 
 **Workload mode is chosen by which config you pass** (see the table below) — e.g.
 `config/production/single-find.json` for find-only or `config/production/single-insert.json` for
-insert-only. All three production configs run 3 iterations × 10 min, steady + burst.
+insert-only. All three production configs run 3 iterations × 300 s arrival window (+ drain); `run.json`
+ships **burst on, steady off** (see the scenario note below).
 
 ### 4. `report` — self-contained HTML (Bmt.Report)
 
@@ -182,7 +186,7 @@ single self-contained HTML report. To compare all three candidates, run `test` o
 
 ## Configuration (`config/`)
 
-Configs are split into **`config/production/`** (full 100k dataset, 3 × 10 min, steady + burst) and
+Configs are split into **`config/production/`** (full 100k dataset, 3 × 300 s arrival window, burst) and
 **`config/smoke/`** (tiny/fast validation). **The workload mode is selected by which config you pass** —
 there is no CLI flag for it:
 
@@ -217,15 +221,17 @@ there is no CLI flag for it:
 
 Config keys (all configs share this shape):
 
-- `TaskSleepMs` — calc-time substitute sleep between the input-find and output-remove (default 10,000 ms;
-  **0** and skipped entirely in single-op modes).
+- `TaskSleepMs` — calc-time substitute sleep between the input-find and output-remove (code default
+  10,000 ms; **production `run.json` uses 2,000 ms** — 2,900 ms in the 3-host config; **0** and skipped
+  entirely in single-op modes).
 - `Dataset` — `DocumentCount` (100,000), `Seed` (42), and the four whole-document size `Buckets`
   (6 KB×10,000 / 16 KB×15,000 / 50 KB×35,000 / 58 KB×40,000; mean ≈ 43.7 KB, total ≈ 4.37 GB). Sizes are
   **whole-BSON-document** targets — the `Input` field is padded so the entire doc hits the bucket size.
 - `Seeder` — insert/delete batch sizes (`cosmos-ru` uses smaller batches to ease RU throttling).
 - `Preflight` — expected server values (RU/s, tier, max connections) and host-headroom thresholds.
-- `Scenario` — `Iterations` (production 3), `IterationDurationSeconds` (production 600 — overrides each
-  scenario's `DurationSeconds`), `MaxConcurrentTasks`, resource sample interval, and the two scenarios:
+- `Scenario` — `Iterations` (production 3), `IterationDurationSeconds` (production **300** — the arrival
+  window; overrides each scenario's `DurationSeconds`), `MaxConcurrentTasks`, resource sample interval,
+  and the two scenarios:
   - **Steady (A)**: `TasksPerSecond` 135.
   - **Burst (B)**: Poisson `JobsPerSecondLambda` 0.57, `MinTasksPerJob`..`MaxTasksPerJob` 14..500.
 - `Workload` — `Mode` (`FullWorkload` | `SingleOp`) and `SingleOpType` (`FindInput` | `InsertOutput`).
@@ -257,12 +263,22 @@ run id is `<target>-<scenario>-<yyyyMMdd-HHmmss>` — the scenario token `steady
 steady + Scenario B burst in one window. Point `--results` at the campaign folder so a campaign's runs
 group together. See each campaign's `INDEX.md` for a manifest.
 
-- `results/<campaign>/<run-id>/<run-id>.json` — the full machine-readable `RunResult` (totals, per-op +
-  cycle + connection-open + client-create latency percentiles, connection counters, reuse verification,
-  error taxonomy, per-second throughput, client-host resource samples).
-- `results/<campaign>/<run-id>/<run-id>-timeseries.csv` — one row per second (connection open/close rates,
+- `results/<campaign>/<run-id>/<run-id>.json` — the full machine-readable `RunResult`: totals + **open-loop
+  generator fidelity** (`TasksScheduled`/`TasksStarted`, scheduled/started per-sec on the 300 s arrival-window
+  denominator, scheduler-queue / execution / authoritative offered-to-finished latency), the explicit
+  **`Arrival`** window/drain model (arrival & drain bounds, outstanding-at-stop, max drain backlog), the
+  driver-event **`Lifecycle`** model (created/ready/failed/closed, peak active-connecting / active-ready /
+  waiting-for-server, demand-to-ready + driver-open latency, reconciliation), per-op + cycle + connection
+  latency percentiles, error taxonomy, per-second throughput, client-host resource samples, and the
+  **`TargetTcp`** target-filtered TCP telemetry (resolved endpoint set, per-state peaks, dropped samples).
+- `results/<campaign>/<run-id>/<run-id>-timeseries.csv` — one row per second (scheduled/started tasks,
+  connection created/ready/failed/closed rates, active-connecting / active-ready / waiting-for-server gauges,
   per-op QPS, in-flight Tasks, ephemeral ports, TIME_WAIT, handles, CPU%, working set).
-- `results/<campaign>/<run-id>/<run-id>-latency.csv` — per-op + cycle + connection latency percentiles.
+- `results/<campaign>/<run-id>/<run-id>-latency.csv` — per-op + cycle + scheduler-queue + execution +
+  offered-to-finished + connection + demand-to-ready + driver-open latency percentiles.
+- `results/<campaign>/<run-id>/<run-id>-target-tcp.csv` — per-second (sub-second-peak) target-specific TCP
+  states (SYN_SENT / ESTABLISHED / TIME_WAIT / CLOSE_WAIT / FIN_WAIT_1/2, socket + distinct-local-port
+  totals) plus host-wide totals and ephemeral-port utilization.
 - `results/<campaign>/<run-id>/<run-id>.log` — captured console log (**git-ignored**; see below).
 - `results/<campaign>/comparison-3way-<scenario>-<ts>.html` — the self-contained comparison report.
   Its title carries the identifier from `--output`, so name it `comparison-3way-<scenario>-<ts>.html`.
@@ -361,4 +377,42 @@ dotnet run --project src/Bmt.Seeder    -- clean-output --config config/productio
 
 # After all three targets have run:
 dotnet run --project src/Bmt.Report    -- report --input results/<campaign>/ --output results/<campaign>/comparison-3way-steady-burst-<ts>.html
+```
+
+---
+
+## Multi-host coordinated campaign (reaching ≥1,200 conn/s and ≥11,000 concurrent)
+
+A single generator host cannot reach the burst envelope without exhausting its own ephemeral ports / TLS
+CPU, so the peak is produced by **three co-located AZ1 generators** driven by a central coordinator. The
+coordinator (`scripts/run/Invoke-Campaign.ps1`) **owns the iteration loop**: for each of the 3 iterations it
+computes one shared UTC start instant, launches **exactly one iteration** on hosts 1/2/3 with that start,
+waits for all three to finish (including drain), validates every host reported, and only then advances —
+rerunning the whole three-host iteration on any failure (never continuing with a partial host set).
+
+```powershell
+# From the operator box (per target, sequential — never two targets at once):
+.\scripts\run\Invoke-Campaign.ps1 -Target documentdb -Iterations 3 -PushResults
+
+# Once every host has pushed its results, merge per synchronized iteration and prove the envelope:
+.\scripts\run\Merge-Campaign.ps1 -RunTag <campaign> -InputDir results
+```
+
+`report merge` groups **per (target, scenario, iteration)**, requires the exact host set `{1,2,3}`, dedupes
+retries to the latest attempt per host, and reports start-time skew, combined offered/started rates, peak
+combined **connections-created/s** and **connections-ready/s** (≥ 1,200), peak combined **ActiveReady** (the
+authoritative concurrency verdict, ≥ 11,000 — in-flight Task count is a generator diagnostic only), failure
+rate, true offered-to-finished p99, and drain duration, then a cross-iteration mean/min/max over the valid
+iterations. See [`docs/metrics-reference.md`](docs/metrics-reference.md) §8 for the full metric semantics.
+
+---
+
+## Tests
+
+A .NET xUnit suite under `test/Bmt.Tests` locks down the benchmark-correctness invariants (open-loop
+arrival/drain decomposition, connection-lifecycle gauges, target-endpoint resolution, and the per-iteration
+multi-host merge contract). Run it before a campaign:
+
+```powershell
+dotnet test test/Bmt.Tests/Bmt.Tests.csproj -c Release
 ```
