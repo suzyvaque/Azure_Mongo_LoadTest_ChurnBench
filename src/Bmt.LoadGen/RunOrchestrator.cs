@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using Bmt.Core;
 using Bmt.Core.Configuration;
 using Bmt.Core.Connections;
@@ -121,11 +122,22 @@ public sealed class RunOrchestrator
         await WaitForCoordinatedStartAsync(ct).ConfigureAwait(false);
 
         // ---- Campaign folder (shared by all iterations + aggregate) ----
-        var campaignStamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-        var scenarioLabel = ScenarioLabel(_options.Scenario.ToString());
-        var hostSuffix = _options.HostCount > 1 ? $"-h{_options.HostId:D2}of{_options.HostCount:D2}" : string.Empty;
-        var tagPrefix = string.IsNullOrEmpty(_options.RunTag) ? string.Empty : $"{_options.RunTag}-";
-        var campaignId = $"{tagPrefix}{cliName}-{scenarioLabel}-{workloadToken}{hostSuffix}-{campaignStamp}";
+        // Compact, human-scannable name: <db>-<loop>-<workload>-<MMdd>-<stamp>[-hN].
+        //   db       mongo | mongovm | docdb | cosmos
+        //   loop     open (open-loop, arrival-rate driven) | closed (closed-loop, gated task ceiling)
+        //   workload full (4-op cycle) | query (single-op find) | insert (single-op insert)
+        //   MMdd     month-day of the run
+        //   stamp    ≤3-char base-36 of the start instant — unique per run
+        //   -hN      host id, only when this is a multi-host campaign (keeps each host's folder distinct)
+        // The date + stamp derive from the coordinated start instant (identical across all hosts of a
+        // campaign) so every host's folder shares one base and differs only by the -hN token. The
+        // grouping RunTag still lives in each result JSON (used by `merge`), so shortening the folder
+        // name here does not affect cross-host aggregation.
+        var stampSeed = _options.StartAtUtc ?? DateTime.UtcNow;
+        var mmdd = stampSeed.ToString("MMdd");
+        var stamp = Base36Suffix(((DateTimeOffset)stampSeed).ToUnixTimeSeconds(), 3);
+        var hostSuffix = _options.HostCount > 1 ? $"-h{_options.HostId}" : string.Empty;
+        var campaignId = $"{DbLabel(cliName)}-{LoopLabel()}-{WorkloadLabel()}-{mmdd}-{stamp}{hostSuffix}";
         var campaignDir = Path.Combine(_options.ResultsDirectory, campaignId);
         Directory.CreateDirectory(campaignDir);
         ConsoleLog.Info($"Campaign folder: {campaignDir}");
@@ -350,11 +362,57 @@ public sealed class RunOrchestrator
         ConsoleLog.Info("Warm-up complete (throwaway connection disposed; none retained).");
     }
 
-    // Human-readable scenario token for filenames.
-    private static string ScenarioLabel(string scenario) =>
-        scenario.Equals("Both", StringComparison.OrdinalIgnoreCase)
-            ? "steady-burst"
-            : scenario.ToLowerInvariant();
+    // Short database label for compact folder names.
+    private static string DbLabel(string cliName) => cliName switch
+    {
+        "mongo-shard" => "mongo",
+        "mongo-vm" => "mongovm",
+        "documentdb" => "docdb",
+        "cosmos-ru" => "cosmos",
+        _ => cliName,
+    };
+
+    // open  = open-loop (arrival-rate driven; concurrency is unbounded, "max open connections").
+    // closed = closed-loop (a fixed task/concurrency ceiling gates arrivals — the task-perspective test).
+    // Burst carries the explicit OpenLoop switch; a steady-only run is arrival-rate driven (open).
+    private string LoopLabel()
+    {
+        var (_, runBurst) = ResolveActiveScenarios();
+        return runBurst ? (_config.Scenario.Burst.OpenLoop ? "open" : "closed") : "open";
+    }
+
+    // full = full 4-op cycle; query = single-op find; insert = single-op insert.
+    private string WorkloadLabel() => _config.Workload.Mode switch
+    {
+        WorkloadMode.FullWorkload => "full",
+        WorkloadMode.SingleOp => _config.Workload.SingleOpType switch
+        {
+            SingleOpType.FindInput => "query",
+            SingleOpType.InsertOutput => "insert",
+            _ => "op",
+        },
+        _ => "full",
+    };
+
+    // Base-36 encode, returning at most the last <maxChars> characters — a compact, unique-per-run stamp.
+    private static string Base36Suffix(long value, int maxChars)
+    {
+        const string chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+        if (value <= 0)
+        {
+            return "0";
+        }
+
+        var sb = new StringBuilder();
+        while (value > 0)
+        {
+            sb.Insert(0, chars[(int)(value % 36)]);
+            value /= 36;
+        }
+
+        var s = sb.ToString();
+        return s.Length <= maxChars ? s : s[^maxChars..];
+    }
 
     private static void PrintIterationSummary(RunResult r)
     {

@@ -54,6 +54,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Compact base-36 stamp (last <MaxChars> chars) — mirrors RunOrchestrator.Base36Suffix so the campaign
+# tag and each host's result folder share the same start-derived stamp.
+function ConvertTo-Base36Suffix {
+    param([long]$Value, [int]$MaxChars = 3)
+    if ($Value -le 0) { return '0' }
+    $chars = '0123456789abcdefghijklmnopqrstuvwxyz'
+    $s = ''
+    while ($Value -gt 0) {
+        $s = $chars[[int]($Value % 36)] + $s
+        $Value = [long][math]::Floor($Value / 36)
+    }
+    if ($s.Length -le $MaxChars) { return $s }
+    return $s.Substring($s.Length - $MaxChars)
+}
+
 # ---- Resolve the same-AZ generator pool for this target ----
 if (-not $HostVms -or $HostVms.Count -eq 0) {
     # All targets run sequentially from the same AZ1 trio (koreacentral zone 1).
@@ -66,10 +81,25 @@ if (-not $HostVms -or $HostVms.Count -eq 0) {
     }
 }
 $hostCount = $HostVms.Count
-if (-not $RunTag) { $RunTag = "$Target-$(Get-Date -Format 'yyyyMMdd-HHmmss')" }
 
 # ---- Single shared start instant for every host ----
-$startAt = [DateTimeOffset]::UtcNow.AddSeconds($LeadSeconds).ToString('yyyy-MM-ddTHH:mm:ssZ')
+$startInstant = [DateTimeOffset]::UtcNow.AddSeconds($LeadSeconds)
+$startAt = $startInstant.ToString('yyyy-MM-ddTHH:mm:ssZ')
+
+# ---- Default campaign tag: <db>-<MMdd>-<stamp>. Shares the date + base-36 start stamp with each host's
+#      compact result folder (<db>-<loop>-<workload>-<MMdd>-<stamp>) so operator + per-host artifacts
+#      correlate at a glance. Pass -RunTag to override. ----
+if (-not $RunTag) {
+    $dbLabel = switch ($Target) {
+        'mongo-shard' { 'mongo' }
+        'mongo-vm'    { 'mongovm' }
+        'documentdb'  { 'docdb' }
+        'cosmos-ru'   { 'cosmos' }
+        default       { $Target }
+    }
+    $stamp = ConvertTo-Base36Suffix -Value $startInstant.ToUnixTimeSeconds() -MaxChars 3
+    $RunTag = "$dbLabel-$($startInstant.ToString('MMdd'))-$stamp"
+}
 
 Write-Host "==== Multi-host burst campaign ====" -ForegroundColor Cyan
 Write-Host "  target     : $Target"

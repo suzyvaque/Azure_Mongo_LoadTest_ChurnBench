@@ -208,6 +208,8 @@ series, they are available for **both** DBs.
 
 ```
 # Operator box (az1-0) — server-side artifacts per campaign:
+# <RunTag> defaults to <db>-<MMdd>-<stamp> (e.g. mongo-0723-ti0), sharing <MMdd>-<stamp> with the
+# per-host folders below so operator + client artifacts correlate at a glance.
 results/_campaign-<RunTag>/
 ├── server-samples/mongo-serverstats.csv   # §2a in-run server concurrency + QPS (MongoDB only)
 ├── azure-metrics.json                      # §2b–2d + §3: VM CPU/mem/net, serverStatus, log, DocumentDB cluster
@@ -219,7 +221,10 @@ results/_campaign-<RunTag>/
     └── <target>-<vm>-log-window.json       # §2d MongoDB log
 
 # Each load-generator host — client-side (§1), under results/<campaignId>/:
-results/<RunTag>-test-burst-<workload>-hNNofMM-<stamp>/
+# Compact folder name: <db>-<loop>-<workload>-<MMdd>-<stamp>[-hN]
+#   db=mongo|docdb|cosmos  loop=open|closed  workload=full|query|insert
+#   <stamp> = ≤3-char base-36 of the shared start instant (same across hosts); -hN only when multi-host
+results/mongo-open-full-0723-ti0-h1/
 ├── aggregate.json                          # cross-iteration aggregate for that host
 └── iter-NN/
     ├── <runId>.json                        # full RunResult (all §1 metrics)
