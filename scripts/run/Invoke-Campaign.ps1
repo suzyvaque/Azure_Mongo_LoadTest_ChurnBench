@@ -84,6 +84,39 @@ $scriptPath = "$RepoDir\scripts\run\Run-BurstHost.ps1"
 $pushFlag   = if ($PushResults) { '-PushResults' } else { '' }
 $noPfFlag   = if ($NoPreflight) { '-NoPreflight' } else { '' }
 
+# ---- Campaign-level server-side artifact dir on THIS operator box (az1-0). Holds the in-run
+#      serverStatus timeseries + the post-run azure-metrics.json. Committed separately by the operator
+#      (kept off the per-host push path to avoid git contention in C:\bmt during the run). ----
+$campaignRoot = Join-Path $RepoDir "results\_campaign-$RunTag"
+New-Item -ItemType Directory -Force -Path $campaignRoot | Out-Null
+$stopFile = Join-Path $campaignRoot '.sampler-stop'
+if (Test-Path $stopFile) { Remove-Item $stopFile -Force }
+
+# ---- Start the in-run server-side connection/opcounters sampler (self-managed mongo targets only;
+#      documentdb vCore publishes no connection metric). Read-only serverStatus, negligible load.
+#      Guarded: a failure here never aborts the campaign. ----
+$samplerJob = $null
+if ($Target -in @('mongo-shard', 'mongo-vm')) {
+    try {
+        $monConn = [Environment]::GetEnvironmentVariable('BMT_CONN_MONGO_MONITOR')
+        if (-not $monConn) { $monConn = [Environment]::GetEnvironmentVariable('BMT_CONN_MONGO_MONITOR', 'Machine') }
+        if ($monConn) {
+            $samplerScript = "$RepoDir\scripts\run\Sample-MongoServerStats.ps1"
+            $samplerCsv    = Join-Path $campaignRoot 'server-samples\mongo-serverstats.csv'
+            $maxDur        = $LeadSeconds + 1200
+            $samplerJob = Start-Job -Name "sampler-$RunTag" -ScriptBlock {
+                param($sp, $conn, $csv, $stop, $repo, $maxDur)
+                & $sp -ConnectionString $conn -OutCsv $csv -IntervalSeconds 5 -MaxDurationSeconds $maxDur -StopFile $stop -RepoDir $repo
+            } -ArgumentList $samplerScript, $monConn, $samplerCsv, $stopFile, $RepoDir, $maxDur
+            Write-Host "[sampler] server-side serverStatus timeseries -> $samplerCsv" -ForegroundColor DarkCyan
+        } else {
+            Write-Host "[sampler] BMT_CONN_MONGO_MONITOR not set; skipping server-side sampler." -ForegroundColor DarkYellow
+        }
+    } catch {
+        Write-Host "[sampler] failed to start (continuing without it): $($_.Exception.Message)" -ForegroundColor DarkYellow
+    }
+}
+
 # ---- Fire each host concurrently via az vm run-command (each as a background job) ----
 $jobs = @()
 for ($i = 0; $i -lt $hostCount; $i++) {
@@ -110,13 +143,48 @@ for ($i = 0; $i -lt $hostCount; $i++) {
 Write-Host "All $hostCount hosts launched. Waiting for run-command completion (may take 15-25 min)..." -ForegroundColor Cyan
 $jobs | Wait-Job | Out-Null
 
+# Timed load has now ended on every host. Mark the run-window end and stop the in-run sampler.
+$windowEnd = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+if ($samplerJob) {
+    try {
+        New-Item -ItemType File -Force -Path $stopFile | Out-Null
+        Wait-Job $samplerJob -Timeout 30 | Out-Null
+        Receive-Job $samplerJob -ErrorAction SilentlyContinue | Out-Null
+    } catch { } finally {
+        Stop-Job $samplerJob -ErrorAction SilentlyContinue
+        Remove-Job $samplerJob -Force -ErrorAction SilentlyContinue
+        Remove-Item $stopFile -Force -ErrorAction SilentlyContinue
+    }
+    $csvPath = Join-Path $campaignRoot 'server-samples\mongo-serverstats.csv'
+    if (Test-Path $csvPath) {
+        $rows = @(Import-Csv $csvPath)
+        $peak = ($rows | Where-Object { $_.connCurrent -match '^\d+$' } |
+            Measure-Object -Property connCurrent -Maximum).Maximum
+        Write-Host "[sampler] captured $($rows.Count) rows; server-side peak connCurrent (per router) = $peak" -ForegroundColor DarkCyan
+    }
+}
+
 foreach ($j in $jobs) {
     Write-Host "---- $($j.Name) ----" -ForegroundColor Yellow
     Receive-Job $j
     Remove-Job $j
 }
 
+# ---- Auto-pull server-side Azure Monitor + mongo evidence over the run window (guarded no-op if az
+#      is not logged in / resources file unfilled). Correct window: shared timed start .. load end. ----
+Write-Host ""
+Write-Host "Pulling server-side metrics over [$startAt .. $windowEnd] ..." -ForegroundColor Cyan
+try {
+    & "$RepoDir\scripts\run\Get-AzureMetrics.ps1" `
+        -CampaignRoot $campaignRoot `
+        -StartUtc $startAt -EndUtc $windowEnd `
+        -Targets $Target -RepoDir $RepoDir
+} catch {
+    Write-Host "azure metrics pull failed (non-fatal): $($_.Exception.Message)" -ForegroundColor DarkYellow
+}
+
 Write-Host ""
 Write-Host "Campaign '$RunTag' dispatched to all hosts." -ForegroundColor Green
+Write-Host "Server-side artifacts: $campaignRoot" -ForegroundColor Green
 Write-Host "Next: once each host has pushed its results/, run:" -ForegroundColor Green
 Write-Host "  .\Merge-Campaign.ps1 -RunTag $RunTag -InputDir <results-dir-with-all-hosts>" -ForegroundColor Green
