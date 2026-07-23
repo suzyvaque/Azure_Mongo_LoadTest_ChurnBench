@@ -37,11 +37,20 @@ public sealed class MetricsCollector : IConnectionEventObserver
     private readonly LatencyDigest _taskExecArrival = new();
     private readonly LatencyDigest _offeredToFinishedArrival = new();
 
+    // §3 connection lifecycle: per-Task demand→driver-ready (cold-connection) latency. Driver-open
+    // (created→ready) is captured by _connectionOpen from the driver's reported open duration.
+    private readonly LatencyDigest _demandToReady = new();
+
+    // Authoritative connection counters (bound by the orchestrator) so per-second active-gauge maxima
+    // can be sampled on each driver event.
+    private Bmt.Core.Connections.ConnectionEventCounters? _connCounters;
+
     private readonly ConcurrentDictionary<BmtErrorType, long> _errors = new();
     private readonly ConcurrentDictionary<int, SecondBucket> _seconds = new();
 
     private long _tasksScheduled;
     private long _tasksStarted;
+    private long _tasksReachedDemand;
     private long _totalTasks;
     private long _successTasks;
     private long _failTasks;
@@ -86,7 +95,6 @@ public sealed class MetricsCollector : IConnectionEventObserver
         var started = Interlocked.Increment(ref _tasksStarted);
         var now = Interlocked.Increment(ref _inFlight);
         var b = Bucket();
-        Interlocked.Increment(ref b.ConnectionsCreated);
         Interlocked.Increment(ref b.StartedTasks);
         b.UpdateInFlightMax(now);
         UpdateScheduledBacklog(Interlocked.Read(ref _tasksScheduled) - started);
@@ -100,8 +108,6 @@ public sealed class MetricsCollector : IConnectionEventObserver
     public void OnTaskEnd(bool success, double cycleMs, double schedQueueMs, double execMs, double offeredToFinishedMs)
     {
         var remaining = Interlocked.Decrement(ref _inFlight);
-        var b = Bucket();
-        Interlocked.Increment(ref b.ConnectionsClosed);
         _cycle.Record(cycleMs);
         _schedQueue.Record(schedQueueMs);
         _taskExec.Record(execMs);
@@ -200,6 +206,16 @@ public sealed class MetricsCollector : IConnectionEventObserver
 
     public void RecordClientCreate(double ms) => _clientCreate.Record(ms);
 
+    /// <summary>§3: record one Task's demand→driver-ready (cold-connection) latency in milliseconds.</summary>
+    public void RecordConnectionDemandToReady(double ms) => _demandToReady.Record(ms);
+
+    /// <summary>§3: a Task reached connection demand (its first op is about to acquire a connection).</summary>
+    public void OnConnectionDemand() => Interlocked.Increment(ref _tasksReachedDemand);
+
+    /// <summary>Bind the authoritative connection counters so per-second active gauges can be sampled.</summary>
+    public void BindConnectionCounters(Bmt.Core.Connections.ConnectionEventCounters counters) =>
+        _connCounters = counters;
+
     /// <summary>Record one of the four ordered Task ops (§2.1).</summary>
     public void RecordOp(string opName, double ms, bool success)
     {
@@ -227,30 +243,63 @@ public sealed class MetricsCollector : IConnectionEventObserver
     public void RecordError(BmtErrorType type) =>
         _errors.AddOrUpdate(type, 1, (_, v) => v + 1);
 
-    // ---- IConnectionEventObserver: feed connection-open (handshake/TLS/auth) latency into the digest.
-    // Other event kinds are tallied by ConnectionEventCounters; here we only need the open duration.
+    // ---- IConnectionEventObserver: driver events are the AUTHORITATIVE connection-lifecycle source
+    // (§3). MetricsCollector records the per-SECOND connection rates and per-second active-gauge maxima
+    // (the cumulative counters + live gauges live in ConnectionEventCounters, which is invoked FIRST by
+    // the CompositeConnectionObserver, so the gauge reads below already reflect the current event).
+    void IConnectionEventObserver.OnServerSelectionStarted() => SampleActiveGauges();
+
+    void IConnectionEventObserver.OnServerSelectionEnded(bool success) => SampleActiveGauges();
+
     void IConnectionEventObserver.OnConnectionCreated(ConnectionId connectionId)
     {
+        Interlocked.Increment(ref Bucket().ConnectionsCreated);
+        SampleActiveGauges();
     }
 
     void IConnectionEventObserver.OnConnectionReady(ConnectionId connectionId, TimeSpan? openDuration)
     {
+        Interlocked.Increment(ref Bucket().ConnectionsReady);
         if (openDuration is { } d)
         {
+            // Driver-created → ready (the physical connection-open duration = DriverOpenLatencyMs, §3).
             _connectionOpen.Record(d.TotalMilliseconds);
         }
+
+        SampleActiveGauges();
     }
 
     void IConnectionEventObserver.OnConnectionClosed(ConnectionId connectionId)
     {
+        Interlocked.Increment(ref Bucket().ConnectionsClosed);
+        SampleActiveGauges();
     }
+
+    void IConnectionEventObserver.OnConnectionClosing(ConnectionId connectionId) => SampleActiveGauges();
 
     void IConnectionEventObserver.OnConnectionFailed(ConnectionId connectionId, Exception exception)
     {
+        Interlocked.Increment(ref Bucket().ConnectionsFailed);
+        SampleActiveGauges();
     }
 
     void IConnectionEventObserver.OnConnectionCheckedOut(ConnectionId connectionId)
     {
+    }
+
+    /// <summary>Update the current second's active-gauge maxima from the authoritative counters.</summary>
+    private void SampleActiveGauges()
+    {
+        var c = _connCounters;
+        if (c is null)
+        {
+            return;
+        }
+
+        var b = Bucket();
+        b.UpdateActiveConnectingMax(c.ActiveConnecting);
+        b.UpdateActiveReadyMax(c.ActiveReady);
+        b.UpdateWaitingForServerMax(c.WaitingForServer);
     }
 
     void IConnectionEventObserver.OnHandshakeCommand(string commandName, TimeSpan duration, bool success)
@@ -362,6 +411,45 @@ public sealed class MetricsCollector : IConnectionEventObserver
             ClosedToTaskRatio = totalTasks == 0 ? 0 : (double)closed / totalTasks,
         };
 
+        // §3 connection-lifecycle model: driver-event-sourced counters + gauges + the two cold-connection
+        // latencies, plus a lifecycle reconciliation. Created should ≈ Tasks that reached connection
+        // DEMAND (the correct floor — a Task that fails before demand never opens a connection), and after
+        // drain created ≈ closed. Any mismatch is reported explicitly rather than hidden.
+        var tasksStarted = Interlocked.Read(ref _tasksStarted);
+        var tasksReachedDemand = Interlocked.Read(ref _tasksReachedDemand);
+        var createdClosedDelta = created - closed;
+        var createdVsDemandDelta = created - tasksReachedDemand;
+        result.Lifecycle = new ConnectionLifecycleStats
+        {
+            TasksScheduled = Interlocked.Read(ref _tasksScheduled),
+            TasksStarted = tasksStarted,
+            TasksReachedDemand = tasksReachedDemand,
+            ConnectionsCreated = created,
+            ConnectionsReady = connCounters.Ready,
+            ConnectionsFailed = connCounters.Failed,
+            ConnectionsClosed = closed,
+            PeakWaitingForServer = connCounters.PeakWaitingForServer,
+            PeakActiveConnecting = connCounters.PeakActiveConnecting,
+            PeakActiveReady = connCounters.PeakActiveReady,
+            PeakActiveClosing = connCounters.PeakActiveClosing,
+            ResidualActiveConnecting = connCounters.ActiveConnecting,
+            ResidualActiveReady = connCounters.ActiveReady,
+            ResidualActiveClosing = connCounters.ActiveClosing,
+            DemandToReadyLatencyMs = _demandToReady.Summarize(),
+            DriverOpenLatencyMs = _connectionOpen.Summarize(),
+            CreatedMinusClosed = createdClosedDelta,
+            CreatedMinusDemand = createdVsDemandDelta,
+            LifecycleReconciled = Math.Abs(createdClosedDelta) <= Math.Max(1, created * 0.01),
+            ReconciliationDetail =
+                $"created={created} ready={connCounters.Ready} failed={connCounters.Failed} closed={closed}; " +
+                $"tasksStarted={tasksStarted} tasksReachedDemand={tasksReachedDemand}. Expected " +
+                $"(one-Task/one-client/no-reuse): created≈closed after drain (delta={createdClosedDelta}) and " +
+                $"created≈Tasks that reached demand (created-demand={createdVsDemandDelta}; negative = Tasks " +
+                $"that failed at server-selection/open before a connection object was created). Residual active " +
+                $"connecting/ready/closing should be ~0 after drain (connecting={connCounters.ActiveConnecting}, " +
+                $"ready={connCounters.ActiveReady}, closing={connCounters.ActiveClosing}).",
+        };
+
         // No-reuse verification (§2.2/§7.2): the constraint is that no connection is reused ACROSS
         // Tasks — every Task that runs opens its OWN new connection and closes it. The correct floor is
         // the number of SUCCESSFUL Tasks (each completed a full 4-op cycle, so each definitely needed
@@ -397,6 +485,8 @@ public sealed class MetricsCollector : IConnectionEventObserver
                 ScheduledTasks = Interlocked.Read(ref kv.Value.ScheduledTasks),
                 StartedTasks = Interlocked.Read(ref kv.Value.StartedTasks),
                 ConnectionsCreated = Interlocked.Read(ref kv.Value.ConnectionsCreated),
+                ConnectionsReady = Interlocked.Read(ref kv.Value.ConnectionsReady),
+                ConnectionsFailed = Interlocked.Read(ref kv.Value.ConnectionsFailed),
                 ConnectionsClosed = Interlocked.Read(ref kv.Value.ConnectionsClosed),
                 FindInputOps = Interlocked.Read(ref kv.Value.FindInputOps),
                 RemoveOps = Interlocked.Read(ref kv.Value.RemoveOps),
@@ -404,6 +494,9 @@ public sealed class MetricsCollector : IConnectionEventObserver
                 FindOutputOps = Interlocked.Read(ref kv.Value.FindOutputOps),
                 FailedOps = Interlocked.Read(ref kv.Value.FailedOps),
                 InFlightTasks = Volatile.Read(ref kv.Value.InFlightMax),
+                ActiveConnecting = Volatile.Read(ref kv.Value.ActiveConnectingMax),
+                ActiveReady = Volatile.Read(ref kv.Value.ActiveReadyMax),
+                WaitingForServer = Volatile.Read(ref kv.Value.WaitingForServerMax),
             })
             .ToList();
 
@@ -416,6 +509,8 @@ public sealed class MetricsCollector : IConnectionEventObserver
         public long ScheduledTasks;
         public long StartedTasks;
         public long ConnectionsCreated;
+        public long ConnectionsReady;
+        public long ConnectionsFailed;
         public long ConnectionsClosed;
         public long FindInputOps;
         public long RemoveOps;
@@ -423,19 +518,30 @@ public sealed class MetricsCollector : IConnectionEventObserver
         public long FindOutputOps;
         public long FailedOps;
         public int InFlightMax;
+        public int ActiveConnectingMax;
+        public int ActiveReadyMax;
+        public int WaitingForServerMax;
 
-        public void UpdateInFlightMax(int candidate)
+        public void UpdateInFlightMax(int candidate) => UpdateMax(ref InFlightMax, candidate);
+
+        public void UpdateActiveConnectingMax(int candidate) => UpdateMax(ref ActiveConnectingMax, candidate);
+
+        public void UpdateActiveReadyMax(int candidate) => UpdateMax(ref ActiveReadyMax, candidate);
+
+        public void UpdateWaitingForServerMax(int candidate) => UpdateMax(ref WaitingForServerMax, candidate);
+
+        private static void UpdateMax(ref int field, int candidate)
         {
             int observed;
             do
             {
-                observed = Volatile.Read(ref InFlightMax);
+                observed = Volatile.Read(ref field);
                 if (candidate <= observed)
                 {
                     return;
                 }
             }
-            while (Interlocked.CompareExchange(ref InFlightMax, candidate, observed) != observed);
+            while (Interlocked.CompareExchange(ref field, candidate, observed) != observed);
         }
     }
 }

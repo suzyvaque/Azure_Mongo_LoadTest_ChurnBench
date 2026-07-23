@@ -15,6 +15,22 @@ public sealed class CompositeConnectionObserver : IConnectionEventObserver
     public CompositeConnectionObserver(params IConnectionEventObserver[] sinks) =>
         _sinks = sinks ?? throw new ArgumentNullException(nameof(sinks));
 
+    public void OnServerSelectionStarted()
+    {
+        foreach (var s in _sinks)
+        {
+            s.OnServerSelectionStarted();
+        }
+    }
+
+    public void OnServerSelectionEnded(bool success)
+    {
+        foreach (var s in _sinks)
+        {
+            s.OnServerSelectionEnded(success);
+        }
+    }
+
     public void OnConnectionCreated(ConnectionId connectionId)
     {
         foreach (var s in _sinks)
@@ -28,6 +44,14 @@ public sealed class CompositeConnectionObserver : IConnectionEventObserver
         foreach (var s in _sinks)
         {
             s.OnConnectionReady(connectionId, openDuration);
+        }
+    }
+
+    public void OnConnectionClosing(ConnectionId connectionId)
+    {
+        foreach (var s in _sinks)
+        {
+            s.OnConnectionClosing(connectionId);
         }
     }
 

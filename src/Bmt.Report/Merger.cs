@@ -73,7 +73,11 @@ public static class Merger
         {
             var mg = BuildGroup(group.ToList());
             mg.ReachedChurnTarget = mg.PeakCombinedConnPerSec >= churnTarget;
-            mg.ReachedConcurrentTarget = mg.PeakCombinedInFlight >= concurrentTarget;
+            mg.ReachedReadyChurnTarget = mg.PeakCombinedReadyPerSec >= churnTarget;
+            mg.ReachedActiveReadyTarget = mg.PeakCombinedActiveReady >= concurrentTarget;
+            // The AUTHORITATIVE established-concurrency verdict is driver ActiveReady, NOT in-flight Task
+            // count (§3: in-flight Tasks are not proof of established concurrent connections).
+            mg.ReachedConcurrentTarget = mg.PeakCombinedActiveReady >= concurrentTarget;
             report.Groups.Add(mg);
         }
 
@@ -103,6 +107,8 @@ public static class Merger
 
         // Absolute wall-clock second -> summed connection-open rate + summed in-flight concurrency.
         var connBySecond = new Dictionary<long, long>();
+        var readyBySecond = new Dictionary<long, long>();
+        var activeReadyBySecond = new Dictionary<long, long>();
         var inFlightBySecond = new Dictionary<long, long>();
         var opsBySecond = new Dictionary<long, long>();
         var failedBySecond = new Dictionary<long, long>();
@@ -113,6 +119,8 @@ public static class Merger
             {
                 var sec = run.StartedUnixSeconds + p.Second;
                 connBySecond[sec] = connBySecond.GetValueOrDefault(sec) + p.ConnectionsCreated;
+                readyBySecond[sec] = readyBySecond.GetValueOrDefault(sec) + p.ConnectionsReady;
+                activeReadyBySecond[sec] = activeReadyBySecond.GetValueOrDefault(sec) + p.ActiveReady;
                 inFlightBySecond[sec] = inFlightBySecond.GetValueOrDefault(sec) + p.InFlightTasks;
                 opsBySecond[sec] = opsBySecond.GetValueOrDefault(sec) + p.CombinedOps;
                 failedBySecond[sec] = failedBySecond.GetValueOrDefault(sec) + p.FailedOps;
@@ -139,6 +147,8 @@ public static class Merger
 
         var peakConn = connBySecond.Count == 0 ? 0 : connBySecond.Values.Max();
         var peakConc = inFlightBySecond.Count == 0 ? 0 : inFlightBySecond.Values.Max();
+        var peakReady = readyBySecond.Count == 0 ? 0 : readyBySecond.Values.Max();
+        var peakActiveReady = activeReadyBySecond.Count == 0 ? 0 : activeReadyBySecond.Values.Max();
 
         var group = new MergeGroup
         {
@@ -160,6 +170,8 @@ public static class Merger
             StartSkewSeconds = skewSeconds,
             Valid = missingHostIds.Count == 0 && unexpectedHostIds.Count == 0 && hostCountConsistent,
             PeakCombinedConnPerSec = peakConn,
+            PeakCombinedReadyPerSec = peakReady,
+            PeakCombinedActiveReady = peakActiveReady,
             PeakCombinedInFlight = peakConc,
             TotalConnectionsCreated = connBySecond.Values.Sum(),
             CombinedWindowSeconds = connBySecond.Count,
@@ -297,6 +309,12 @@ public sealed class MergeGroup
     /// <summary>Peak of the per-second SUM of per-host connections opened — the combined conn/s spike.</summary>
     public long PeakCombinedConnPerSec { get; set; }
 
+    /// <summary>Peak of the per-second SUM of per-host connections that became driver-READY — combined ready/s (§3).</summary>
+    public long PeakCombinedReadyPerSec { get; set; }
+
+    /// <summary>Peak of the per-second SUM of per-host concurrent Ready connections — combined ActiveReady (§3 ≥ 11,000).</summary>
+    public long PeakCombinedActiveReady { get; set; }
+
     /// <summary>
     /// Peak of the per-second SUM of per-host in-flight Tasks — an upper-bound estimate of combined
     /// concurrency (per-host per-second maxima may occur at slightly different sub-second offsets).
@@ -311,8 +329,14 @@ public sealed class MergeGroup
     /// <summary>True when the combined conn/s peak met the campaign churn target (default ≥ 1,200).</summary>
     public bool ReachedChurnTarget { get; set; }
 
+    /// <summary>True when the combined driver-READY/s peak met the churn target — the stronger §3 evidence.</summary>
+    public bool ReachedReadyChurnTarget { get; set; }
+
     /// <summary>True when the combined concurrency peak met the campaign concurrent target (default ≥ 11,000).</summary>
     public bool ReachedConcurrentTarget { get; set; }
+
+    /// <summary>True when the combined concurrent ACTIVE-READY peak met the concurrent target — the §3 evidence.</summary>
+    public bool ReachedActiveReadyTarget { get; set; }
 
     public List<MergeSecond> Series { get; set; } = new();
 }

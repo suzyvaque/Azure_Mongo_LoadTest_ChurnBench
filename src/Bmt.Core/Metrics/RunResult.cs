@@ -102,6 +102,13 @@ public sealed class RunResult
 
     public ConnectionStats Connections { get; set; } = new();
 
+    /// <summary>
+    /// §3 connection-lifecycle model (driver-event-sourced): per-state counters + peak gauges, the two
+    /// cold-connection latencies (demand→ready and driver-open), and a lifecycle reconciliation. This is
+    /// the AUTHORITATIVE connection evidence — Task counts and host TCP sockets are not interchangeable.
+    /// </summary>
+    public ConnectionLifecycleStats Lifecycle { get; set; } = new();
+
     public ReuseVerification ReuseCheck { get; set; } = new();
 
     /// <summary>§7.4 error taxonomy counts (every failure classified into exactly one bucket).</summary>
@@ -271,6 +278,66 @@ public sealed class ConnectionStats
     public double ClosedToTaskRatio { get; set; }
 }
 
+/// <summary>
+/// §3 connection-lifecycle model. Driver connection-monitoring events are the authoritative source; do
+/// NOT infer connection acceptance from scheduled Tasks/s, nor concurrent established connections from
+/// in-flight Task count. Counter semantics are documented on <see cref="Bmt.Core.Connections.ConnectionEventCounters"/>.
+/// </summary>
+public sealed class ConnectionLifecycleStats
+{
+    public long TasksScheduled { get; set; }
+
+    public long TasksStarted { get; set; }
+
+    /// <summary>Tasks that reached connection demand (about to acquire a connection) — the reconciliation floor.</summary>
+    public long TasksReachedDemand { get; set; }
+
+    public long ConnectionsCreated { get; set; }
+
+    public long ConnectionsReady { get; set; }
+
+    public long ConnectionsFailed { get; set; }
+
+    public long ConnectionsClosed { get; set; }
+
+    /// <summary>Peak concurrent operations in driver server-selection (the WaitingForServer state).</summary>
+    public int PeakWaitingForServer { get; set; }
+
+    /// <summary>Peak concurrent connections in the Connecting state (created, not yet ready).</summary>
+    public int PeakActiveConnecting { get; set; }
+
+    /// <summary>Peak concurrent connections in the Ready state — the §3 concurrent-ready evidence (≥ 11,000).</summary>
+    public int PeakActiveReady { get; set; }
+
+    /// <summary>Peak concurrent connections in the Closing state (closing, not yet closed).</summary>
+    public int PeakActiveClosing { get; set; }
+
+    /// <summary>Connections still Connecting at the end of the run (should be ~0 after drain).</summary>
+    public int ResidualActiveConnecting { get; set; }
+
+    /// <summary>Connections still Ready (not closed) at the end of the run (should be ~0 after drain).</summary>
+    public int ResidualActiveReady { get; set; }
+
+    /// <summary>Connections still Closing at the end of the run (should be ~0 after drain).</summary>
+    public int ResidualActiveClosing { get; set; }
+
+    /// <summary>Demand → driver-ready latency: user-observed cold-connection cost (server selection + DNS/SRV + TCP + TLS + hello + auth).</summary>
+    public LatencySummary DemandToReadyLatencyMs { get; set; } = LatencySummary.Empty();
+
+    /// <summary>Driver-created → ready latency: isolates the physical connection-open lifecycle.</summary>
+    public LatencySummary DriverOpenLatencyMs { get; set; } = LatencySummary.Empty();
+
+    public long CreatedMinusClosed { get; set; }
+
+    /// <summary>ConnectionsCreated − TasksReachedDemand. ~0 ideal; negative = Tasks that failed before creating a connection.</summary>
+    public long CreatedMinusDemand { get; set; }
+
+    /// <summary>True when created ≈ closed after drain (no leak / no reuse). A mismatch is reported explicitly.</summary>
+    public bool LifecycleReconciled { get; set; }
+
+    public string ReconciliationDetail { get; set; } = string.Empty;
+}
+
 /// <summary>Result of the §7.2 client/session/cursor reuse verification.</summary>
 public sealed class ReuseVerification
 {
@@ -295,7 +362,22 @@ public sealed class ThroughputPoint
 
     public long ConnectionsCreated { get; set; }
 
+    /// <summary>§3: connections that became driver-ready this second.</summary>
+    public long ConnectionsReady { get; set; }
+
+    /// <summary>§3: connections that failed to open this second.</summary>
+    public long ConnectionsFailed { get; set; }
+
     public long ConnectionsClosed { get; set; }
+
+    /// <summary>§3: peak concurrent Connecting connections observed this second.</summary>
+    public int ActiveConnecting { get; set; }
+
+    /// <summary>§3: peak concurrent Ready connections observed this second.</summary>
+    public int ActiveReady { get; set; }
+
+    /// <summary>§3: peak concurrent WaitingForServer operations observed this second.</summary>
+    public int WaitingForServer { get; set; }
 
     public long FindInputOps { get; set; }
 

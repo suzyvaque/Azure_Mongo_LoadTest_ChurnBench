@@ -15,15 +15,19 @@ public sealed class TaskConnection : IDisposable
     private readonly MongoClient _client;
     private bool _disposed;
 
-    internal TaskConnection(MongoClient client)
+    internal TaskConnection(MongoClient client, ConnectionLifecycleRecorder? lifecycle = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
+        Lifecycle = lifecycle;
         Database = _client.GetDatabase(BmtConstants.DatabaseName);
         CalcInput = Database.GetCollection<CalcInputDoc>(BmtConstants.CalcInputCollection);
         CalcOutput = Database.GetCollection<CalcOutputDoc>(BmtConstants.CalcOutputCollection);
         CalcInputRaw = Database.GetCollection<BsonDocument>(BmtConstants.CalcInputCollection);
         CalcOutputRaw = Database.GetCollection<BsonDocument>(BmtConstants.CalcOutputCollection);
     }
+
+    /// <summary>Per-Task connection-lifecycle recorder (§3), or null when not instrumented.</summary>
+    public ConnectionLifecycleRecorder? Lifecycle { get; }
 
     public IMongoDatabase Database { get; }
 

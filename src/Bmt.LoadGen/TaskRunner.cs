@@ -86,6 +86,13 @@ public sealed class TaskRunner
             createSw.Stop();
             _metrics.RecordClientCreate(createSw.Elapsed.TotalMilliseconds);
 
+            // Connection demand begins now: the first operation triggers server selection + a fresh
+            // physical connection open (§3). Stamp it so demand-to-ready (user-observed cold-connection
+            // latency) can be measured against the driver's connection-ready event, and count that this
+            // Task reached demand (the reconciliation floor: created ≈ Tasks that reached demand).
+            conn.Lifecycle?.MarkDemand();
+            _metrics.OnConnectionDemand();
+
             if (_workload.Mode == WorkloadMode.SingleOp)
             {
                 await RunSingleOpAsync(conn, reqId, ct).ConfigureAwait(false);
@@ -107,6 +114,7 @@ public sealed class TaskRunner
         }
         finally
         {
+            var lifecycle = conn?.Lifecycle;
             conn?.Dispose();
             cycle.Stop();
             var taskFinishedUtc = DateTime.UtcNow;
@@ -114,6 +122,12 @@ public sealed class TaskRunner
             var execMs = Math.Max(0, (taskFinishedUtc - taskStartedUtc).TotalMilliseconds);
             var offeredToFinishedMs = Math.Max(0, (taskFinishedUtc - scheduledUtc).TotalMilliseconds);
             _metrics.OnTaskEnd(success, cycle.Elapsed.TotalMilliseconds, schedQueueMs, execMs, offeredToFinishedMs);
+
+            // §3: per-Task cold-connection latency (demand → driver-ready), when the connection opened.
+            if (lifecycle?.DemandToReadyMs is { } demandToReady)
+            {
+                _metrics.RecordConnectionDemandToReady(demandToReady);
+            }
         }
     }
 

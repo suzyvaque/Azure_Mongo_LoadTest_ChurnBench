@@ -207,6 +207,7 @@ public sealed class RunOrchestrator
         // ---- Wire fresh metrics + per-Task no-reuse connection factory (new per iteration) ----
         var counters = new ConnectionEventCounters();
         var metrics = new MetricsCollector();
+        metrics.BindConnectionCounters(counters);
         var observer = new CompositeConnectionObserver(counters, metrics);
         var factory = new TaskConnectionFactory(_options.Target, _connectionString, observer, _config.Client);
         var runner = new TaskRunner(factory, metrics, _options.Target, _config.TaskSleepMs, _config.Workload);
@@ -259,10 +260,8 @@ public sealed class RunOrchestrator
             await Task.WhenAll(generators).ConfigureAwait(false);
             arrivalStoppedUtc = DateTime.UtcNow;
             metrics.OnArrivalStopped();
-            // Concurrent driver-ready connections at arrival stop. Interim proxy = cumulative ready minus
-            // cumulative closed (an approximate concurrent-open gauge); the connection-lifecycle model
-            // replaces this with the exact ActiveReady gauge.
-            connectionsReadyAtArrivalStop = Math.Max(0, counters.Ready - counters.Closed);
+            // Concurrent driver-ready connections at arrival stop (authoritative ActiveReady gauge, §3).
+            connectionsReadyAtArrivalStop = counters.ActiveReady;
             drainStartedUtc = arrivalStoppedUtc;
             ConsoleLog.Info($"Arrival generation complete after {(arrivalStoppedUtc - startedUtc).TotalSeconds:F1}s; " +
                             $"draining {metrics.TasksOutstandingAtArrivalStop} outstanding Task(s)...");
@@ -272,7 +271,7 @@ public sealed class RunOrchestrator
         {
             arrivalStoppedUtc = DateTime.UtcNow;
             metrics.OnArrivalStopped();
-            connectionsReadyAtArrivalStop = Math.Max(0, counters.Ready - counters.Closed);
+            connectionsReadyAtArrivalStop = counters.ActiveReady;
             drainStartedUtc = arrivalStoppedUtc;
             ConsoleLog.Warn("Iteration canceled; draining in-flight Tasks...");
             await launcher.DrainAsync().ConfigureAwait(false);
@@ -532,6 +531,13 @@ public sealed class RunOrchestrator
         ConsoleLog.Info($"Connections: created={r.Connections.Created} closed={r.Connections.Closed} " +
                         $"(created/task={r.Connections.CreatedToTaskRatio:F3}). " +
                         $"No-reuse confirmed: {r.ReuseCheck.NoReuseConfirmed}.");
+        var lc = r.Lifecycle;
+        ConsoleLog.Info($"Lifecycle: created={lc.ConnectionsCreated} ready={lc.ConnectionsReady} failed={lc.ConnectionsFailed} " +
+                        $"closed={lc.ConnectionsClosed} | peak connecting={lc.PeakActiveConnecting} ready={lc.PeakActiveReady} " +
+                        $"waiting-server={lc.PeakWaitingForServer} | reconciled={lc.LifecycleReconciled} (created-closed={lc.CreatedMinusClosed}).");
+        ConsoleLog.Info($"Cold-conn ms: demand→ready p50={lc.DemandToReadyLatencyMs.P50Ms:F1} p95={lc.DemandToReadyLatencyMs.P95Ms:F1} " +
+                        $"p99={lc.DemandToReadyLatencyMs.P99Ms:F1} | driver-open p50={lc.DriverOpenLatencyMs.P50Ms:F1} " +
+                        $"p95={lc.DriverOpenLatencyMs.P95Ms:F1} p99={lc.DriverOpenLatencyMs.P99Ms:F1}");
         if (r.ErrorsByType.Count > 0)
         {
             ConsoleLog.Warn("Errors by type: " + string.Join(", ", r.ErrorsByType.Select(kv => $"{kv.Key}={kv.Value}")));

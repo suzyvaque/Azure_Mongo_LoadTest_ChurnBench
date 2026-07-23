@@ -8,11 +8,20 @@ namespace Bmt.Core.Connections;
 /// </summary>
 public interface IConnectionEventObserver
 {
+    /// <summary>Server selection started (the driver is choosing a server for an operation — "waiting for server").</summary>
+    void OnServerSelectionStarted();
+
+    /// <summary>Server selection ended (a server was selected, or selection failed/timed out).</summary>
+    void OnServerSelectionEnded(bool success);
+
     /// <summary>A physical connection object was created (pre-handshake).</summary>
     void OnConnectionCreated(ConnectionId connectionId);
 
     /// <summary>A connection became ready (TCP + TLS + handshake/auth complete).</summary>
     void OnConnectionReady(ConnectionId connectionId, TimeSpan? openDuration);
+
+    /// <summary>A connection began closing (entered the Closing state, before it is fully closed).</summary>
+    void OnConnectionClosing(ConnectionId connectionId);
 
     /// <summary>A connection was closed / released.</summary>
     void OnConnectionClosed(ConnectionId connectionId);

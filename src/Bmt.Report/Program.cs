@@ -103,7 +103,6 @@ internal static class Program
             Merger.WriteGroupCsv(g, csvPath);
 
             var churn = g.ReachedChurnTarget ? "REACHED" : "NOT reached";
-            var conc = g.ReachedConcurrentTarget ? "REACHED" : "NOT reached";
             ConsoleLog.Info(new string('-', 70));
             ConsoleLog.Info($"{g.Target} / {g.Scenario} / iter {g.IterationNumber}: hosts {g.HostsFound}/{g.DeclaredHostCount} " +
                             $"[{string.Join(",", g.HostIds)}]  " +
@@ -120,7 +119,9 @@ internal static class Program
             }
             ConsoleLog.Info($"  Start-time skew       : {g.StartSkewSeconds}s across hosts");
             ConsoleLog.Info($"  Combined conn/s peak  : {g.PeakCombinedConnPerSec:N0}  (target ≥ {options.ChurnTarget:N0} — {churn})");
-            ConsoleLog.Info($"  Combined in-flight peak: {g.PeakCombinedInFlight:N0}  (target ≥ {options.ConcurrentTarget:N0} — {conc})");
+            ConsoleLog.Info($"  Combined ready/s peak : {g.PeakCombinedReadyPerSec:N0}  (target ≥ {options.ChurnTarget:N0} — {(g.ReachedReadyChurnTarget ? "REACHED" : "NOT reached")})");
+            ConsoleLog.Info($"  Combined active-ready  : {g.PeakCombinedActiveReady:N0}  (AUTHORITATIVE concurrency; target ≥ {options.ConcurrentTarget:N0} — {(g.ReachedConcurrentTarget ? "REACHED" : "NOT reached")})");
+            ConsoleLog.Info($"  Combined in-flight peak: {g.PeakCombinedInFlight:N0}  (generator diagnostic only — NOT connection proof)");
             ConsoleLog.Info($"  Combined series CSV   : {csvPath}");
         }
 

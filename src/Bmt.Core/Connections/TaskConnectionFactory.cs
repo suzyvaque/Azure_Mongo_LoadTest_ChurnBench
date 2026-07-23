@@ -61,21 +61,26 @@ public sealed class TaskConnectionFactory
 
     /// <summary>
     /// Create a fresh single-use connection for one Task. The caller MUST dispose the returned
-    /// <see cref="TaskConnection"/> when the Task completes and MUST NOT reuse it.
+    /// <see cref="TaskConnection"/> when the Task completes and MUST NOT reuse it. A per-Task
+    /// <see cref="ConnectionLifecycleRecorder"/> is wired in so the Task can measure demand-to-ready and
+    /// driver-open latency with a correct per-Task correlation (§3).
     /// </summary>
     public TaskConnection Create()
     {
-        var settings = BuildSettings();
+        var recorder = new ConnectionLifecycleRecorder();
+        var settings = BuildSettings(recorder);
         var client = new MongoClient(settings);
-        return new TaskConnection(client);
+        return new TaskConnection(client, recorder);
     }
 
     /// <summary>
     /// Build per-request <see cref="MongoClientSettings"/> from the connection string, then force the
     /// no-reuse pool constraints and (for Cosmos RU) <c>RetryWrites=false</c>, and wire event capture.
     /// Exposed for preflight/diagnostics that need to inspect the effective settings.
+    /// <paramref name="perTaskObserver"/> (optional) receives the same events as the shared observer, so a
+    /// per-Task recorder can correlate this client's single connection.
     /// </summary>
-    public MongoClientSettings BuildSettings()
+    public MongoClientSettings BuildSettings(IConnectionEventObserver? perTaskObserver = null)
     {
         var settings = MongoClientSettings.FromConnectionString(_connectionString);
 
@@ -134,25 +139,38 @@ public sealed class TaskConnectionFactory
             settings.RetryWrites = false;
         }
 
-        // Surface connection-monitoring events to the observer (§2.3/§7.2).
-        // We ALWAYS assign a fresh ClusterConfigurator instance so each client gets a distinct
-        // cluster key — preventing the driver's ClusterRegistry from sharing one cluster across
-        // Tasks, which would violate the no-reuse requirement.
+        // Surface connection-monitoring events to the observer(s) (§2.3/§7.2/§3). The shared observer
+        // aggregates campaign-wide lifecycle counters; the optional per-Task recorder correlates THIS
+        // client's single connection for demand-to-ready timing. We ALWAYS assign a fresh
+        // ClusterConfigurator instance so each client gets a distinct cluster key — preventing the
+        // driver's ClusterRegistry from sharing one cluster across Tasks (which would violate no-reuse).
         var previous = settings.ClusterConfigurator;
-        var observer = _observer;
+        var observers = perTaskObserver is null
+            ? (_observer is null ? Array.Empty<IConnectionEventObserver>() : new[] { _observer })
+            : (_observer is null ? new[] { perTaskObserver } : new[] { _observer, perTaskObserver });
         settings.ClusterConfigurator = cb =>
         {
             previous?.Invoke(cb);
-            if (observer is null)
+            if (observers.Length == 0)
             {
                 return;
             }
 
-            cb.Subscribe<ConnectionCreatedEvent>(e => observer.OnConnectionCreated(e.ConnectionId));
-            cb.Subscribe<ConnectionOpenedEvent>(e => observer.OnConnectionReady(e.ConnectionId, e.Duration));
-            cb.Subscribe<ConnectionClosedEvent>(e => observer.OnConnectionClosed(e.ConnectionId));
-            cb.Subscribe<ConnectionFailedEvent>(e => observer.OnConnectionFailed(e.ConnectionId, e.Exception));
-            cb.Subscribe<ConnectionPoolCheckedOutConnectionEvent>(e => observer.OnConnectionCheckedOut(e.ConnectionId));
+            // Server selection ("waiting for server") — the state BEFORE any physical connection exists.
+            cb.Subscribe<ClusterSelectingServerEvent>(_ => Notify(observers, o => o.OnServerSelectionStarted()));
+            cb.Subscribe<ClusterSelectedServerEvent>(_ => Notify(observers, o => o.OnServerSelectionEnded(true)));
+            cb.Subscribe<ClusterSelectingServerFailedEvent>(_ => Notify(observers, o => o.OnServerSelectionEnded(false)));
+
+            cb.Subscribe<ConnectionCreatedEvent>(e => Notify(observers, o => o.OnConnectionCreated(e.ConnectionId)));
+            cb.Subscribe<ConnectionOpenedEvent>(e => Notify(observers, o => o.OnConnectionReady(e.ConnectionId, e.Duration)));
+            cb.Subscribe<ConnectionClosingEvent>(e => Notify(observers, o => o.OnConnectionClosing(e.ConnectionId)));
+            cb.Subscribe<ConnectionClosedEvent>(e => Notify(observers, o => o.OnConnectionClosed(e.ConnectionId)));
+            // "Failed to open" is ConnectionOpeningFailedEvent (DNS/TCP/TLS/handshake). ConnectionFailedEvent
+            // covers I/O failures on an already-open connection. Both route to OnConnectionFailed, which is
+            // idempotent (accounts the failure once, via the per-connection state map).
+            cb.Subscribe<ConnectionOpeningFailedEvent>(e => Notify(observers, o => o.OnConnectionFailed(e.ConnectionId, e.Exception)));
+            cb.Subscribe<ConnectionFailedEvent>(e => Notify(observers, o => o.OnConnectionFailed(e.ConnectionId, e.Exception)));
+            cb.Subscribe<ConnectionPoolCheckedOutConnectionEvent>(e => Notify(observers, o => o.OnConnectionCheckedOut(e.ConnectionId)));
 
             // Handshake/auth timing (§7.2): the driver emits a command event for every command, including
             // the connection-establishment handshake (hello/isMaster wire negotiation + SCRAM
@@ -164,19 +182,27 @@ public sealed class TaskConnectionFactory
             {
                 if (IsHandshakeCommand(e.CommandName))
                 {
-                    observer.OnHandshakeCommand(e.CommandName, e.Duration, success: true);
+                    Notify(observers, o => o.OnHandshakeCommand(e.CommandName, e.Duration, success: true));
                 }
             });
             cb.Subscribe<CommandFailedEvent>(e =>
             {
                 if (IsHandshakeCommand(e.CommandName))
                 {
-                    observer.OnHandshakeCommand(e.CommandName, e.Duration, success: false);
+                    Notify(observers, o => o.OnHandshakeCommand(e.CommandName, e.Duration, success: false));
                 }
             });
         };
 
         return settings;
+    }
+
+    private static void Notify(IConnectionEventObserver[] observers, Action<IConnectionEventObserver> action)
+    {
+        foreach (var o in observers)
+        {
+            action(o);
+        }
     }
 
     /// <summary>True when the command is part of connection establishment (wire negotiation or SCRAM auth).</summary>

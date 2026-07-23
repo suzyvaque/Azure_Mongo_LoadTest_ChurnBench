@@ -23,7 +23,8 @@ public static class CsvWriter
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine("second,scheduled_tasks,started_tasks,conn_created,conn_closed,find_input_ops,remove_ops,insert_ops,find_output_ops," +
+        sb.AppendLine("second,scheduled_tasks,started_tasks,conn_created,conn_ready,conn_failed,conn_closed," +
+                      "active_connecting,active_ready,waiting_for_server,find_input_ops,remove_ops,insert_ops,find_output_ops," +
                       "failed_ops,combined_ops,in_flight_tasks,ephemeral_ports,time_wait,handles,threads,cpu_pct,working_set_bytes");
 
         foreach (var p in result.Throughput)
@@ -33,7 +34,12 @@ public static class CsvWriter
               .Append(p.ScheduledTasks).Append(',')
               .Append(p.StartedTasks).Append(',')
               .Append(p.ConnectionsCreated).Append(',')
+              .Append(p.ConnectionsReady).Append(',')
+              .Append(p.ConnectionsFailed).Append(',')
               .Append(p.ConnectionsClosed).Append(',')
+              .Append(p.ActiveConnecting).Append(',')
+              .Append(p.ActiveReady).Append(',')
+              .Append(p.WaitingForServer).Append(',')
               .Append(p.FindInputOps).Append(',')
               .Append(p.RemoveOps).Append(',')
               .Append(p.InsertOps).Append(',')
@@ -74,6 +80,8 @@ public static class CsvWriter
         AppendRow(sb, "offered_to_finished", result.OpenLoop.OfferedToFinishedLatencyMs);
         AppendRow(sb, "offered_to_finished_arrival", result.OpenLoop.OfferedToFinishedLatencyArrivalMs);
         AppendRow(sb, "connection_open", result.ConnectionOpenMs);
+        AppendRow(sb, "demand_to_ready", result.Lifecycle.DemandToReadyLatencyMs);
+        AppendRow(sb, "driver_open", result.Lifecycle.DriverOpenLatencyMs);
         AppendRow(sb, "handshake_hello", result.HandshakeHelloMs);
         AppendRow(sb, "handshake_auth", result.HandshakeAuthMs);
         AppendRow(sb, "client_create", result.ClientCreateMs);
