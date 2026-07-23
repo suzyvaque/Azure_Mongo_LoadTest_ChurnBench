@@ -37,6 +37,11 @@
 .PARAMETER AzureResources Path to azure-resources.json. Default: config/azure-resources.json (repo-relative).
 .PARAMETER RepoDir        Repo root (for locating the MongoDB driver DLLs). Default: two levels up.
 .PARAMETER ResourceGroup  Override the resource group (else taken from azure-resources.json).
+.PARAMETER IngestionWaitSeconds
+    Seconds to wait BEFORE pulling, so Azure Monitor has ingested the tail of the run window. Azure
+    platform metrics lag ~1-5 min — DocumentDB `MongoRequestDurationMs` request Count + its Operation/
+    StatusCodeClass dimension splits are the slowest (~5 min). Default 300 (5 min). Set 0 to skip when
+    re-pulling an OLD window that is already fully ingested.
 
 .EXAMPLE
   .\Get-AzureMetrics.ps1 -CampaignRoot results\shard-burst -Targets mongo-shard `
@@ -51,7 +56,8 @@ param(
     [string[]]$Targets,
     [string]$AzureResources = 'config/azure-resources.json',
     [string]$RepoDir,
-    [string]$ResourceGroup
+    [string]$ResourceGroup,
+    [int]$IngestionWaitSeconds = 300
 )
 
 $ErrorActionPreference = 'Stop'
@@ -339,6 +345,16 @@ function Get-VmHostMetrics {
     return Get-Metrics -ResourceId $vmId `
         -MetricNames @('Percentage CPU','Available Memory Bytes','Network In','Network Out') `
         -RawFile $RawFile
+}
+
+# ---- Azure Monitor ingestion lag -----------------------------------------------------------------
+# Platform metrics are not queryable until ~1-5 min after the events happen. The slowest is DocumentDB's
+# `MongoRequestDurationMs` request Count + Operation/StatusCodeClass dimension splits (~5 min); VM/cluster
+# gauges (CPU/mem/net) lag ~1-3 min. Wait here so the TAIL of the run window is populated before we pull.
+# Skipped automatically when re-pulling an already-ingested window with -IngestionWaitSeconds 0.
+if ($IngestionWaitSeconds -gt 0) {
+    Write-Host "azure metrics: waiting ${IngestionWaitSeconds}s for Azure Monitor ingestion (use -IngestionWaitSeconds 0 to skip)..." -ForegroundColor DarkYellow
+    Start-Sleep -Seconds $IngestionWaitSeconds
 }
 
 # ---- Per-target capture ------------------------------------------------------------------------
