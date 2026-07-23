@@ -21,6 +21,8 @@
 .PARAMETER HostCount   Total hosts in the campaign.
 .PARAMETER RunTag      Shared campaign tag (identical on every host) used to group + merge artifacts.
 .PARAMETER StartAtUtc  ISO-8601 UTC instant to begin the timed phase (identical on every host).
+.PARAMETER IterationNumber Coordinator-driven 1-based iteration index (runs exactly one iteration stamped N). 0 = standalone.
+.PARAMETER IterationCount  Total iterations the coordinator plans (labeling only).
 .PARAMETER Config      Config path. Default: config/production/full-workload-open-loop-multihost.json
 .PARAMETER Scenario    Scenario. Default: burst.
 .PARAMETER RepoDir     Repo root on this host. Default: C:\bmt
@@ -39,6 +41,8 @@ param(
     [Parameter(Mandatory)] [int]$HostCount,
     [Parameter(Mandatory)] [string]$RunTag,
     [Parameter(Mandatory)] [string]$StartAtUtc,
+    [int]$IterationNumber = 0,
+    [int]$IterationCount = 0,
     [string]$Config = 'config/production/full-workload-open-loop-multihost.json',
     [ValidateSet('steady','burst','both')] [string]$Scenario = 'burst',
     [string]$RepoDir = 'C:\bmt',
@@ -98,7 +102,16 @@ if ($LASTEXITCODE -ne 0) { throw "Build failed (exit $LASTEXITCODE)." }
 $preflightArg = @()
 if ($NoPreflight) { $preflightArg = @('--no-preflight') }
 
-Write-Host "[host $HostId/$HostCount] launching timed run..." -ForegroundColor Green
+# Coordinator-driven iteration args: when the central coordinator (Invoke-Campaign.ps1) owns the loop,
+# it passes -IterationNumber N (and -IterationCount M) so THIS invocation runs exactly one iteration,
+# stamped N, against the shared per-iteration --start-at. Omitted for a standalone single host run.
+$iterArg = @()
+if ($IterationNumber -gt 0) {
+    $iterArg = @('--iteration-number', $IterationNumber)
+    if ($IterationCount -gt 0) { $iterArg += @('--iteration-count', $IterationCount) }
+}
+
+Write-Host "[host $HostId/$HostCount] launching timed run$(if ($IterationNumber -gt 0) { " (iteration $IterationNumber/$IterationCount)" })..." -ForegroundColor Green
 dotnet run --project src/Bmt.LoadGen -c Release --no-build -- `
     test `
     --target $Target `
@@ -109,6 +122,7 @@ dotnet run --project src/Bmt.LoadGen -c Release --no-build -- `
     --run-tag $RunTag `
     --start-at $StartAtUtc `
     --results results `
+    @iterArg `
     @preflightArg
 $runExit = $LASTEXITCODE
 if ($runExit -ne 0) { throw "LoadGen run failed (exit $runExit)." }
@@ -120,7 +134,7 @@ if ($PushResults) {
     git config user.name  "host$HostId-$Target" | Out-Null
     git config user.email "host$HostId-$Target@benchmarks.local" | Out-Null
     git add results/
-    git commit -m "results: $RunTag $Target host $HostId/$HostCount $(Get-Date -Format 'yyyy-MM-dd HH:mm')" | Out-Null
+    git commit -m "results: $RunTag $Target host $HostId/$HostCount$(if ($IterationNumber -gt 0) { " iter $IterationNumber/$IterationCount" }) $(Get-Date -Format 'yyyy-MM-dd HH:mm')" | Out-Null
     # Never block on an interactive credential prompt. Under az vm run-command this script runs as
     # SYSTEM, which has no cached git credential, so GCM's `credential get` would hang forever. Force
     # non-interactive git (GIT_TERMINAL_PROMPT=0 + credential.interactive=false) so a missing credential

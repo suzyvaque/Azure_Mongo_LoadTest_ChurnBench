@@ -98,18 +98,47 @@ internal static class Program
         var baseName = Path.GetFileNameWithoutExtension(outPath);
         foreach (var g in report.Groups)
         {
-            var safe = $"{g.Target}-{g.Scenario}".Replace(Path.DirectorySeparatorChar, '_');
+            var safe = $"{g.Target}-{g.Scenario}-iter{g.IterationNumber:D2}".Replace(Path.DirectorySeparatorChar, '_');
             var csvPath = Path.Combine(csvDir, $"{baseName}-{safe}-combined.csv");
             Merger.WriteGroupCsv(g, csvPath);
 
             var churn = g.ReachedChurnTarget ? "REACHED" : "NOT reached";
             var conc = g.ReachedConcurrentTarget ? "REACHED" : "NOT reached";
             ConsoleLog.Info(new string('-', 70));
-            ConsoleLog.Info($"{g.Target} / {g.Scenario}: hosts {g.HostsFound}/{g.DeclaredHostCount} " +
-                            $"[{string.Join(",", g.HostIds)}]");
-            ConsoleLog.Info($"  Combined conn/s peak : {g.PeakCombinedConnPerSec:N0}  (target ≥ {options.ChurnTarget:N0} — {churn})");
+            ConsoleLog.Info($"{g.Target} / {g.Scenario} / iter {g.IterationNumber}: hosts {g.HostsFound}/{g.DeclaredHostCount} " +
+                            $"[{string.Join(",", g.HostIds)}]  " +
+                            (g.Valid ? "VALID" : "INVALID (" +
+                                string.Join(" ", new[]
+                                {
+                                    g.MissingHostIds.Count > 0 ? $"missing=[{string.Join(",", g.MissingHostIds)}]" : null,
+                                    g.UnexpectedHostIds.Count > 0 ? $"unexpected=[{string.Join(",", g.UnexpectedHostIds)}]" : null,
+                                    !g.HostCountConsistent ? "inconsistent-host-count" : null,
+                                }.Where(x => x != null)) + ")"));
+            if (g.SupersededRuns > 0)
+            {
+                ConsoleLog.Info($"  Retries superseded    : {g.SupersededRuns} older-attempt artifact(s) for host(s) [{string.Join(",", g.RetriedHostIds)}] (latest attempt used)");
+            }
+            ConsoleLog.Info($"  Start-time skew       : {g.StartSkewSeconds}s across hosts");
+            ConsoleLog.Info($"  Combined conn/s peak  : {g.PeakCombinedConnPerSec:N0}  (target ≥ {options.ChurnTarget:N0} — {churn})");
             ConsoleLog.Info($"  Combined in-flight peak: {g.PeakCombinedInFlight:N0}  (target ≥ {options.ConcurrentTarget:N0} — {conc})");
             ConsoleLog.Info($"  Combined series CSV   : {csvPath}");
+        }
+
+        foreach (var s in report.CrossIteration.Stats)
+        {
+            ConsoleLog.Info(new string('=', 70));
+            ConsoleLog.Info($"CROSS-ITERATION {s.Target} / {s.Scenario}: {s.ValidIterations}/{s.ExpectedIterations} valid iterations" +
+                            (s.InvalidIterationNumbers.Count > 0 ? $" (invalid/missing: {string.Join(",", s.InvalidIterationNumbers)})" : ""));
+            if (s.MissingIterationNumbers.Count > 0)
+            {
+                ConsoleLog.Warn($"  Entirely-missing iterations: [{string.Join(",", s.MissingIterationNumbers)}] — no host artifacts found.");
+            }
+            if (s.ValidIterations > 0)
+            {
+                ConsoleLog.Info($"  Peak conn/s   mean={s.MeanPeakConnPerSec:N0} min={s.MinPeakConnPerSec:N0} max={s.MaxPeakConnPerSec:N0}");
+                ConsoleLog.Info($"  Peak in-flight mean={s.MeanPeakInFlight:N0} min={s.MinPeakInFlight:N0} max={s.MaxPeakInFlight:N0}");
+            }
+            ConsoleLog.Info($"  Max start-time skew   : {s.MaxStartSkewSeconds}s");
         }
 
         return 0;

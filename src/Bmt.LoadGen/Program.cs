@@ -93,6 +93,19 @@ public sealed class RunOptions
     public string RunTag { get; private set; } = string.Empty;
 
     /// <summary>
+    /// Coordinator-supplied 1-based iteration index for a synchronized multi-host campaign. When set
+    /// (&gt; 0) this invocation runs EXACTLY ONE iteration, stamped with this number, and the central
+    /// coordinator (Invoke-Campaign.ps1) owns the iteration loop — every host runs iteration N against
+    /// the SAME shared <c>--start-at</c> instant, and the coordinator only advances to N+1 after all
+    /// hosts finish and validate. 0 (default) = single-process mode: the orchestrator runs the config's
+    /// <c>Scenario.Iterations</c> internally (original local-run behavior).
+    /// </summary>
+    public int IterationNumber { get; private set; }
+
+    /// <summary>Total iterations the coordinator plans (for labeling only). Defaults to config value.</summary>
+    public int IterationCount { get; private set; }
+
+    /// <summary>
     /// Optional UTC instant (ISO-8601) at which the timed phase must begin. All hosts pass the SAME
     /// value so their bursts are wall-clock aligned and their concurrency/conn-s provably sum. Null =
     /// start immediately.
@@ -142,6 +155,12 @@ public sealed class RunOptions
                 case "--run-tag":
                     options.RunTag = RequireValue(args, ref i, arg);
                     break;
+                case "--iteration-number":
+                    options.IterationNumber = ParsePositive(RequireValue(args, ref i, arg), arg);
+                    break;
+                case "--iteration-count":
+                    options.IterationCount = ParsePositive(RequireValue(args, ref i, arg), arg);
+                    break;
                 case "--start-at":
                     options.StartAtUtc = ParseUtcInstant(RequireValue(args, ref i, arg));
                     break;
@@ -167,6 +186,12 @@ public sealed class RunOptions
         {
             throw new ArgumentException(
                 $"--host-id ({options.HostId}) must be <= --host-count ({options.HostCount}).");
+        }
+
+        if (options.IterationCount > 0 && options.IterationNumber > options.IterationCount)
+        {
+            throw new ArgumentException(
+                $"--iteration-number ({options.IterationNumber}) must be <= --iteration-count ({options.IterationCount}).");
         }
 
         return options;
@@ -237,6 +262,9 @@ public sealed class RunOptions
         Console.WriteLine("  --host-count M      Total generator hosts in the campaign (default 1). Per-host churn/");
         Console.WriteLine("                      concurrent preflight target = ceil(total / M). Seeds are offset by host.");
         Console.WriteLine("  --run-tag TAG       Shared campaign tag stamped into artifacts so `report merge` can group hosts.");
+        Console.WriteLine("  --iteration-number N  Coordinator-driven: run EXACTLY ONE iteration stamped N (Invoke-Campaign owns");
+        Console.WriteLine("                      the loop and re-computes a fresh shared --start-at per iteration). Omit for local runs.");
+        Console.WriteLine("  --iteration-count M   Total iterations the coordinator plans (labeling only; used with --iteration-number).");
         Console.WriteLine("  --start-at UTC      ISO-8601 UTC instant to begin the timed phase (all hosts pass the SAME");
         Console.WriteLine("                      value so bursts align and conn/s + concurrency provably sum across hosts).");
         Console.WriteLine("  --no-preflight      Skip the §6.3 preflight gate (NOT recommended; preconditions unverified).");

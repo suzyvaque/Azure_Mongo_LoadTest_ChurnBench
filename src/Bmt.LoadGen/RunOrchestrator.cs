@@ -37,10 +37,16 @@ public sealed class RunOrchestrator
         var target = _options.Target;
         var cliName = TargetConnection.CliName(target);
         var workloadToken = _config.Workload.Token();
-        var iterations = _config.Scenario.Iterations;
+
+        // Coordinator-driven mode: when --iteration-number is supplied, the central coordinator
+        // (Invoke-Campaign.ps1) owns the iteration loop and re-computes a fresh shared --start-at per
+        // iteration, so this invocation runs EXACTLY ONE iteration stamped with the given number. In
+        // local mode (no --iteration-number) the orchestrator runs the config's Scenario.Iterations.
+        var coordinatorDriven = _options.IterationNumber > 0;
+        var iterations = coordinatorDriven ? 1 : _config.Scenario.Iterations;
 
         ConsoleLog.Info($"=== LoadGen run: target={cliName} scenario={_options.Scenario} " +
-                        $"workload={workloadToken} iterations={iterations} ===");
+                        $"workload={workloadToken} iterations={(coordinatorDriven ? $"1 (coordinator iteration {_options.IterationNumber})" : iterations.ToString())} ===");
         ConsoleLog.Info($"Connection: {ConnectionStringMasker.Mask(_connectionString)}");
 
         // ---- Preflight gate (§6.3) — runs once before all iterations ----
@@ -153,11 +159,18 @@ public sealed class RunOrchestrator
                 break;
             }
 
+            // In coordinator-driven mode the label is the coordinator's iteration index (out of the
+            // planned total); locally it is the loop index out of the config's iteration count.
+            var iterNumber = coordinatorDriven ? _options.IterationNumber : iter;
+            var iterTotal = coordinatorDriven
+                ? (_options.IterationCount > 0 ? _options.IterationCount : _options.IterationNumber)
+                : iterations;
+
             ConsoleLog.Info($"");
-            ConsoleLog.Info($">>> Iteration {iter}/{iterations} <<<");
+            ConsoleLog.Info($">>> Iteration {iterNumber}/{iterTotal} <<<");
 
             var (result, relPath) = await RunIterationAsync(
-                iter, iterations, campaignId, campaignDir,
+                iterNumber, iterTotal, campaignId, campaignDir,
                 datasetCount, effectiveDurationSec, gate, cliName, ct).ConfigureAwait(false);
 
             iterResults.Add(result);
@@ -165,7 +178,10 @@ public sealed class RunOrchestrator
         }
 
         // ---- Write aggregate ----
-        if (iterResults.Count > 0)
+        // Skip the per-host cross-iteration aggregate in coordinator-driven mode: each invocation is a
+        // single iteration, and the authoritative cross-iteration mean/min/max is produced by the
+        // coordinator's `report merge` after every host's iteration has been validated (§5).
+        if (iterResults.Count > 0 && !coordinatorDriven)
         {
             var agg = AggregateResult.Build(iterResults, artifactRelPaths);
             var aggPath = Path.Combine(campaignDir, "aggregate.json");
