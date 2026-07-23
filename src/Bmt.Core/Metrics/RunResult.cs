@@ -64,6 +64,16 @@ public sealed class RunResult
 
     public TaskTotals Totals { get; set; } = new();
 
+    /// <summary>
+    /// §2 open-loop generator-fidelity + latency decomposition: scheduled/started counts and rates,
+    /// scheduler-queue / execution / true offered-to-finished latency (authoritative over ALL Tasks
+    /// offered during arrival, plus a secondary arrival-completed-only view).
+    /// </summary>
+    public OpenLoopStats OpenLoop { get; set; } = new();
+
+    /// <summary>§2 explicit arrival-vs-drain iteration model (window bounds, drain duration, backlog).</summary>
+    public ArrivalDrainStats Arrival { get; set; } = new();
+
     /// <summary>Per-operation latency (find input / remove / insert / find output) — the §7.1  op breakdown.</summary>
     public Dictionary<string, LatencySummary> OperationLatencyMs { get; set; } = new();
 
@@ -155,6 +165,91 @@ public sealed class TaskTotals
     public long SuccessfulOps { get; set; }
 
     public long FailedOps { get; set; }
+
+    /// <summary>§2: Tasks OFFERED to the runtime during the arrival window (each = one connection demand).</summary>
+    public long TasksScheduled { get; set; }
+
+    /// <summary>§2: Tasks that actually began executing (dequeued by the runtime).</summary>
+    public long TasksStarted { get; set; }
+
+    /// <summary>§2: peak scheduled-but-not-started backlog (thread-pool dispatch pressure).</summary>
+    public long PeakScheduledNotStartedBacklog { get; set; }
+}
+
+/// <summary>
+/// §2 open-loop metrics. Rates use the AUTHORITATIVE 300-second arrival window as the denominator (not
+/// total process duration), so offered load is not understated by drain time. Latency is decomposed
+/// into scheduler-queue delay (runtime dispatch), execution, and true offered-to-finished (the
+/// authoritative open-loop end-to-end). Every Task offered during arrival is included in the
+/// authoritative digests even if it completes during drain; the "-Arrival" digests are the secondary
+/// view over only Tasks that also completed before arrival stopped.
+/// </summary>
+public sealed class OpenLoopStats
+{
+    /// <summary>Length (s) of the arrival window used as the denominator for the rates below.</summary>
+    public double ArrivalWindowSeconds { get; set; }
+
+    /// <summary>Offered/scheduled Tasks per second = TasksScheduled / ArrivalWindowSeconds.</summary>
+    public double ScheduledTasksPerSec { get; set; }
+
+    /// <summary>Started Tasks per second = TasksStarted / ArrivalWindowSeconds.</summary>
+    public double StartedTasksPerSec { get; set; }
+
+    /// <summary>Number of Tasks that COMPLETED before the arrival window closed (excludes the slow tail).</summary>
+    public long TasksCompletedDuringArrival { get; set; }
+
+    // ---- Authoritative: ALL Tasks offered during arrival (including drain completions). ----
+    public LatencySummary SchedulerQueueLatencyMs { get; set; } = LatencySummary.Empty();
+
+    public LatencySummary TaskExecutionLatencyMs { get; set; } = LatencySummary.Empty();
+
+    /// <summary>True open-loop end-to-end latency (ScheduledUtc → TaskFinishedUtc). The headline figure.</summary>
+    public LatencySummary OfferedToFinishedLatencyMs { get; set; } = LatencySummary.Empty();
+
+    // ---- Secondary: only Tasks that COMPLETED during the arrival window. ----
+    public LatencySummary SchedulerQueueLatencyArrivalMs { get; set; } = LatencySummary.Empty();
+
+    public LatencySummary TaskExecutionLatencyArrivalMs { get; set; } = LatencySummary.Empty();
+
+    public LatencySummary OfferedToFinishedLatencyArrivalMs { get; set; } = LatencySummary.Empty();
+}
+
+/// <summary>
+/// §2 explicit iteration model: arrival window bounds, drain bounds, and the backlog carried into drain.
+/// Timestamps are ISO-8601 UTC. The 300-second arrival window (<see cref="OpenLoopStats.ArrivalWindowSeconds"/>)
+/// is the authoritative denominator; the measured arrival span is recorded for transparency.
+/// </summary>
+public sealed class ArrivalDrainStats
+{
+    public string ArrivalStartedUtc { get; set; } = string.Empty;
+
+    public string ArrivalStoppedUtc { get; set; } = string.Empty;
+
+    /// <summary>Authoritative arrival window (s) — the intended/configured duration used for all rates.</summary>
+    public double ArrivalDurationSeconds { get; set; }
+
+    /// <summary>Measured wall-clock span from arrival start to arrival stop (diagnostic).</summary>
+    public double MeasuredArrivalDurationSeconds { get; set; }
+
+    public string DrainStartedUtc { get; set; } = string.Empty;
+
+    public string DrainFinishedUtc { get; set; } = string.Empty;
+
+    public double DrainDurationSeconds { get; set; }
+
+    public double TotalIterationDurationSeconds { get; set; }
+
+    /// <summary>Tasks scheduled but not yet finished at the instant arrival stopped (= drain-start backlog).</summary>
+    public long TasksOutstandingAtArrivalStop { get; set; }
+
+    /// <summary>In-flight Tasks (started, not finished) at the instant arrival stopped.</summary>
+    public long InFlightAtArrivalStop { get; set; }
+
+    /// <summary>Concurrent driver-ready connections at arrival stop (populated by the lifecycle model).</summary>
+    public long ConnectionsReadyAtArrivalStop { get; set; }
+
+    /// <summary>Maximum outstanding-Task backlog observed during drain.</summary>
+    public long MaximumDrainBacklog { get; set; }
 }
 
 public sealed class ConnectionStats
@@ -191,6 +286,12 @@ public sealed class ReuseVerification
 public sealed class ThroughputPoint
 {
     public int Second { get; set; }
+
+    /// <summary>§2: Tasks OFFERED to the runtime this second (open-loop arrival rate).</summary>
+    public long ScheduledTasks { get; set; }
+
+    /// <summary>§2: Tasks that began executing this second (realized start rate).</summary>
+    public long StartedTasks { get; set; }
 
     public long ConnectionsCreated { get; set; }
 

@@ -60,11 +60,20 @@ public sealed class TaskRunner
         _outputPayload = Convert.ToBase64String(new byte[768]);
     }
 
-    /// <summary>Run a single Task against the given ReqId. Never throws — failures are classified/recorded.</summary>
-    public async Task RunAsync(string reqId, CancellationToken ct)
+    /// <summary>Notify metrics that a Task has been OFFERED to the runtime (called at inject time).</summary>
+    public void OnScheduled() => _metrics.OnTaskScheduled();
+
+    /// <summary>
+    /// Run a single Task against the given ReqId. Never throws — failures are classified/recorded.
+    /// <paramref name="scheduledUtc"/> is the instant the Task was offered to the runtime (stamped by the
+    /// launcher just before dispatch), so scheduler-queue latency (dispatch delay) and the true
+    /// offered-to-finished latency can be measured separately from execution time (§2).
+    /// </summary>
+    public async Task RunAsync(string reqId, DateTime scheduledUtc, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(reqId);
 
+        var taskStartedUtc = DateTime.UtcNow;
         var cycle = Stopwatch.StartNew();
         _metrics.OnTaskStart();
         var success = false;
@@ -100,7 +109,11 @@ public sealed class TaskRunner
         {
             conn?.Dispose();
             cycle.Stop();
-            _metrics.OnTaskEnd(success, cycle.Elapsed.TotalMilliseconds);
+            var taskFinishedUtc = DateTime.UtcNow;
+            var schedQueueMs = Math.Max(0, (taskStartedUtc - scheduledUtc).TotalMilliseconds);
+            var execMs = Math.Max(0, (taskFinishedUtc - taskStartedUtc).TotalMilliseconds);
+            var offeredToFinishedMs = Math.Max(0, (taskFinishedUtc - scheduledUtc).TotalMilliseconds);
+            _metrics.OnTaskEnd(success, cycle.Elapsed.TotalMilliseconds, schedQueueMs, execMs, offeredToFinishedMs);
         }
     }
 

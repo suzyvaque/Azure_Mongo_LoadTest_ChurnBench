@@ -232,8 +232,14 @@ public sealed class RunOrchestrator
         sampler.Start();
 
         var startedUtc = DateTime.UtcNow;
+        var arrivalStoppedUtc = startedUtc;
+        var drainStartedUtc = startedUtc;
+        long connectionsReadyAtArrivalStop = 0;
 
-        // ---- Execute the selected scenario(s) ----
+        // ---- Execute the selected scenario(s) under the explicit §2 arrival→drain model ----
+        //   arrival: generators schedule new Tasks for the configured window
+        //   arrival stop: generators complete; snapshot outstanding backlog; NO new Tasks scheduled
+        //   drain: all Tasks scheduled during arrival are allowed to finish
         try
         {
             var generators = new List<Task>();
@@ -251,11 +257,23 @@ public sealed class RunOrchestrator
             }
 
             await Task.WhenAll(generators).ConfigureAwait(false);
-            ConsoleLog.Info("Arrival generation complete; draining in-flight Tasks...");
+            arrivalStoppedUtc = DateTime.UtcNow;
+            metrics.OnArrivalStopped();
+            // Concurrent driver-ready connections at arrival stop. Interim proxy = cumulative ready minus
+            // cumulative closed (an approximate concurrent-open gauge); the connection-lifecycle model
+            // replaces this with the exact ActiveReady gauge.
+            connectionsReadyAtArrivalStop = Math.Max(0, counters.Ready - counters.Closed);
+            drainStartedUtc = arrivalStoppedUtc;
+            ConsoleLog.Info($"Arrival generation complete after {(arrivalStoppedUtc - startedUtc).TotalSeconds:F1}s; " +
+                            $"draining {metrics.TasksOutstandingAtArrivalStop} outstanding Task(s)...");
             await launcher.DrainAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
+            arrivalStoppedUtc = DateTime.UtcNow;
+            metrics.OnArrivalStopped();
+            connectionsReadyAtArrivalStop = Math.Max(0, counters.Ready - counters.Closed);
+            drainStartedUtc = arrivalStoppedUtc;
             ConsoleLog.Warn("Iteration canceled; draining in-flight Tasks...");
             await launcher.DrainAsync().ConfigureAwait(false);
         }
@@ -282,6 +300,32 @@ public sealed class RunOrchestrator
         result.TaskSleepMs = _config.TaskSleepMs;
         result.DatasetDocumentCount = datasetCount;
         result.Preflight = gate;
+
+        // ---- §2 arrival/drain model + open-loop rates (denominator = the 300s ARRIVAL window, NOT the
+        //      total iteration duration, so offered load is not understated by drain time). ----
+        var arrivalWindowSec = IntendedArrivalDurationSeconds(effectiveDurationSec);
+        result.Arrival = new ArrivalDrainStats
+        {
+            ArrivalStartedUtc = startedUtc.ToString("O"),
+            ArrivalStoppedUtc = arrivalStoppedUtc.ToString("O"),
+            ArrivalDurationSeconds = arrivalWindowSec,
+            MeasuredArrivalDurationSeconds = Math.Round((arrivalStoppedUtc - startedUtc).TotalSeconds, 3),
+            DrainStartedUtc = drainStartedUtc.ToString("O"),
+            DrainFinishedUtc = finishedUtc.ToString("O"),
+            DrainDurationSeconds = Math.Round((finishedUtc - drainStartedUtc).TotalSeconds, 3),
+            TotalIterationDurationSeconds = Math.Round((finishedUtc - startedUtc).TotalSeconds, 3),
+            TasksOutstandingAtArrivalStop = metrics.TasksOutstandingAtArrivalStop,
+            InFlightAtArrivalStop = metrics.InFlightAtArrivalStop,
+            ConnectionsReadyAtArrivalStop = connectionsReadyAtArrivalStop,
+            MaximumDrainBacklog = metrics.MaximumDrainBacklog,
+        };
+        result.OpenLoop.ArrivalWindowSeconds = arrivalWindowSec;
+        result.OpenLoop.ScheduledTasksPerSec = arrivalWindowSec > 0
+            ? Math.Round((double)result.Totals.TasksScheduled / arrivalWindowSec, 2)
+            : 0;
+        result.OpenLoop.StartedTasksPerSec = arrivalWindowSec > 0
+            ? Math.Round((double)result.Totals.TasksStarted / arrivalWindowSec, 2)
+            : 0;
 
         // ---- Persist artifacts into iter-NN subfolder ----
         var iterLabel = $"iter-{iterNumber:D2}";
@@ -322,6 +366,33 @@ public sealed class RunOrchestrator
         var runBurst = _options.Scenario is RunScenario.Burst or RunScenario.Both
                        && _config.Scenario.Burst.Enabled;
         return (runSteady, runBurst);
+    }
+
+    /// <summary>
+    /// The INTENDED arrival-window length (seconds) used as the authoritative denominator for open-loop
+    /// rates (§2). Generators schedule new Tasks for exactly this long; drain time is excluded. Priority:
+    /// CLI/config effective duration override, else the longest active scenario's configured duration.
+    /// </summary>
+    private int IntendedArrivalDurationSeconds(int effectiveDurationSec)
+    {
+        if (effectiveDurationSec > 0)
+        {
+            return effectiveDurationSec;
+        }
+
+        var (runSteady, runBurst) = ResolveActiveScenarios();
+        var seconds = 0;
+        if (runSteady)
+        {
+            seconds = Math.Max(seconds, _config.Scenario.Steady.DurationSeconds);
+        }
+
+        if (runBurst)
+        {
+            seconds = Math.Max(seconds, _config.Scenario.Burst.DurationSeconds);
+        }
+
+        return seconds;
     }
 
     /// <summary>
@@ -434,7 +505,19 @@ public sealed class RunOrchestrator
     {
         ConsoleLog.Info(new string('-', 70));
         ConsoleLog.Info($"ITER {r.IterationNumber}/{r.IterationCount} DONE: {r.Target} / {r.Scenario} / {r.WorkloadMode} / {r.DurationSeconds}s");
-        ConsoleLog.Info($"Tasks: {r.Totals.TotalTasks} total, {r.Totals.SuccessfulTasks} ok, {r.Totals.FailedTasks} failed.");
+        ConsoleLog.Info($"Tasks: scheduled={r.Totals.TasksScheduled} started={r.Totals.TasksStarted} " +
+                        $"ok={r.Totals.SuccessfulTasks} failed={r.Totals.FailedTasks} " +
+                        $"(peak sched-backlog={r.Totals.PeakScheduledNotStartedBacklog}).");
+        ConsoleLog.Info($"Arrival: window={r.OpenLoop.ArrivalWindowSeconds:F0}s scheduled/s={r.OpenLoop.ScheduledTasksPerSec:F1} " +
+                        $"started/s={r.OpenLoop.StartedTasksPerSec:F1} completed-in-arrival={r.OpenLoop.TasksCompletedDuringArrival}.");
+        ConsoleLog.Info($"Drain: outstanding@stop={r.Arrival.TasksOutstandingAtArrivalStop} max-backlog={r.Arrival.MaximumDrainBacklog} " +
+                        $"drain={r.Arrival.DrainDurationSeconds:F1}s total-iter={r.Arrival.TotalIterationDurationSeconds:F1}s.");
+        var sched = r.OpenLoop.SchedulerQueueLatencyMs;
+        var exec = r.OpenLoop.TaskExecutionLatencyMs;
+        var e2e = r.OpenLoop.OfferedToFinishedLatencyMs;
+        ConsoleLog.Info($"Scheduler-queue ms: p50={sched.P50Ms:F1} p95={sched.P95Ms:F1} p99={sched.P99Ms:F1}");
+        ConsoleLog.Info($"Execution ms:       p50={exec.P50Ms:F1} p95={exec.P95Ms:F1} p99={exec.P99Ms:F1}");
+        ConsoleLog.Info($"Offered→finished ms (authoritative): p50={e2e.P50Ms:F1} p95={e2e.P95Ms:F1} p99={e2e.P99Ms:F1}");
         ConsoleLog.Info($"Ops:   {r.Totals.TotalOps} total, {r.Totals.FailedOps} failed.");
         var cyc = r.TaskCycleLatencyMs;
         ConsoleLog.Info($"Cycle latency ms: p50={cyc.P50Ms:F1} p95={cyc.P95Ms:F1} p99={cyc.P99Ms:F1} p99.9={cyc.P999Ms:F1}");

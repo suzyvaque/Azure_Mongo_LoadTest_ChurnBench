@@ -31,17 +31,28 @@ public sealed class TaskLauncher : IDisposable
     /// </summary>
     public async Task InjectAsync(CancellationToken ct, bool gated = true)
     {
+        // "Offered to the runtime" = the instant the scenario hands this Task to the launcher per its
+        // arrival schedule (the deadline-checked decision happens in the scenario loop just before this
+        // call). Stamp the scheduled instant BEFORE any closed-loop gate wait so it stays within the
+        // arrival window even under back-pressure, and so scheduler-queue latency folds in generator
+        // back-pressure (a load-generator-runtime delay) instead of hiding it. Open-loop has no gate, so
+        // this is identical to stamping at dispatch. The scheduled COUNTER is incremented only once the
+        // Task is actually dispatched (below), so a gate wait cancelled at shutdown never leaks a
+        // scheduled-but-never-run Task (keeps scheduled ≈ started ≈ finished reconciling).
+        var scheduledUtc = DateTime.UtcNow;
+        var reqId = _reqIdSelector();
+
         if (gated)
         {
             await _gate.WaitAsync(ct).ConfigureAwait(false);
         }
 
-        var reqId = _reqIdSelector();
+        _runner.OnScheduled();
         var task = Task.Run(async () =>
         {
             try
             {
-                await _runner.RunAsync(reqId, ct).ConfigureAwait(false);
+                await _runner.RunAsync(reqId, scheduledUtc, ct).ConfigureAwait(false);
             }
             finally
             {

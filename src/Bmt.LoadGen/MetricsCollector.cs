@@ -26,16 +26,38 @@ public sealed class MetricsCollector : IConnectionEventObserver
     private readonly LatencyDigest _handshakeHello = new();
     private readonly LatencyDigest _handshakeAuth = new();
 
+    // §2 open-loop decomposition — separate scheduler-queue delay, execution, and true offered-to-
+    // finished latency. The "authoritative" digests cover EVERY Task offered during the arrival window
+    // (including those that complete during drain); the "-arrival" digests cover only Tasks that also
+    // COMPLETED before arrival stopped (excludes the slow tail, so they are the secondary view).
+    private readonly LatencyDigest _schedQueue = new();
+    private readonly LatencyDigest _taskExec = new();
+    private readonly LatencyDigest _offeredToFinished = new();
+    private readonly LatencyDigest _schedQueueArrival = new();
+    private readonly LatencyDigest _taskExecArrival = new();
+    private readonly LatencyDigest _offeredToFinishedArrival = new();
+
     private readonly ConcurrentDictionary<BmtErrorType, long> _errors = new();
     private readonly ConcurrentDictionary<int, SecondBucket> _seconds = new();
 
+    private long _tasksScheduled;
+    private long _tasksStarted;
     private long _totalTasks;
     private long _successTasks;
     private long _failTasks;
+    private long _tasksCompletedDuringArrival;
     private long _totalOps;
     private long _successOps;
     private long _failOps;
     private int _inFlight;
+    private int _peakScheduledBacklog;
+
+    // Arrival phase gate + the snapshot captured exactly when the arrival window closes (§2 iteration
+    // model): outstanding Tasks and in-flight Tasks at arrival stop, used to size the drain backlog.
+    private int _arrivalActive = 1;
+    private long _tasksOutstandingAtArrivalStop;
+    private long _inFlightAtArrivalStop;
+    private long _maximumDrainBacklog;
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
 
@@ -44,23 +66,62 @@ public sealed class MetricsCollector : IConnectionEventObserver
 
     public int InFlight => Volatile.Read(ref _inFlight);
 
-    /// <summary>Called when a Task begins (a fresh connection is about to be opened).</summary>
+    /// <summary>
+    /// Called synchronously when a Task is OFFERED to the runtime (handed to the thread pool), before it
+    /// begins executing. Stamps the scheduled instant so scheduler-queue latency (dispatch delay) can be
+    /// measured, and updates the scheduled-but-not-started backlog peak.
+    /// </summary>
+    public void OnTaskScheduled()
+    {
+        var scheduled = Interlocked.Increment(ref _tasksScheduled);
+        var b = Bucket();
+        Interlocked.Increment(ref b.ScheduledTasks);
+        UpdateScheduledBacklog(scheduled - Interlocked.Read(ref _tasksStarted));
+    }
+
+    /// <summary>Called when a Task actually begins executing (dequeued by the runtime).</summary>
     public void OnTaskStart()
     {
         Interlocked.Increment(ref _totalTasks);
+        var started = Interlocked.Increment(ref _tasksStarted);
         var now = Interlocked.Increment(ref _inFlight);
         var b = Bucket();
         Interlocked.Increment(ref b.ConnectionsCreated);
+        Interlocked.Increment(ref b.StartedTasks);
         b.UpdateInFlightMax(now);
+        UpdateScheduledBacklog(Interlocked.Read(ref _tasksScheduled) - started);
     }
 
-    /// <summary>Called when a Task finishes (its connection has been released).</summary>
-    public void OnTaskEnd(bool success, double cycleMs)
+    /// <summary>
+    /// Called when a Task finishes (its connection has been released). Records the full cycle latency
+    /// plus the §2 open-loop decomposition (scheduler-queue / execution / offered-to-finished). During
+    /// the arrival phase a finish is also recorded into the arrival-completed digests.
+    /// </summary>
+    public void OnTaskEnd(bool success, double cycleMs, double schedQueueMs, double execMs, double offeredToFinishedMs)
     {
-        Interlocked.Decrement(ref _inFlight);
+        var remaining = Interlocked.Decrement(ref _inFlight);
         var b = Bucket();
         Interlocked.Increment(ref b.ConnectionsClosed);
         _cycle.Record(cycleMs);
+        _schedQueue.Record(schedQueueMs);
+        _taskExec.Record(execMs);
+        _offeredToFinished.Record(offeredToFinishedMs);
+
+        var duringArrival = Volatile.Read(ref _arrivalActive) == 1;
+        if (duringArrival)
+        {
+            Interlocked.Increment(ref _tasksCompletedDuringArrival);
+            _schedQueueArrival.Record(schedQueueMs);
+            _taskExecArrival.Record(execMs);
+            _offeredToFinishedArrival.Record(offeredToFinishedMs);
+        }
+        else
+        {
+            // Drain phase: the outstanding backlog is (started-not-finished) + (scheduled-not-started).
+            var backlog = remaining + (Interlocked.Read(ref _tasksScheduled) - Interlocked.Read(ref _tasksStarted));
+            UpdateMaxDrainBacklog(backlog);
+        }
+
         if (success)
         {
             Interlocked.Increment(ref _successTasks);
@@ -69,6 +130,72 @@ public sealed class MetricsCollector : IConnectionEventObserver
         {
             Interlocked.Increment(ref _failTasks);
         }
+    }
+
+    /// <summary>
+    /// Close the arrival window (§2): stop counting arrival-completed Tasks and snapshot the outstanding
+    /// backlog. After this, every remaining Task completes during drain. Idempotent.
+    /// <para>
+    /// The snapshot is LOCK-FREE by design (the churn workload records thousands of task-ends per second;
+    /// a shared lock on the task-end path would distort the very latency being measured). It is therefore
+    /// an APPROXIMATE gauge: a handful of Tasks completing in the same instant as this call may be counted
+    /// as still-outstanding (their success/fail increment can trail the in-flight decrement by a few
+    /// microseconds). The error is bounded by the number of concurrent in-flight completions at the stop
+    /// instant and never affects the authoritative latency digests.
+    /// </para>
+    /// </summary>
+    public void OnArrivalStopped()
+    {
+        if (Interlocked.CompareExchange(ref _arrivalActive, 0, 1) != 1)
+        {
+            return;
+        }
+
+        var scheduled = Interlocked.Read(ref _tasksScheduled);
+        var finished = Interlocked.Read(ref _successTasks) + Interlocked.Read(ref _failTasks);
+        var outstanding = Math.Max(0, scheduled - finished);
+        Interlocked.Exchange(ref _tasksOutstandingAtArrivalStop, outstanding);
+        Interlocked.Exchange(ref _inFlightAtArrivalStop, Volatile.Read(ref _inFlight));
+        UpdateMaxDrainBacklog(outstanding);
+    }
+
+    private void UpdateScheduledBacklog(long candidate)
+    {
+        if (candidate <= 0)
+        {
+            return;
+        }
+
+        int observed;
+        var c = (int)Math.Min(candidate, int.MaxValue);
+        do
+        {
+            observed = Volatile.Read(ref _peakScheduledBacklog);
+            if (c <= observed)
+            {
+                return;
+            }
+        }
+        while (Interlocked.CompareExchange(ref _peakScheduledBacklog, c, observed) != observed);
+    }
+
+    private void UpdateMaxDrainBacklog(long candidate)
+    {
+        if (candidate <= 0)
+        {
+            return;
+        }
+
+        long observed;
+        do
+        {
+            observed = Interlocked.Read(ref _maximumDrainBacklog);
+            if (candidate <= observed)
+            {
+                return;
+            }
+        }
+        while (Interlocked.CompareExchange(ref _maximumDrainBacklog, candidate, observed) != observed);
     }
 
     public void RecordClientCreate(double ms) => _clientCreate.Record(ms);
@@ -160,6 +287,15 @@ public sealed class MetricsCollector : IConnectionEventObserver
         return _seconds.GetOrAdd(second, _ => new SecondBucket());
     }
 
+    /// <summary>Outstanding Tasks (scheduled but not finished) captured when the arrival window closed.</summary>
+    public long TasksOutstandingAtArrivalStop => Interlocked.Read(ref _tasksOutstandingAtArrivalStop);
+
+    /// <summary>In-flight Tasks (started but not finished) captured when the arrival window closed.</summary>
+    public long InFlightAtArrivalStop => Interlocked.Read(ref _inFlightAtArrivalStop);
+
+    /// <summary>Maximum outstanding-Task backlog observed during the drain phase.</summary>
+    public long MaximumDrainBacklog => Interlocked.Read(ref _maximumDrainBacklog);
+
     /// <summary>
     /// Materialize the immutable <see cref="RunResult"/> at the end of the run. Connection counters and
     /// reuse verification come from the live <see cref="Bmt.Core.Connections.ConnectionEventCounters"/>.
@@ -182,6 +318,9 @@ public sealed class MetricsCollector : IConnectionEventObserver
                 TotalOps = Interlocked.Read(ref _totalOps),
                 SuccessfulOps = Interlocked.Read(ref _successOps),
                 FailedOps = Interlocked.Read(ref _failOps),
+                TasksScheduled = Interlocked.Read(ref _tasksScheduled),
+                TasksStarted = Interlocked.Read(ref _tasksStarted),
+                PeakScheduledNotStartedBacklog = Volatile.Read(ref _peakScheduledBacklog),
             },
             TaskCycleLatencyMs = _cycle.Summarize(),
             ConnectionOpenMs = _connectionOpen.Summarize(),
@@ -194,6 +333,16 @@ public sealed class MetricsCollector : IConnectionEventObserver
                 [OpNames.Remove] = _remove.Summarize(),
                 [OpNames.Insert] = _insert.Summarize(),
                 [OpNames.FindOutput] = _findOutput.Summarize(),
+            },
+            OpenLoop = new OpenLoopStats
+            {
+                TasksCompletedDuringArrival = Interlocked.Read(ref _tasksCompletedDuringArrival),
+                SchedulerQueueLatencyMs = _schedQueue.Summarize(),
+                TaskExecutionLatencyMs = _taskExec.Summarize(),
+                OfferedToFinishedLatencyMs = _offeredToFinished.Summarize(),
+                SchedulerQueueLatencyArrivalMs = _schedQueueArrival.Summarize(),
+                TaskExecutionLatencyArrivalMs = _taskExecArrival.Summarize(),
+                OfferedToFinishedLatencyArrivalMs = _offeredToFinishedArrival.Summarize(),
             },
             ErrorsByType = _errors.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
             ResourceSamples = resourceSamples.ToList(),
@@ -245,6 +394,8 @@ public sealed class MetricsCollector : IConnectionEventObserver
             .Select(kv => new ThroughputPoint
             {
                 Second = kv.Key,
+                ScheduledTasks = Interlocked.Read(ref kv.Value.ScheduledTasks),
+                StartedTasks = Interlocked.Read(ref kv.Value.StartedTasks),
                 ConnectionsCreated = Interlocked.Read(ref kv.Value.ConnectionsCreated),
                 ConnectionsClosed = Interlocked.Read(ref kv.Value.ConnectionsClosed),
                 FindInputOps = Interlocked.Read(ref kv.Value.FindInputOps),
@@ -262,6 +413,8 @@ public sealed class MetricsCollector : IConnectionEventObserver
     /// <summary>Mutable per-second counters (interlocked fields).</summary>
     private sealed class SecondBucket
     {
+        public long ScheduledTasks;
+        public long StartedTasks;
         public long ConnectionsCreated;
         public long ConnectionsClosed;
         public long FindInputOps;
