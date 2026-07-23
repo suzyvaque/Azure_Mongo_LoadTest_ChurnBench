@@ -227,9 +227,21 @@ public sealed class RunOrchestrator
 
         using var launcher = new TaskLauncher(runner, _config.Scenario.MaxConcurrentTasks, SelectReqId);
 
+        // §4 target-endpoint resolution: resolve the database destination IP/port set BEFORE the timed
+        // clocks start (so slow DNS/SRV never inflates run duration or shifts per-second indices), letting
+        // the TCP sampler filter to TARGET sockets only (host-wide totals cannot prove DB-specific behavior).
+        var endpointResolver = new TargetEndpointResolver(_connectionString);
+        await endpointResolver.RefreshAsync(ct).ConfigureAwait(false);
+        ConsoleLog.Info($"[iter {iterNumber}] target endpoints ({endpointResolver.EndpointCount}): " +
+                        (endpointResolver.EndpointCount == 0
+                            ? "(none resolved — target TCP telemetry will be empty)"
+                            : string.Join(", ", endpointResolver.EndpointDescriptions)));
+
         var runClock = Stopwatch.StartNew();
         metrics.StartClock();
-        await using var sampler = new ClientResourceSampler(_config.Scenario.ResourceSampleIntervalMs, runClock);
+
+        await using var sampler = new ClientResourceSampler(
+            _config.Scenario.ResourceSampleIntervalMs, runClock, endpointResolver);
         sampler.Start();
 
         var startedUtc = DateTime.UtcNow;
@@ -283,6 +295,8 @@ public sealed class RunOrchestrator
 
         // ---- Build result ----
         var result = metrics.Build(counters, sampler.Samples(), sampler.Peaks());
+        result.TargetTcpSamples = sampler.TargetTcpSamples().ToList();
+        result.TargetTcp = sampler.TargetTcpInfo();
         result.Target = cliName;
         result.Scenario = _options.Scenario.ToString();
         result.HostId = _options.HostId;
@@ -337,14 +351,17 @@ public sealed class RunOrchestrator
         var jsonPath = Path.Combine(iterDir, runId + ".json");
         var tsPath = Path.Combine(iterDir, runId + "-timeseries.csv");
         var latPath = Path.Combine(iterDir, runId + "-latency.csv");
+        var tcpPath = Path.Combine(iterDir, runId + "-target-tcp.csv");
 
         await File.WriteAllTextAsync(jsonPath, result.ToJson(), ct).ConfigureAwait(false);
         await CsvWriter.WriteTimeSeriesAsync(result, tsPath, ct).ConfigureAwait(false);
         await CsvWriter.WriteLatencySummaryAsync(result, latPath, ct).ConfigureAwait(false);
+        await CsvWriter.WriteTargetTcpAsync(result, tcpPath, ct).ConfigureAwait(false);
 
         ConsoleLog.Info($"Wrote: {jsonPath}");
         ConsoleLog.Info($"Wrote: {tsPath}");
         ConsoleLog.Info($"Wrote: {latPath}");
+        ConsoleLog.Info($"Wrote: {tcpPath}");
 
         PrintIterationSummary(result);
 
@@ -545,6 +562,11 @@ public sealed class RunOrchestrator
 
         ConsoleLog.Info($"Client peaks: ports={r.Process.PeakEphemeralPortsInUse} time_wait={r.Process.PeakTimeWaitSockets} " +
                         $"handles={r.Process.PeakHandleCount} cpu%={r.Process.MaxCpuPercent:F1} ws={r.Process.PeakWorkingSetBytes / (1024 * 1024)}MB");
+        var tcp = r.TargetTcp;
+        ConsoleLog.Info($"Target TCP ({tcp.EndpointCount} endpoint(s), {r.TargetTcpSamples.Count} samples, dropped={tcp.DroppedSamples}): " +
+                        $"peak established={tcp.PeakTargetEstablished} syn_sent={tcp.PeakTargetSynSent} time_wait={tcp.PeakTargetTimeWait} " +
+                        $"close_wait={tcp.PeakTargetCloseWait} sockets={tcp.PeakTargetTotalSockets} local_ports={tcp.PeakTargetDistinctLocalPorts} | " +
+                        $"host sockets={tcp.PeakHostTotalTcpSockets} ephemeral_util={tcp.PeakEphemeralUtilizationPct:F1}%");
     }
 
     private static void PrintAggregateSummary(AggregateResult agg)

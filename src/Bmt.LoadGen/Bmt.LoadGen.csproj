@@ -5,6 +5,12 @@
     <ProjectReference Include="..\Bmt.Preflight\Bmt.Preflight.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- SRV/DNS resolution for target-endpoint discovery (§4). Already present transitively via
+         MongoDB.Driver; pinned explicitly here since we use it directly. -->
+    <PackageReference Include="DnsClient" Version="1.6.1" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>

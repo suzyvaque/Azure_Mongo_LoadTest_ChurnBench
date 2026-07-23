@@ -120,6 +120,16 @@ public sealed class RunResult
     /// <summary>§7.3 client-host resource samples over time (ports / TIME_WAIT / handles / CPU / mem).</summary>
     public List<ResourceSample> ResourceSamples { get; set; } = new();
 
+    /// <summary>
+    /// §4 target-specific TCP telemetry: per-second (sub-second-peak) counts of sockets to the RESOLVED
+    /// database endpoints only, by TCP state, plus host-wide totals and ephemeral-port pressure. Driver
+    /// events remain the authoritative connection source; this explains WHERE non-ready connections wait.
+    /// </summary>
+    public List<TargetTcpSample> TargetTcpSamples { get; set; } = new();
+
+    /// <summary>§4 resolved target endpoint set + ephemeral range + telemetry-integrity metadata.</summary>
+    public TargetTcpInfo TargetTcp { get; set; } = new();
+
     /// <summary>Process CPU/memory peak summary (§7.1).</summary>
     public ProcessSummary Process { get; set; } = new();
 
@@ -410,6 +420,91 @@ public sealed class ResourceSample
     public double CpuPercent { get; set; }
 
     public long WorkingSetBytes { get; set; }
+}
+
+/// <summary>
+/// One second of §4 target-specific TCP telemetry. Values are the SUB-SECOND PEAK across the raw
+/// samples taken that second (raw sampling runs every 250–500 ms). Only sockets whose remote endpoint
+/// matches the resolved target IP/port set are counted as Target*; Host* are VM-wide totals for
+/// general-pressure context (never used as database-specific evidence).
+/// </summary>
+public sealed class TargetTcpSample
+{
+    public int Second { get; set; }
+
+    public int TargetSynSent { get; set; }
+
+    public int TargetEstablished { get; set; }
+
+    public int TargetTimeWait { get; set; }
+
+    public int TargetCloseWait { get; set; }
+
+    public int TargetFinWait1 { get; set; }
+
+    public int TargetFinWait2 { get; set; }
+
+    public int TargetTotalSockets { get; set; }
+
+    public int TargetDistinctLocalPorts { get; set; }
+
+    public int HostTotalTcpSockets { get; set; }
+
+    public int HostTotalTimeWait { get; set; }
+
+    /// <summary>Distinct host local ports currently in use within the ephemeral range.</summary>
+    public int EphemeralPortsInUse { get; set; }
+
+    /// <summary>Estimated ephemeral-port utilization (% of the dynamic range in use).</summary>
+    public double EphemeralUtilizationPct { get; set; }
+}
+
+/// <summary>§4 resolved endpoint set + ephemeral range + telemetry-integrity metadata and peaks.</summary>
+public sealed class TargetTcpInfo
+{
+    public string ResolvedAtUtc { get; set; } = string.Empty;
+
+    /// <summary>The resolved destination IP:port set the sampler filtered against this iteration.</summary>
+    public List<string> Endpoints { get; set; } = new();
+
+    public int EndpointCount { get; set; }
+
+    public int EphemeralRangeStart { get; set; }
+
+    public int EphemeralRangeEnd { get; set; }
+
+    /// <summary>Raw TCP samples that were dropped (enumeration error/timeout) — telemetry-integrity signal.</summary>
+    public int DroppedSamples { get; set; }
+
+    public int RawSampleIntervalMs { get; set; }
+
+    /// <summary>Human-readable note on expected telemetry overhead (documented, not measured per-run).</summary>
+    public string OverheadNote { get; set; } = string.Empty;
+
+    // ---- Sub-second peaks over the whole iteration ----
+    public int PeakTargetSynSent { get; set; }
+
+    public int PeakTargetEstablished { get; set; }
+
+    public int PeakTargetTimeWait { get; set; }
+
+    public int PeakTargetCloseWait { get; set; }
+
+    public int PeakTargetFinWait1 { get; set; }
+
+    public int PeakTargetFinWait2 { get; set; }
+
+    public int PeakTargetTotalSockets { get; set; }
+
+    public int PeakTargetDistinctLocalPorts { get; set; }
+
+    public int PeakHostTotalTcpSockets { get; set; }
+
+    public int PeakHostTotalTimeWait { get; set; }
+
+    public int PeakEphemeralPortsInUse { get; set; }
+
+    public double PeakEphemeralUtilizationPct { get; set; }
 }
 
 public sealed class ProcessSummary

@@ -59,6 +59,37 @@ public static class CsvWriter
         await File.WriteAllTextAsync(path, sb.ToString(), ct).ConfigureAwait(false);
     }
 
+    /// <summary>Write the §4 per-second target-specific TCP telemetry (sub-second peaks) to CSV.</summary>
+    public static async Task WriteTargetTcpAsync(RunResult result, string path, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        var sb = new StringBuilder();
+        sb.AppendLine("second,target_syn_sent,target_established,target_time_wait,target_close_wait," +
+                      "target_fin_wait1,target_fin_wait2,target_total_sockets,target_distinct_local_ports," +
+                      "host_total_tcp_sockets,host_total_time_wait,ephemeral_ports_in_use,ephemeral_util_pct");
+
+        foreach (var s in result.TargetTcpSamples)
+        {
+            sb.Append(s.Second).Append(',')
+              .Append(s.TargetSynSent).Append(',')
+              .Append(s.TargetEstablished).Append(',')
+              .Append(s.TargetTimeWait).Append(',')
+              .Append(s.TargetCloseWait).Append(',')
+              .Append(s.TargetFinWait1).Append(',')
+              .Append(s.TargetFinWait2).Append(',')
+              .Append(s.TargetTotalSockets).Append(',')
+              .Append(s.TargetDistinctLocalPorts).Append(',')
+              .Append(s.HostTotalTcpSockets).Append(',')
+              .Append(s.HostTotalTimeWait).Append(',')
+              .Append(s.EphemeralPortsInUse).Append(',')
+              .Append(s.EphemeralUtilizationPct.ToString(CultureInfo.InvariantCulture))
+              .Append('\n');
+        }
+
+        await File.WriteAllTextAsync(path, sb.ToString(), ct).ConfigureAwait(false);
+    }
+
     public static async Task WriteLatencySummaryAsync(RunResult result, string path, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(result);
