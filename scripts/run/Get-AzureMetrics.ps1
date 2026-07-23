@@ -6,11 +6,15 @@
 
 .DESCRIPTION
   For each -Target, over the [-StartUtc, -EndUtc] window:
-    * documentdb  — Azure Monitor metrics for the Cosmos DB for MongoDB *vCore* cluster
-                    (CpuPercent, MemoryPercent, IOPS, NetworkBytesIngress/Egress, MongoRequestDurationMs).
-                    NOTE: vCore does not publish an active-connection or 429 metric — server-side
-                    connection evidence for docdb is the client-side merged concurrency; the request
-                    duration + IOPS confirm the backend actually served the injected load.
+    * documentdb  — Azure Monitor metrics for the Cosmos DB for MongoDB *vCore* cluster. Full published
+                    set: CpuPercent, MemoryPercent, CommittedMemoryPercent, AutoscaleUtilizationPercent,
+                    StoragePercent, StorageUsed, IOPS, NetworkBytesIngress/Egress, MongoRequestDurationMs.
+                    MongoRequestDurationMs is also split by Operation (per-op RPS + latency) and by
+                    StatusCodeClass (2xx/4xx/5xx counts). Its Count aggregation = server-side requests
+                    served (RPS) and the StatusCodeClass dimension surfaces throttles/errors.
+                    NOTE: vCore has no dedicated active-connection or 429 counter — concurrent/created
+                    connection counts for docdb still come from the client-side merged concurrency; the
+                    request count/duration + IOPS confirm the backend actually served the injected load.
     * mongo-shard / mongo-vm —
         - serverStatus + connPoolStats via the bmt_monitor (clusterMonitor) connection
           (BMT_CONN_MONGO_MONITOR), read with the MongoDB .NET driver already built in -RepoDir so no
@@ -102,7 +106,7 @@ Write-Host "azure metrics: window $startIso .. $endIso  targets=$($Targets -join
 
 # ---- Helpers -----------------------------------------------------------------------------------
 
-# Pull a set of Azure Monitor metrics for one resource id and roll up avg/max per metric.
+# Pull a set of Azure Monitor metrics for one resource id and roll up avg/max/min/total/count per metric.
 function Get-Metrics {
     param([string]$ResourceId, [string[]]$MetricNames, [string]$RawFile)
 
@@ -113,7 +117,7 @@ function Get-Metrics {
         '--end-time',   $endIso,
         '--interval',   'PT1M',
         '--metrics'
-    ) + $MetricNames + @('--aggregation','Average','Maximum','Total','--output','json')
+    ) + $MetricNames + @('--aggregation','Average','Maximum','Minimum','Total','Count','--output','json')
 
     $rawText = & az @args 2>&1 | Out-String
     Set-Content -Path $RawFile -Value $rawText -Encoding utf8
@@ -125,12 +129,16 @@ function Get-Metrics {
             $pts  = @($m.timeseries.data)
             $avgs = @($pts | Where-Object { $_.average -ne $null } | ForEach-Object { [double]$_.average })
             $maxs = @($pts | Where-Object { $_.maximum -ne $null } | ForEach-Object { [double]$_.maximum })
+            $mins = @($pts | Where-Object { $_.minimum -ne $null } | ForEach-Object { [double]$_.minimum })
             $tots = @($pts | Where-Object { $_.total   -ne $null } | ForEach-Object { [double]$_.total })
+            $cnts = @($pts | Where-Object { $_.count   -ne $null } | ForEach-Object { [double]$_.count })
             $rollup[$name] = [ordered]@{
                 unit    = $m.unit
                 avg     = if ($avgs.Count) { [math]::Round(($avgs | Measure-Object -Average).Average, 3) } else { $null }
                 max     = if ($maxs.Count) { [math]::Round(($maxs | Measure-Object -Maximum).Maximum, 3) } else { $null }
+                min     = if ($mins.Count) { [math]::Round(($mins | Measure-Object -Minimum).Minimum, 3) } else { $null }
                 total   = if ($tots.Count) { [math]::Round(($tots | Measure-Object -Sum).Sum, 3) } else { $null }
+                count   = if ($cnts.Count) { [math]::Round(($cnts | Measure-Object -Sum).Sum, 0) } else { $null }
                 samples = $pts.Count
             }
         }
@@ -138,6 +146,53 @@ function Get-Metrics {
         $rollup['_error'] = "metric parse failed: $($_.Exception.Message.Split([char]10)[0])"
     }
     return $rollup
+}
+
+# Pull ONE metric split by a single dimension (e.g. MongoRequestDurationMs by Operation or by
+# StatusCodeClass) and roll up count + avg/max latency per dimension value. This is how DocumentDB
+# exposes server-side request throughput (Count of MongoRequestDurationMs = requests served) and
+# error/throttle visibility (StatusCodeClass '4xx'/'5xx' counts) — there is no separate connection or
+# 429 counter, but the request metric's dimensions carry that information.
+function Get-MetricByDimension {
+    param([string]$ResourceId, [string]$MetricName, [string]$Dimension, [string]$RawFile)
+
+    $args = @(
+        'monitor','metrics','list',
+        '--resource', $ResourceId,
+        '--start-time', $startIso,
+        '--end-time',   $endIso,
+        '--interval',   'PT1M',
+        '--metrics',    $MetricName,
+        '--filter',     "$Dimension eq '*'",
+        '--aggregation','Count','Average','Maximum',
+        '--top',        '50',
+        '--output',     'json'
+    )
+
+    $rawText = & az @args 2>&1 | Out-String
+    Set-Content -Path $RawFile -Value $rawText -Encoding utf8
+    $byDim = [ordered]@{}
+    try {
+        $j = $rawText | ConvertFrom-Json
+        foreach ($m in $j.value) {
+            foreach ($ts in $m.timeseries) {
+                $dimVal = ($ts.metadatavalues | Where-Object { $_.name.value -ieq $Dimension }).value
+                if (-not $dimVal) { $dimVal = '(none)' }
+                $pts  = @($ts.data)
+                $cnts = @($pts | Where-Object { $_.count   -ne $null } | ForEach-Object { [double]$_.count })
+                $avgs = @($pts | Where-Object { $_.average -ne $null } | ForEach-Object { [double]$_.average })
+                $maxs = @($pts | Where-Object { $_.maximum -ne $null } | ForEach-Object { [double]$_.maximum })
+                $byDim[$dimVal] = [ordered]@{
+                    requestCount = if ($cnts.Count) { [math]::Round(($cnts | Measure-Object -Sum).Sum, 0) } else { 0 }
+                    avgMs        = if ($avgs.Count) { [math]::Round(($avgs | Measure-Object -Average).Average, 2) } else { $null }
+                    maxMs        = if ($maxs.Count) { [math]::Round(($maxs | Measure-Object -Maximum).Maximum, 2) } else { $null }
+                }
+            }
+        }
+    } catch {
+        $byDim['_error'] = "dimension metric parse failed: $($_.Exception.Message.Split([char]10)[0])"
+    }
+    return $byDim
 }
 
 # Load the MongoDB .NET driver (already built in the repo) and run a command doc against `admin`.
@@ -298,16 +353,33 @@ foreach ($t in $Targets) {
                 $perTarget[$t] = @{ captured = $false; reason = 'DocumentDb.MetricsResourceId empty' }
                 break
             }
+            # Full published metric set for a Cosmos DB for MongoDB vCore cluster (verified via
+            # `az monitor metrics list-definitions`): CPU/memory/committed-memory/autoscale/storage
+            # saturation, IOPS + network traffic, and end-to-end request duration.
             $roll = Get-Metrics -ResourceId $rid `
-                -MetricNames @('CpuPercent','MemoryPercent','IOPS','NetworkBytesIngress','NetworkBytesEgress','MongoRequestDurationMs') `
+                -MetricNames @(
+                    'CpuPercent','MemoryPercent','CommittedMemoryPercent','AutoscaleUtilizationPercent',
+                    'StoragePercent','StorageUsed','IOPS',
+                    'NetworkBytesIngress','NetworkBytesEgress','MongoRequestDurationMs') `
                 -RawFile (Join-Path $rawDir 'documentdb-cluster-metrics.json')
+
+            # Server-side throughput + error/throttle visibility: MongoRequestDurationMs carries a
+            # request Count (= requests served → RPS) and rich dimensions. Split it by Operation
+            # (per-op RPS + latency) and by StatusCodeClass (2xx/4xx/5xx counts — throttles surface here).
+            $byOp = Get-MetricByDimension -ResourceId $rid -MetricName 'MongoRequestDurationMs' `
+                -Dimension 'Operation' -RawFile (Join-Path $rawDir 'documentdb-request-by-operation.json')
+            $byStatus = Get-MetricByDimension -ResourceId $rid -MetricName 'MongoRequestDurationMs' `
+                -Dimension 'StatusCodeClass' -RawFile (Join-Path $rawDir 'documentdb-request-by-status.json')
+
             $perTarget[$t] = [ordered]@{
-                captured = $true
-                kind     = 'vcore-cluster'
-                cluster  = $res.DocumentDb.ClusterName
-                tier     = $res.DocumentDb.Tier
-                note     = 'vCore publishes no active-connection/429 metric; MongoRequestDurationMs + IOPS confirm served load.'
-                metrics  = $roll
+                captured           = $true
+                kind               = 'vcore-cluster'
+                cluster            = $res.DocumentDb.ClusterName
+                tier               = $res.DocumentDb.Tier
+                note               = 'vCore has no active-connection counter, but MongoRequestDurationMs Count = server-side RPS and its StatusCodeClass dimension surfaces 4xx/5xx (throttles). Concurrent/created connection counts still come from the client-side merge.'
+                metrics            = $roll
+                requestByOperation = $byOp
+                requestByStatus    = $byStatus
             }
         }
         { $_ -in 'mongo-shard','mongo-vm' } {

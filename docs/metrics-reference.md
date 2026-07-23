@@ -15,9 +15,11 @@ Two facts drive most of the ❌s:
 1. **MongoDB runs on Azure VMs we own** → we can read the OS host metrics (Azure Monitor VM), talk to
    `serverStatus`/`connPoolStats` with a monitor credential, and read `mongos.log` on the box.
 2. **DocumentDB is a managed PaaS (vCore)** → no OS/VM access, no `serverStatus`/`connPoolStats`, no
-   server log file. It exposes **only** a fixed set of **Azure Monitor cluster metrics**, and notably
-   publishes **no active-connection / 429-throttle metric**. So DocumentDB connection concurrency &
-   churn come **only from the client side**.
+   server log file. It exposes a fixed set of **Azure Monitor cluster metrics**, with **no dedicated
+   active-connection counter**, so DocumentDB connection **concurrency & churn** come **only from the
+   client side**. It *does*, however, expose server-side **throughput** and **error/throttle** signals
+   via the `MongoRequestDurationMs` metric's `Count` aggregation and its `Operation` / `StatusCodeClass`
+   dimensions (see §3).
 
 ## Capture sources (the "Source" column values)
 
@@ -123,7 +125,7 @@ Destination: `results/_campaign-<RunTag>/server-samples/mongo-serverstats.csv` (
 | `connAvailable` | Server sampler (serverStatus) — `connections.available` | `mongo-serverstats.csv` | Remaining connection headroom | ✅ | ❌ no server connection metric on vCore |
 | `connActive` | Server sampler (serverStatus) — `connections.active` | `mongo-serverstats.csv` | Connections currently executing an operation | ✅ | ❌ no server connection metric on vCore |
 | `connTotalCreated` | Server sampler (serverStatus) — `connections.totalCreated` | `mongo-serverstats.csv` | Cumulative connections created since mongos start (server-side conn/s = deltas). *DocumentDB substitute: client-side `Connections.Created`, §1a.* | ✅ | ❌ no server connection metric on vCore |
-| **`opInsert/opQuery/opUpdate/opDelete/opGetmore/opCommand`** | Server sampler (serverStatus) — `opcounters.*` | `mongo-serverstats.csv` | **Cumulative op counters** (server-side QPS = deltas between rows). *DocumentDB substitute: client-side QPS, §1b.* | ✅ | ❌ vCore exposes no opcounters (use client QPS + cluster `IOPS`) |
+| **`opInsert/opQuery/opUpdate/opDelete/opGetmore/opCommand`** | Server sampler (serverStatus) — `opcounters.*` | `mongo-serverstats.csv` | **Cumulative op counters** (server-side QPS = deltas between rows). *DocumentDB substitute: server-side `MongoRequestDurationMs` Count split by Operation, §3.* | ✅ | ⚠️ no `opcounters`, but server-side RPS + per-op latency come from `MongoRequestDurationMs` (Count / Operation dimension), §3 |
 
 ### 2b. MongoDB VM host metrics — Azure Monitor (the Mongo VM's CPU & memory)
 
@@ -171,21 +173,38 @@ Destination: `azure-metrics.json` → `perTarget.<t>.vms.<vm>.logSlice.*` (+ raw
 
 Source: **Azure Monitor (cluster)** — `az monitor metrics list` on `docdb-dbtest-hpc-0`, via
 `Get-AzureMetrics.ps1`. Destination: `azure-metrics.json` → `perTarget.documentdb.metrics.*` (+ raw
-`metrics-raw/documentdb-cluster-metrics.json`). These are the **only** server-side metrics DocumentDB
-publishes.
+`metrics-raw/documentdb-cluster-metrics.json`). These are the server-side metrics DocumentDB publishes.
+
+This is the **full published set** for a Cosmos DB for MongoDB **vCore** cluster, verified with
+`az monitor metrics list-definitions` (all retained 93 days at grains PT1M → P1D; each rolled up here as
+avg / max / min / total / count over the run window). Each metric except `AutoscaleUtilizationPercent`
+carries a `ServerName` dimension (per-node).
 
 | Metric | Source | Destination | Description | MongoDB | DocumentDB |
 |---|---|---|---|---|---|
-| **Cluster CPU %** | Azure Monitor (cluster) — `CpuPercent` | `…documentdb.metrics.CpuPercent` | **DocumentDB cluster CPU utilization.** *MongoDB equivalent: VM `Percentage CPU`, §2b.* | ❌ not a cluster resource — MongoDB uses VM `Percentage CPU` | ✅ |
-| **Cluster memory %** | Azure Monitor (cluster) — `MemoryPercent` | `…documentdb.metrics.MemoryPercent` | **DocumentDB cluster memory utilization.** *MongoDB equivalent: VM `Available Memory Bytes`, §2b.* | ❌ MongoDB uses VM `Available Memory Bytes` | ✅ |
-| IOPS | Azure Monitor (cluster) — `IOPS` | `…documentdb.metrics.IOPS` | Storage IO throughput proxy | ❌ not published for self-managed VM | ✅ |
+| **Cluster CPU %** | Azure Monitor (cluster) — `CpuPercent` | `…documentdb.metrics.CpuPercent` | **DocumentDB cluster CPU utilization** (per-node). *MongoDB equivalent: VM `Percentage CPU`, §2b.* | ❌ not a cluster resource — MongoDB uses VM `Percentage CPU` | ✅ |
+| **Cluster memory %** | Azure Monitor (cluster) — `MemoryPercent` | `…documentdb.metrics.MemoryPercent` | **DocumentDB cluster memory utilization** (per-node). *MongoDB equivalent: VM `Available Memory Bytes`, §2b.* | ❌ MongoDB uses VM `Available Memory Bytes` | ✅ |
+| **Committed memory %** | Azure Monitor (cluster) — `CommittedMemoryPercent` | `…documentdb.metrics.CommittedMemoryPercent` | **% of the commit-memory limit allocated by applications on the node** — the "committed memory" saturation signal. | ❌ not published for self-managed VM (use serverStatus mem, §2c/host mem, §2b) | ✅ |
+| Autoscale utilization % | Azure Monitor (cluster) — `AutoscaleUtilizationPercent` | `…documentdb.metrics.AutoscaleUtilizationPercent` | % of autoscale capacity in use (cluster-wide; no per-node dimension) | ❌ N/A (no autoscale on self-managed VM) | ✅ |
+| Storage % | Azure Monitor (cluster) — `StoragePercent` | `…documentdb.metrics.StoragePercent` | % of available node storage used | ❌ MongoDB uses VM disk metrics / OS | ✅ |
+| Storage used (bytes) | Azure Monitor (cluster) — `StorageUsed` | `…documentdb.metrics.StorageUsed` | Quantity of node storage used | ❌ MongoDB uses VM disk metrics / OS | ✅ |
+| IOPS | Azure Monitor (cluster) — `IOPS` | `…documentdb.metrics.IOPS` | Disk IO operations per second on the node (throughput proxy) | ❌ not published for self-managed VM | ✅ |
 | Network ingress | Azure Monitor (cluster) — `NetworkBytesIngress` | `…documentdb.metrics.NetworkBytesIngress` | Bytes into the cluster. *MongoDB equivalent: VM `Network In`, §2b.* | ❌ MongoDB uses VM `Network In` | ✅ |
 | Network egress | Azure Monitor (cluster) — `NetworkBytesEgress` | `…documentdb.metrics.NetworkBytesEgress` | Bytes out of the cluster. *MongoDB equivalent: VM `Network Out`, §2b.* | ❌ MongoDB uses VM `Network Out` | ✅ |
-| Request duration | Azure Monitor (cluster) — `MongoRequestDurationMs` | `…documentdb.metrics.MongoRequestDurationMs` | Server-side request duration (null when idle). *MongoDB equivalent: client op latency, §1c.* | ❌ not published for self-managed VM (use client latency) | ✅ |
+| **Request duration (latency)** | Azure Monitor (cluster) — `MongoRequestDurationMs` (aggregations Avg/Max/Min) | `…documentdb.metrics.MongoRequestDurationMs` | **Server-side end-to-end request latency**, updated every 60 s. *MongoDB equivalent: client op latency §1c / server request latency has no direct mongos gauge.* | ❌ use client op latency (§1c) | ✅ |
+| **Request count / RPS** | Azure Monitor (cluster) — `MongoRequestDurationMs` **Count** aggregation | `…documentdb.metrics.MongoRequestDurationMs.count` | **Server-side requests served in the window** (÷ window seconds = server RPS). *This is DocumentDB's server-side throughput signal — the analogue of Mongo `opcounters`.* | ✅ via `opcounters` (§2a) | ✅ |
+| **Per-operation RPS + latency** | Azure Monitor (cluster) — `MongoRequestDurationMs` split by **`Operation`** dimension | `…documentdb.requestByOperation.<op>` → `{requestCount, avgMs, maxMs}` | **Server-side request count + latency per op type** (insert/find/update/delete/…). *MongoDB equivalent: per-op `opcounters` (§2a) + client latency (§1c).* | ✅ (opcounters + client latency) | ✅ |
+| **Error / throttle counts** | Azure Monitor (cluster) — `MongoRequestDurationMs` split by **`StatusCodeClass`** dimension | `…documentdb.requestByStatus.<class>` → `{requestCount}` | **Server-side 2xx / 4xx / 5xx request counts** — throttles and errors surface here as non-2xx classes. *MongoDB equivalent: client `ErrorsByType` (§1d) + mongos.log (§2d).* | ❌ (use client `ErrorsByType`, §1d) | ✅ |
 
-> ⚠️ **vCore publishes NO active-connection or 429/throttle metric.** DocumentDB **concurrent** and
-> **created** connection counts come **only from the client side** (§1b `InFlightTasks`, §1a
-> `Connections.Created`). The in-run server sampler (§2a) does **not** run for DocumentDB.
+> **Correction vs earlier notes:** vCore has **no dedicated active-connection counter**, so DocumentDB
+> **concurrent** and **created** connection counts still come **only from the client side** (§1b
+> `InFlightTasks`, §1a `Connections.Created`), and the in-run server sampler (§2a) does **not** run for
+> DocumentDB. **However**, DocumentDB *does* expose **server-side throughput and error/throttle
+> visibility** through the `MongoRequestDurationMs` metric: its **`Count`** aggregation = requests served
+> (RPS), its **`Operation`** dimension = per-op RPS + latency, and its **`StatusCodeClass`** dimension =
+> 2xx/4xx/5xx counts (throttles show up as 4xx/5xx). Other available dimensions on that metric
+> (`StatusCode`, `ErrorCode`, `DatabaseName`, `CollectionName`, `Protocol`, `Authentication`) can be
+> split the same way if a finer breakdown is needed.
 
 ---
 
@@ -214,7 +233,9 @@ results/_campaign-<RunTag>/
 ├── server-samples/mongo-serverstats.csv   # §2a in-run server concurrency + QPS (MongoDB only)
 ├── azure-metrics.json                      # §2b–2d + §3: VM CPU/mem/net, serverStatus, log, DocumentDB cluster
 └── metrics-raw/
-    ├── documentdb-cluster-metrics.json     # §3 DocumentDB
+    ├── documentdb-cluster-metrics.json     # §3 DocumentDB scalar metrics (all 10)
+    ├── documentdb-request-by-operation.json # §3 DocumentDB per-Operation RPS + latency
+    ├── documentdb-request-by-status.json   # §3 DocumentDB per-StatusCodeClass counts (throttles/errors)
     ├── <target>-serverStatus.txt           # §2c MongoDB
     ├── <target>-connPoolStats.txt          # §2c MongoDB
     ├── <target>-<vm>-host-metrics.json     # §2b MongoDB VM
@@ -244,9 +265,13 @@ results/merge-<RunTag>-…-combined.csv       # combined per-second series
 | Did we hit ≥1,200 conn/s? | `PeakCombinedConnPerSec` | §4 client merge · `merge-<tag>.json` | ✅ (confirm w/ §2a `connTotalCreated`) | ✅ (client only) |
 | DB server CPU / memory | Mongo: `Percentage CPU` / `Available Memory Bytes`; DocDB: `CpuPercent` / `MemoryPercent` | §2b / §3 · `azure-metrics.json` | ✅ VM | ✅ cluster |
 | Server concurrent conns (true peak) | `connCurrent` summed across routers | §2a · `mongo-serverstats.csv` | ✅ | ❌ no server metric — use client `InFlightTasks` |
-| Server QPS | `opQuery/opCommand/…` deltas | §2a · `mongo-serverstats.csv` | ✅ | ❌ no opcounters — use client QPS |
+| Server QPS / RPS | Mongo: `opQuery/opCommand/…` deltas; DocDB: `MongoRequestDurationMs` Count (÷ window) | §2a `mongo-serverstats.csv` / §3 `azure-metrics.json` | ✅ | ✅ (server-side, via request Count) |
+| Server per-op throughput + latency | Mongo: `opcounters` + client latency; DocDB: `MongoRequestDurationMs` by `Operation` | §2a / §3 `requestByOperation` | ✅ | ✅ |
+| Server errors / throttles | Mongo: client `ErrorsByType` + mongos.log; DocDB: `MongoRequestDurationMs` by `StatusCodeClass` (4xx/5xx) | §1d / §2d / §3 `requestByStatus` | ✅ (client + log) | ✅ (server-side status classes) |
+| Committed memory saturation | DocDB: `CommittedMemoryPercent` | §3 · `azure-metrics.json` | ❌ (use serverStatus/host mem) | ✅ |
+| Storage / autoscale headroom | DocDB: `StoragePercent`, `StorageUsed`, `AutoscaleUtilizationPercent` | §3 · `azure-metrics.json` | ❌ (VM disk/OS) | ✅ |
 | Conns created (total churn) | `connectionsCreated` / log `connectionAccepted` | §2c/§2d · `azure-metrics.json` | ✅ | ❌ use client `Connections.Created` |
-| Latency (op / handshake / cycle) | `OperationLatencyMs`, `ConnectionOpenMs`, … | §1c · `<runId>.json` + `-latency.csv` | ✅ | ✅ |
+| Latency (op / handshake / cycle) | `OperationLatencyMs`, `ConnectionOpenMs`, … | §1c · `<runId>.json` + `-latency.csv` | ✅ | ✅ (client) + DocDB server `MongoRequestDurationMs` §3 |
 | Load-generator CPU/mem/ports | `cpuPercent`, `workingSetBytes`, `ephemeralPortsInUse` | §1e · `-timeseries.csv` | ✅ | ✅ |
 | DB network throughput | Mongo: VM `Network In/Out`; DocDB: `NetworkBytesIngress/Egress` | §2b / §3 · `azure-metrics.json` | ✅ VM | ✅ cluster |
 

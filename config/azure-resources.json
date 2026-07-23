@@ -12,10 +12,14 @@
   "ResourceGroup": "rg-db-test-hpc",
 
   // DocumentDB (PaaS) — Azure Cosmos DB for MongoDB vCore cluster.
-  // vCore publishes: CpuPercent, MemoryPercent, CommittedMemoryPercent, IOPS, StoragePercent,
-  // StorageUsed, NetworkBytesIngress/Egress, MongoRequestDurationMs. (Active-connection count and
-  // 429/throttle counters are NOT published for vCore — server-side connection evidence for docdb
-  // comes from the client-side merged concurrency; request-duration confirms the backend saw load.)
+  // Full published metric set (verified via `az monitor metrics list-definitions`, retention 93d,
+  // grains PT1M..P1D): CpuPercent, MemoryPercent, CommittedMemoryPercent, AutoscaleUtilizationPercent,
+  // StoragePercent, StorageUsed, IOPS, NetworkBytesIngress/Egress, MongoRequestDurationMs.
+  // MongoRequestDurationMs is a Latency metric with a Count aggregation (= requests served → server-side
+  // RPS) and rich dimensions (Operation, StatusCode, StatusCodeClass, ErrorCode, DatabaseName,
+  // CollectionName, ...). There is NO dedicated active-connection counter, but the request Count gives
+  // server-side throughput and the StatusCodeClass dimension surfaces 4xx/5xx (throttles/errors).
+  // Concurrent/created connection counts for docdb still come from the client-side merged concurrency.
   "DocumentDb": {
     "ClusterName": "docdb-dbtest-hpc-0",
     "Tier": "M80",
