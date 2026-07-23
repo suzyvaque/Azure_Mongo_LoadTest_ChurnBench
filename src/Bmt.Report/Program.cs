@@ -118,10 +118,13 @@ internal static class Program
                 ConsoleLog.Info($"  Retries superseded    : {g.SupersededRuns} older-attempt artifact(s) for host(s) [{string.Join(",", g.RetriedHostIds)}] (latest attempt used)");
             }
             ConsoleLog.Info($"  Start-time skew       : {g.StartSkewSeconds}s across hosts");
+            ConsoleLog.Info($"  Offered/started/s     : {g.CombinedOfferedTasksPerSec:N0} / {g.CombinedStartedTasksPerSec:N0}  " +
+                            $"(failure {g.FailureRatePct:F2}%)");
             ConsoleLog.Info($"  Combined conn/s peak  : {g.PeakCombinedConnPerSec:N0}  (target ≥ {options.ChurnTarget:N0} — {churn})");
             ConsoleLog.Info($"  Combined ready/s peak : {g.PeakCombinedReadyPerSec:N0}  (target ≥ {options.ChurnTarget:N0} — {(g.ReachedReadyChurnTarget ? "REACHED" : "NOT reached")})");
             ConsoleLog.Info($"  Combined active-ready  : {g.PeakCombinedActiveReady:N0}  (AUTHORITATIVE concurrency; target ≥ {options.ConcurrentTarget:N0} — {(g.ReachedConcurrentTarget ? "REACHED" : "NOT reached")})");
             ConsoleLog.Info($"  Combined in-flight peak: {g.PeakCombinedInFlight:N0}  (generator diagnostic only — NOT connection proof)");
+            ConsoleLog.Info($"  True e2e p99 / drain  : {g.TrueE2eP99Ms:N1} ms / {g.DrainDurationSeconds:F1}s (worst host)  reconciled={g.AllHostsReconciled}");
             ConsoleLog.Info($"  Combined series CSV   : {csvPath}");
         }
 
@@ -136,8 +139,13 @@ internal static class Program
             }
             if (s.ValidIterations > 0)
             {
-                ConsoleLog.Info($"  Peak conn/s   mean={s.MeanPeakConnPerSec:N0} min={s.MinPeakConnPerSec:N0} max={s.MaxPeakConnPerSec:N0}");
-                ConsoleLog.Info($"  Peak in-flight mean={s.MeanPeakInFlight:N0} min={s.MinPeakInFlight:N0} max={s.MaxPeakInFlight:N0}");
+                ConsoleLog.Info($"  Peak conn/s    mean={s.MeanPeakConnPerSec:N0} min={s.MinPeakConnPerSec:N0} max={s.MaxPeakConnPerSec:N0}");
+                ConsoleLog.Info($"  Peak ready/s   mean={s.MeanPeakReadyPerSec:N0} min={s.MinPeakReadyPerSec:N0} max={s.MaxPeakReadyPerSec:N0}");
+                ConsoleLog.Info($"  Peak active-rdy mean={s.MeanPeakActiveReady:N0} min={s.MinPeakActiveReady:N0} max={s.MaxPeakActiveReady:N0}  (authoritative concurrency)");
+                ConsoleLog.Info($"  Peak in-flight mean={s.MeanPeakInFlight:N0} min={s.MinPeakInFlight:N0} max={s.MaxPeakInFlight:N0}  (diagnostic)");
+                ConsoleLog.Info($"  True e2e p99   mean={s.MeanTrueE2eP99Ms:N1} min={s.MinTrueE2eP99Ms:N1} max={s.MaxTrueE2eP99Ms:N1} ms");
+                ConsoleLog.Info($"  Drain seconds  mean={s.MeanDrainDurationSeconds:F1} min={s.MinDrainDurationSeconds:F1} max={s.MaxDrainDurationSeconds:F1}   Failure% mean={s.MeanFailureRatePct:F2} min={s.MinFailureRatePct:F2} max={s.MaxFailureRatePct:F2}");
+                ConsoleLog.Info($"  All iters reached: churn={s.AllIterationsReachedChurn} active-ready={s.AllIterationsReachedActiveReady}");
             }
             ConsoleLog.Info($"  Max start-time skew   : {s.MaxStartSkewSeconds}s");
         }

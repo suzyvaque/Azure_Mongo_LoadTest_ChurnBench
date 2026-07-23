@@ -121,4 +121,58 @@ public sealed class MergeContractTests : IDisposable
         Assert.False(g.Valid);
         Assert.Contains(4, g.UnexpectedHostIds);
     }
+
+    [Fact]
+    public void MergedReport_Includes_PerHost_And_Combined_Fidelity_Fields()
+    {
+        // Two iterations, 3 hosts each, with per-host offered rates + drain + e2e populated.
+        foreach (var iter in new[] { 1, 2 })
+        {
+            foreach (var hostId in new[] { 1, 2, 3 })
+            {
+                var r = new RunResult
+                {
+                    Target = "documentdb",
+                    Scenario = "Burst",
+                    HostId = hostId,
+                    HostCount = 3,
+                    RunTag = "camp",
+                    StartedUnixSeconds = 1000 * iter,
+                    IterationNumber = iter,
+                    IterationCount = 2,
+                    Totals = new TaskTotals { TotalTasks = 1000, SuccessfulTasks = 990, FailedTasks = 10 },
+                    OpenLoop = new OpenLoopStats
+                    {
+                        ScheduledTasksPerSec = 400,
+                        StartedTasksPerSec = 398,
+                        OfferedToFinishedLatencyMs = new LatencySummary { P99Ms = 100 + hostId * 10 },
+                    },
+                    Arrival = new ArrivalDrainStats { DrainDurationSeconds = 5 + hostId },
+                    Lifecycle = new ConnectionLifecycleStats { PeakActiveReady = 4000, LifecycleReconciled = true },
+                    Throughput = new List<ThroughputPoint>
+                    {
+                        new() { Second = 1, ConnectionsCreated = 400, ConnectionsReady = 400, ActiveReady = 4000, InFlightTasks = 4000 },
+                    },
+                };
+                File.WriteAllText(Path.Combine(_dir, $"i{iter}h{hostId}.json"), r.ToJson());
+            }
+        }
+
+        var report = Merger.Merge(_dir, "camp", 11000, 1200);
+        var g1 = report.Groups.Single(g => g.IterationNumber == 1);
+
+        Assert.Equal(3, g1.Hosts.Count);                       // per-host detail present
+        Assert.Equal(1200, g1.CombinedOfferedTasksPerSec);     // 3 x 400
+        Assert.Equal(1194, g1.CombinedStartedTasksPerSec);     // 3 x 398
+        Assert.Equal(1.0, g1.FailureRatePct);                  // 30 failed / 3000 tasks
+        Assert.Equal(130, g1.TrueE2eP99Ms);                    // worst host (host 3): 100 + 30
+        Assert.Equal(8, g1.DrainDurationSeconds);              // worst host (host 3): 5 + 3
+        Assert.True(g1.AllHostsReconciled);
+
+        var stat = report.CrossIteration.Stats.Single();
+        Assert.Equal(2, stat.ValidIterations);
+        Assert.Equal(130, stat.MaxTrueE2eP99Ms);
+        Assert.Equal(12000, stat.MaxPeakActiveReady);          // 3 x 4000
+        Assert.True(stat.AllIterationsReachedActiveReady);
+    }
 }

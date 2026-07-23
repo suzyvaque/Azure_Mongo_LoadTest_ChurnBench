@@ -573,7 +573,10 @@ public sealed class RunOrchestrator
     {
         ConsoleLog.Info(new string('=', 70));
         ConsoleLog.Info($"AGGREGATE: {agg.Target} / {agg.Scenario} / {agg.WorkloadMode} / {agg.IterationCount} iterations");
-        ConsoleLog.Info($"Mean tasks/s (successful): {agg.Stats.MeanSuccessfulTasksPerSec:F1}  Mean error%: {agg.Stats.MeanErrorRatePct:F2}%");
+        ConsoleLog.Info($"Mean offered/s: {agg.Stats.MeanScheduledTasksPerSec:F1}  Mean successful/s: {agg.Stats.MeanSuccessfulTasksPerSec:F1}  " +
+                        $"Mean error%: {agg.Stats.MeanErrorRatePct:F2}%  Mean drain: {agg.Stats.MeanDrainDurationSeconds:F1}s");
+        var e2e = agg.Stats.OfferedToFinishedMs;
+        ConsoleLog.Info($"True offered→finished p99 ms: mean={e2e.MeanP99Ms:F1} min={e2e.MinP99Ms:F1} max={e2e.MaxP99Ms:F1}");
         var c = agg.Stats.TaskCycleMs;
         ConsoleLog.Info($"Cycle p99 ms: mean={c.MeanP99Ms:F1} min={c.MinP99Ms:F1} max={c.MaxP99Ms:F1}");
         foreach (var kv in agg.Stats.OperationMs)

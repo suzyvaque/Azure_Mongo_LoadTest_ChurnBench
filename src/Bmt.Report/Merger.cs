@@ -150,6 +150,31 @@ public static class Merger
         var peakReady = readyBySecond.Count == 0 ? 0 : readyBySecond.Values.Max();
         var peakActiveReady = activeReadyBySecond.Count == 0 ? 0 : activeReadyBySecond.Values.Max();
 
+        // §5 per-host detail + combined generator-fidelity / drain / true-e2e / failure for this iteration.
+        var perHost = hostRuns
+            .OrderBy(r => r.HostId)
+            .Select(r => new MergeHostSummary
+            {
+                HostId = r.HostId,
+                StartedUnixSeconds = r.StartedUnixSeconds,
+                TasksScheduled = r.Totals.TasksScheduled,
+                TasksStarted = r.Totals.TasksStarted,
+                ScheduledTasksPerSec = r.OpenLoop.ScheduledTasksPerSec,
+                StartedTasksPerSec = r.OpenLoop.StartedTasksPerSec,
+                FailedTasks = r.Totals.FailedTasks,
+                SchedulerLatencyP99Ms = r.OpenLoop.SchedulerQueueLatencyMs.P99Ms,
+                TrueE2eP99Ms = r.OpenLoop.OfferedToFinishedLatencyMs.P99Ms,
+                DemandToReadyP99Ms = r.Lifecycle.DemandToReadyLatencyMs.P99Ms,
+                PeakActiveReady = r.Lifecycle.PeakActiveReady,
+                DrainDurationSeconds = r.Arrival.DrainDurationSeconds,
+                MaximumDrainBacklog = r.Arrival.MaximumDrainBacklog,
+                LifecycleReconciled = r.Lifecycle.LifecycleReconciled,
+            })
+            .ToList();
+
+        var totalTasks = hostRuns.Sum(r => r.Totals.TotalTasks);
+        var totalFailed = hostRuns.Sum(r => r.Totals.FailedTasks);
+
         var group = new MergeGroup
         {
             Target = first.Target,
@@ -175,6 +200,17 @@ public static class Merger
             PeakCombinedInFlight = peakConc,
             TotalConnectionsCreated = connBySecond.Values.Sum(),
             CombinedWindowSeconds = connBySecond.Count,
+            // Combined generator fidelity = SUM of per-host offered/started rates (the campaign injects the
+            // Poisson superposition of all hosts). Failure rate is over all Tasks; true-e2e p99 and drain
+            // take the WORST (max) across hosts since digests can't be merged and the slowest host bounds
+            // the synchronized iteration.
+            CombinedOfferedTasksPerSec = Math.Round(hostRuns.Sum(r => r.OpenLoop.ScheduledTasksPerSec), 2),
+            CombinedStartedTasksPerSec = Math.Round(hostRuns.Sum(r => r.OpenLoop.StartedTasksPerSec), 2),
+            FailureRatePct = totalTasks == 0 ? 0 : Math.Round(100.0 * totalFailed / totalTasks, 3),
+            TrueE2eP99Ms = perHost.Count == 0 ? 0 : perHost.Max(h => h.TrueE2eP99Ms),
+            DrainDurationSeconds = perHost.Count == 0 ? 0 : perHost.Max(h => h.DrainDurationSeconds),
+            AllHostsReconciled = perHost.All(h => h.LifecycleReconciled),
+            Hosts = perHost,
         };
 
         // Combined per-second series, ordered by wall-clock second (relative to the earliest second).
@@ -326,6 +362,27 @@ public sealed class MergeGroup
 
     public int CombinedWindowSeconds { get; set; }
 
+    /// <summary>§5: combined offered Tasks/s = sum of per-host offered rates (arrival-window denominator).</summary>
+    public double CombinedOfferedTasksPerSec { get; set; }
+
+    /// <summary>§5: combined started Tasks/s = sum of per-host started rates.</summary>
+    public double CombinedStartedTasksPerSec { get; set; }
+
+    /// <summary>§5: failure rate (%) across all hosts' Tasks this iteration.</summary>
+    public double FailureRatePct { get; set; }
+
+    /// <summary>§5: true offered-to-finished p99 (ms) — the WORST host bounds the synchronized iteration.</summary>
+    public double TrueE2eP99Ms { get; set; }
+
+    /// <summary>§5: drain duration (s) — the WORST (longest-draining) host bounds the iteration.</summary>
+    public double DrainDurationSeconds { get; set; }
+
+    /// <summary>§5: true only when every host's connection lifecycle reconciled (created≈closed).</summary>
+    public bool AllHostsReconciled { get; set; }
+
+    /// <summary>§5: per-host breakdown for this iteration (generator fidelity / lifecycle / drain).</summary>
+    public List<MergeHostSummary> Hosts { get; set; } = new();
+
     /// <summary>True when the combined conn/s peak met the campaign churn target (default ≥ 1,200).</summary>
     public bool ReachedChurnTarget { get; set; }
 
@@ -355,6 +412,38 @@ public sealed class MergeSecond
     public long CombinedOps { get; set; }
 
     public long CombinedFailedOps { get; set; }
+}
+
+/// <summary>§5 per-host breakdown within one synchronized iteration (generator fidelity / lifecycle / drain).</summary>
+public sealed class MergeHostSummary
+{
+    public int HostId { get; set; }
+
+    public long StartedUnixSeconds { get; set; }
+
+    public long TasksScheduled { get; set; }
+
+    public long TasksStarted { get; set; }
+
+    public double ScheduledTasksPerSec { get; set; }
+
+    public double StartedTasksPerSec { get; set; }
+
+    public long FailedTasks { get; set; }
+
+    public double SchedulerLatencyP99Ms { get; set; }
+
+    public double TrueE2eP99Ms { get; set; }
+
+    public double DemandToReadyP99Ms { get; set; }
+
+    public int PeakActiveReady { get; set; }
+
+    public double DrainDurationSeconds { get; set; }
+
+    public long MaximumDrainBacklog { get; set; }
+
+    public bool LifecycleReconciled { get; set; }
 }
 
 /// <summary>
@@ -400,9 +489,26 @@ public sealed class CrossIterationSummary
                 stat.MeanPeakConnPerSec = Math.Round(valid.Average(g => (double)g.PeakCombinedConnPerSec), 1);
                 stat.MinPeakConnPerSec = valid.Min(g => g.PeakCombinedConnPerSec);
                 stat.MaxPeakConnPerSec = valid.Max(g => g.PeakCombinedConnPerSec);
+                stat.MeanPeakReadyPerSec = Math.Round(valid.Average(g => (double)g.PeakCombinedReadyPerSec), 1);
+                stat.MinPeakReadyPerSec = valid.Min(g => g.PeakCombinedReadyPerSec);
+                stat.MaxPeakReadyPerSec = valid.Max(g => g.PeakCombinedReadyPerSec);
+                stat.MeanPeakActiveReady = Math.Round(valid.Average(g => (double)g.PeakCombinedActiveReady), 1);
+                stat.MinPeakActiveReady = valid.Min(g => g.PeakCombinedActiveReady);
+                stat.MaxPeakActiveReady = valid.Max(g => g.PeakCombinedActiveReady);
                 stat.MeanPeakInFlight = Math.Round(valid.Average(g => (double)g.PeakCombinedInFlight), 1);
                 stat.MinPeakInFlight = valid.Min(g => g.PeakCombinedInFlight);
                 stat.MaxPeakInFlight = valid.Max(g => g.PeakCombinedInFlight);
+                stat.MeanTrueE2eP99Ms = Math.Round(valid.Average(g => g.TrueE2eP99Ms), 2);
+                stat.MinTrueE2eP99Ms = Math.Round(valid.Min(g => g.TrueE2eP99Ms), 2);
+                stat.MaxTrueE2eP99Ms = Math.Round(valid.Max(g => g.TrueE2eP99Ms), 2);
+                stat.MeanDrainDurationSeconds = Math.Round(valid.Average(g => g.DrainDurationSeconds), 2);
+                stat.MinDrainDurationSeconds = Math.Round(valid.Min(g => g.DrainDurationSeconds), 2);
+                stat.MaxDrainDurationSeconds = Math.Round(valid.Max(g => g.DrainDurationSeconds), 2);
+                stat.MeanFailureRatePct = Math.Round(valid.Average(g => g.FailureRatePct), 3);
+                stat.MinFailureRatePct = Math.Round(valid.Min(g => g.FailureRatePct), 3);
+                stat.MaxFailureRatePct = Math.Round(valid.Max(g => g.FailureRatePct), 3);
+                stat.AllIterationsReachedChurn = valid.All(g => g.ReachedChurnTarget);
+                stat.AllIterationsReachedActiveReady = valid.All(g => g.ReachedConcurrentTarget);
             }
 
             summary.Stats.Add(stat);
@@ -438,9 +544,45 @@ public sealed class CrossIterationStat
 
     public long MaxPeakConnPerSec { get; set; }
 
+    public double MeanPeakReadyPerSec { get; set; }
+
+    public long MinPeakReadyPerSec { get; set; }
+
+    public long MaxPeakReadyPerSec { get; set; }
+
+    public double MeanPeakActiveReady { get; set; }
+
+    public long MinPeakActiveReady { get; set; }
+
+    public long MaxPeakActiveReady { get; set; }
+
     public double MeanPeakInFlight { get; set; }
 
     public long MinPeakInFlight { get; set; }
 
     public long MaxPeakInFlight { get; set; }
+
+    public double MeanTrueE2eP99Ms { get; set; }
+
+    public double MinTrueE2eP99Ms { get; set; }
+
+    public double MaxTrueE2eP99Ms { get; set; }
+
+    public double MeanDrainDurationSeconds { get; set; }
+
+    public double MinDrainDurationSeconds { get; set; }
+
+    public double MaxDrainDurationSeconds { get; set; }
+
+    public double MeanFailureRatePct { get; set; }
+
+    public double MinFailureRatePct { get; set; }
+
+    public double MaxFailureRatePct { get; set; }
+
+    /// <summary>True when EVERY valid iteration met the churn (conn/s) target.</summary>
+    public bool AllIterationsReachedChurn { get; set; }
+
+    /// <summary>True when EVERY valid iteration met the active-ready concurrency target.</summary>
+    public bool AllIterationsReachedActiveReady { get; set; }
 }

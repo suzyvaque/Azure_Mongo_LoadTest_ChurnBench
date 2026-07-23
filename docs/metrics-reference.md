@@ -354,3 +354,66 @@ print(pd.DataFrame(rows).sort_values("requestCount", ascending=False).to_string(
 > For a **Mongo VM** metric in cell B, set `RID` to the VM resource id
 > (`az vm show -g rg-db-test-hpc -n vm-dbtest-hpc-1-mongo --query id -o tsv`) and `METRIC` to
 > `"Percentage CPU"`, `"Available Memory Bytes"`, `"Network In"`, or `"Network Out"`.
+
+---
+
+## §8 Benchmark-correctness & open-loop telemetry (client-side, exact, no lag)
+
+Added to make the churn benchmark answer *where* a bottleneck is, not just *how slow*. All of these are
+**Client (in-proc)** or **Client (OS sampler)** — captured live, no Azure Monitor ingestion lag. They live
+in each per-host, per-iteration `RunResult` JSON (and its `-timeseries.csv` / `-latency.csv` /
+`-target-tcp.csv` companions), and are merged per synchronized iteration by `report merge`.
+
+### 8.1 Iteration synchronization (R1)
+
+The coordinator (`Invoke-Campaign.ps1`) owns the iteration loop: each iteration computes one shared
+`--start-at` UTC instant, launches exactly one iteration on hosts 1/2/3, waits for full completion incl.
+drain, validates all three hosts reported, and reruns the whole three-host iteration on any failure.
+`report merge` groups **per (target, scenario, iteration)**, requires the exact host set `{1..N}`, dedupes
+retries to the latest attempt per host, and reports **start-time skew**, superseded artifacts, and
+entirely-missing iterations. Cross-iteration mean/min/max is computed only over **valid** iterations.
+
+### 8.2 Arrival vs drain (R2) — the 300 s arrival window is the denominator
+
+| Metric | Meaning |
+|---|---|
+| `Totals.TasksScheduled` / `TasksStarted` | Tasks offered to the runtime / that began executing |
+| `OpenLoop.ScheduledTasksPerSec` / `StartedTasksPerSec` | rate = count ÷ **arrival window** (not total duration) |
+| `OpenLoop.SchedulerQueueLatencyMs` | `TaskStartedUtc − ScheduledUtc` (generator-runtime dispatch delay) |
+| `OpenLoop.TaskExecutionLatencyMs` | `TaskFinishedUtc − TaskStartedUtc` |
+| `OpenLoop.OfferedToFinishedLatencyMs` | `TaskFinishedUtc − ScheduledUtc` — **authoritative** open-loop e2e (p50/p95/p99) |
+| `OpenLoop.*ArrivalMs` | same three, but only for Tasks that also **completed during arrival** (secondary view) |
+| `Arrival.ArrivalStarted/Stopped/DrainStarted/DrainFinished*` | explicit window bounds |
+| `Arrival.TasksOutstandingAtArrivalStop` / `MaximumDrainBacklog` | backlog carried into / peak during drain |
+
+The authoritative set includes **every Task offered during arrival, even if it completes during drain** —
+excluding drain completions would drop the slowest requests and make an overloaded backend look fast.
+
+### 8.3 Connection lifecycle (R3) — driver events are authoritative
+
+Driver connection-monitoring events (not Task counts, not raw sockets) drive `Lifecycle.*`:
+`ConnectionsCreated/Ready/Failed/Closed`, gauges `PeakActiveConnecting/PeakActiveReady/PeakWaitingForServer`,
+and the two cold-connection latencies `DemandToReadyLatencyMs` (user-observed) and `DriverOpenLatencyMs`
+(physical open only). `LifecycleReconciled` checks created≈closed after drain; `CreatedMinusDemand` checks
+~one connection per Task that reached demand. **Threshold verdicts** (in `report merge`): peak combined
+`ConnectionsCreated/s ≥ 1,200`, peak combined `ConnectionsReady/s ≥ 1,200`, and peak combined
+**`ActiveReady ≥ 11,000`** — the authoritative concurrency verdict. In-flight Task count is a generator
+diagnostic only and is **never** used as proof of established connections.
+
+### 8.4 Target-specific TCP (R4)
+
+`TargetTcp` resolves the database destination IP/port set (SRV + A/AAAA), refreshes it periodically, and the
+sampler counts only sockets to those endpoints: `Target{SynSent,Established,TimeWait,CloseWait,FinWait1,
+FinWait2,TotalSockets,DistinctLocalPorts}` (per-second sub-second peaks, raw cadence 250–500 ms). Host-wide
+totals (`HostTotalTcpSockets`, `HostTotalTimeWait`, ephemeral-port utilization) are kept as **general
+VM-pressure context only** — never as database-specific evidence. `DroppedSamples` reports telemetry
+integrity. Interpretation: high `TargetSynSent` = TCP/accept delay; high `TargetEstablished` with low driver
+ready = TLS/auth/handshake delay; high `TargetTimeWait` = ephemeral-port churn; high `TargetCloseWait` =
+delayed cleanup.
+
+### 8.5 Merged report (R5)
+
+Each synchronized iteration merges to: required host IDs present, start-time skew, combined offered/started
+rates, peak combined created/s + ready/s + **active-ready** (authoritative), failure rate, true e2e p99 and
+drain duration (worst host bounds the iteration), plus a per-host breakdown (`Hosts[]`). The campaign-level
+`CrossIteration` summary reports mean/min/max across the **valid** iterations only.

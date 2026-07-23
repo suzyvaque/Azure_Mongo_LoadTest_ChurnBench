@@ -62,7 +62,13 @@ public sealed class AggregateResult
                 IterationNumber = r.IterationNumber,
                 ArtifactPath = i < artifactRelPaths.Count ? artifactRelPaths[i] : string.Empty,
                 DurationSeconds = r.DurationSeconds,
+                ArrivalWindowSeconds = r.OpenLoop.ArrivalWindowSeconds,
+                DrainDurationSeconds = r.Arrival.DrainDurationSeconds,
                 TotalTasks = r.Totals.TotalTasks,
+                TasksScheduled = r.Totals.TasksScheduled,
+                TasksStarted = r.Totals.TasksStarted,
+                ScheduledTasksPerSec = r.OpenLoop.ScheduledTasksPerSec,
+                StartedTasksPerSec = r.OpenLoop.StartedTasksPerSec,
                 SuccessfulTasks = r.Totals.SuccessfulTasks,
                 FailedTasks = r.Totals.FailedTasks,
                 ErrorRatePct = r.Totals.TotalTasks == 0
@@ -71,6 +77,12 @@ public sealed class AggregateResult
                 TaskCycleLatencyMs = r.TaskCycleLatencyMs,
                 OperationLatencyMs = r.OperationLatencyMs,
                 ConnectionOpenMs = r.ConnectionOpenMs,
+                SchedulerQueueLatencyMs = r.OpenLoop.SchedulerQueueLatencyMs,
+                OfferedToFinishedLatencyMs = r.OpenLoop.OfferedToFinishedLatencyMs,
+                DemandToReadyLatencyMs = r.Lifecycle.DemandToReadyLatencyMs,
+                PeakActiveReady = r.Lifecycle.PeakActiveReady,
+                MaximumDrainBacklog = r.Arrival.MaximumDrainBacklog,
+                LifecycleReconciled = r.Lifecycle.LifecycleReconciled,
                 ErrorsByType = r.ErrorsByType,
             });
         }
@@ -90,7 +102,19 @@ public sealed class IterationSummary
 
     public double DurationSeconds { get; set; }
 
+    public double ArrivalWindowSeconds { get; set; }
+
+    public double DrainDurationSeconds { get; set; }
+
     public long TotalTasks { get; set; }
+
+    public long TasksScheduled { get; set; }
+
+    public long TasksStarted { get; set; }
+
+    public double ScheduledTasksPerSec { get; set; }
+
+    public double StartedTasksPerSec { get; set; }
 
     public long SuccessfulTasks { get; set; }
 
@@ -103,6 +127,18 @@ public sealed class IterationSummary
     public Dictionary<string, LatencySummary> OperationLatencyMs { get; set; } = new();
 
     public LatencySummary ConnectionOpenMs { get; set; } = LatencySummary.Empty();
+
+    public LatencySummary SchedulerQueueLatencyMs { get; set; } = LatencySummary.Empty();
+
+    public LatencySummary OfferedToFinishedLatencyMs { get; set; } = LatencySummary.Empty();
+
+    public LatencySummary DemandToReadyLatencyMs { get; set; } = LatencySummary.Empty();
+
+    public int PeakActiveReady { get; set; }
+
+    public long MaximumDrainBacklog { get; set; }
+
+    public bool LifecycleReconciled { get; set; }
 
     public Dictionary<string, long> ErrorsByType { get; set; } = new();
 }
@@ -118,6 +154,21 @@ public sealed class AggregateStats
 
     /// <summary>Cross-iteration aggregate for connection-open (handshake/auth) latency.</summary>
     public AggLatency ConnectionOpenMs { get; set; } = new();
+
+    /// <summary>Cross-iteration aggregate for the true offered-to-finished (open-loop e2e) latency.</summary>
+    public AggLatency OfferedToFinishedMs { get; set; } = new();
+
+    /// <summary>Cross-iteration aggregate for scheduler-queue latency.</summary>
+    public AggLatency SchedulerQueueMs { get; set; } = new();
+
+    /// <summary>Cross-iteration aggregate for demand-to-ready (cold-connection) latency.</summary>
+    public AggLatency DemandToReadyMs { get; set; } = new();
+
+    /// <summary>Mean offered (scheduled) tasks/s across iterations (arrival-window denominator).</summary>
+    public double MeanScheduledTasksPerSec { get; set; }
+
+    /// <summary>Mean drain duration (s) across iterations.</summary>
+    public double MeanDrainDurationSeconds { get; set; }
 
     /// <summary>Mean throughput (successful tasks/s) across iterations.</summary>
     public double MeanSuccessfulTasksPerSec { get; set; }
@@ -136,8 +187,13 @@ public sealed class AggregateStats
         {
             TaskCycleMs = AggLatency.From(iters.Select(i => i.TaskCycleLatencyMs).ToList()),
             ConnectionOpenMs = AggLatency.From(iters.Select(i => i.ConnectionOpenMs).ToList()),
+            OfferedToFinishedMs = AggLatency.From(iters.Select(i => i.OfferedToFinishedLatencyMs).ToList()),
+            SchedulerQueueMs = AggLatency.From(iters.Select(i => i.SchedulerQueueLatencyMs).ToList()),
+            DemandToReadyMs = AggLatency.From(iters.Select(i => i.DemandToReadyLatencyMs).ToList()),
+            MeanScheduledTasksPerSec = Math.Round(iters.Average(i => i.ScheduledTasksPerSec), 3),
+            MeanDrainDurationSeconds = Math.Round(iters.Average(i => i.DrainDurationSeconds), 3),
             MeanSuccessfulTasksPerSec = Math.Round(
-                iters.Average(i => i.DurationSeconds > 0 ? i.SuccessfulTasks / i.DurationSeconds : 0), 3),
+                iters.Average(i => i.ArrivalWindowSeconds > 0 ? i.SuccessfulTasks / i.ArrivalWindowSeconds : 0), 3),
             MeanErrorRatePct = Math.Round(iters.Average(i => i.ErrorRatePct), 3),
         };
 
