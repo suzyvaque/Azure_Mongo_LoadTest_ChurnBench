@@ -42,6 +42,13 @@ public sealed class TaskRunner
     private readonly WorkloadConfig _workload;
     private readonly string _outputPayload;
 
+    /// <summary>
+    /// Absolute UTC instant at which the <see cref="WorkloadMode.Hold"/> keep-Ready loop must release its
+    /// connection so the drain phase can complete. Set by the orchestrator once the run window is known.
+    /// Ignored for the churn/single-op workloads. Defaults to <see cref="DateTime.MaxValue"/> (no bound).
+    /// </summary>
+    public DateTime HoldDeadlineUtc { get; set; } = DateTime.MaxValue;
+
     public TaskRunner(
         TaskConnectionFactory factory,
         MetricsCollector metrics,
@@ -81,6 +88,15 @@ public sealed class TaskRunner
 
         try
         {
+            // Hold mode: replacement Tasks injected by the closed-loop gate right as the window closes must
+            // NOT open a fresh connection (a pointless cold-connect during teardown that would skew the tail
+            // and delay drain). Treat as an immediate no-op so the gate slot is released cleanly.
+            if (_workload.Mode == WorkloadMode.Hold && DateTime.UtcNow >= HoldDeadlineUtc)
+            {
+                success = true;
+                return;
+            }
+
             var createSw = Stopwatch.StartNew();
             conn = _factory.Create();
             createSw.Stop();
@@ -93,7 +109,11 @@ public sealed class TaskRunner
             conn.Lifecycle?.MarkDemand();
             _metrics.OnConnectionDemand();
 
-            if (_workload.Mode == WorkloadMode.SingleOp)
+            if (_workload.Mode == WorkloadMode.Hold)
+            {
+                await RunHoldAsync(conn, reqId, ct).ConfigureAwait(false);
+            }
+            else if (_workload.Mode == WorkloadMode.SingleOp)
             {
                 await RunSingleOpAsync(conn, reqId, ct).ConfigureAwait(false);
             }
@@ -165,6 +185,51 @@ public sealed class TaskRunner
         await TimedAsync(OpNames.FindOutput, ct, async () =>
             await conn.CalcOutput.Find(outputFilter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Saturation-hold cycle: open ONE connection (initial find drives it to Ready) and keep it Ready until
+    /// <see cref="HoldDeadlineUtc"/>, issuing a light keepalive find every <c>TaskSleepMs</c> so neither the
+    /// driver nor the server idle-closes the socket. The connection stays counted in ActiveReady the whole
+    /// time, so a closed-loop population of these Tasks parks a fixed concurrent-Ready count. Any op failure
+    /// propagates so the Task ends and the gate frees a slot for a replacement (self-healing toward the cap).
+    /// </summary>
+    private async Task RunHoldAsync(TaskConnection conn, string reqId, CancellationToken ct)
+    {
+        var inputFilter = Builders<CalcInputDoc>.Filter.Eq(d => d.ReqId, reqId);
+
+        // Initial find: forces server selection + physical connection open → Ready.
+        await TimedAsync(OpNames.FindInput, ct, async () =>
+            await conn.CalcInput.Find(inputFilter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        // Keepalive interval; guard against a 0/negative sleep degenerating into a tight find loop.
+        var keepaliveMs = _taskSleepMs > 0 ? _taskSleepMs : 10_000;
+
+        while (!ct.IsCancellationRequested)
+        {
+            var remaining = HoldDeadlineUtc - DateTime.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+            {
+                break;
+            }
+
+            // Sleep no longer than the time left in the window so drain starts promptly at the deadline.
+            var wait = remaining < TimeSpan.FromMilliseconds(keepaliveMs)
+                ? remaining
+                : TimeSpan.FromMilliseconds(keepaliveMs);
+            await Task.Delay(wait, ct).ConfigureAwait(false);
+
+            if (DateTime.UtcNow >= HoldDeadlineUtc)
+            {
+                break;
+            }
+
+            // Keepalive find on the SAME held connection — keeps the socket demonstrably alive and Ready.
+            await TimedAsync(OpNames.FindInput, ct, async () =>
+                await conn.CalcInput.Find(inputFilter).FirstOrDefaultAsync(ct).ConfigureAwait(false))
+                .ConfigureAwait(false);
+        }
     }
 
     /// <summary>Single-op mode: one operation per connection, no sleep.</summary>

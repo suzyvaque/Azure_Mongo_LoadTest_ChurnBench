@@ -11,6 +11,14 @@ public enum WorkloadMode
 
     /// <summary>One operation per connection — isolates a single op for targeted latency measurement.</summary>
     SingleOp,
+
+    /// <summary>
+    /// Saturation hold: each Task opens ONE fresh connection, drives it to Ready, then keeps it Ready for
+    /// the whole run window (periodic keepalive find every <c>TaskSleepMs</c>) instead of churning. Combined
+    /// with a closed-loop gate this parks a fixed population of concurrent connections so the ≥10,000
+    /// concurrent-Ready envelope can be reached and held (Little's-Law concurrency, not arrival churn).
+    /// </summary>
+    Hold,
 }
 
 /// <summary>Which single operation to run when <see cref="WorkloadMode.SingleOp"/> is active.</summary>
@@ -58,6 +66,7 @@ public sealed class WorkloadConfig
     /// <summary>Short token used in folder/file names: "full-workload", "find-input", or "insert-output".</summary>
     public string Token() => Mode switch
     {
+        WorkloadMode.Hold => "hold",
         WorkloadMode.FullWorkload => "full-workload",
         WorkloadMode.SingleOp => SingleOpType switch
         {

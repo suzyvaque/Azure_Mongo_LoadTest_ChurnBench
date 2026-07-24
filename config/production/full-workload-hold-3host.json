@@ -1,0 +1,63 @@
+{
+  // PRODUCTION config — 3-HOST SATURATION HOLD. Purpose: PROVE and HOLD ≥10,000 CONCURRENT Ready
+  // connections (test_instruction.md §6.1/§6.2 concurrency envelope), which the open-loop CHURN config
+  // (full-workload-open-loop-3host.json) does NOT do — churn measures the connection-establishment RATE
+  // and only accumulates a few thousand concurrent because each Task's connection is Ready for just a
+  // couple of seconds. Keep BOTH: churn = the "conn/s rate" story, hold = the "≥10k concurrent" story.
+  //
+  //   Run each host with:  --host-id N --host-count 3 --run-tag <campaign> --start-at <UTC>
+  //   Then aggregate with: report merge --input results --tag <campaign>
+  //   (PeakCombinedActiveReady = the authoritative ≥10,000 concurrent verdict.)
+  //
+  // HOW IT REACHES 10k (Little's Law: concurrency = arrival_rate × hold_time):
+  //   The churn config raises arrival rate but keeps hold_time short (~3 s), so concurrency stays low and
+  //   is capped by the backend's connection-ACCEPT rate. Here we invert it: each Task opens ONE connection,
+  //   drives it to Ready, and HOLDS it Ready for the entire 5-min window (Workload.Mode = "hold", a light
+  //   keepalive find every TaskSleepMs). A CLOSED-LOOP gate (Burst.OpenLoop = false) then parks a FIXED
+  //   population = MaxConcurrentTasks concurrent connections per host. hold_time = full window ⇒ concurrency
+  //   equals the gate size, independent of arrival rate. The Poisson burst is only the RAMP that fills the
+  //   gate in the first few seconds; once full it back-pressures and the population is held to the deadline.
+  //
+  // SIZING (per-host vs combined — IMPORTANT):
+  //   MaxConcurrentTasks is applied PER HOST (each generator runs its own LoadGen + its own gate). With 3
+  //   hosts, combined concurrent-Ready ceiling = 3 × MaxConcurrentTasks. We set 4,000/host ⇒ 12,000 combined
+  //   ceiling, which clears the ≥10,000 target with ~2,000 headroom for transient accept failures WITHOUT
+  //   the client/backend cost of a needlessly larger population (12k live MongoClients across 3 hosts is
+  //   already substantial). To target a different combined number, set MaxConcurrentTasks = target / 3.
+  //
+  // CLIENT SAFETY: holding (not churning) 12k needs only ~12k simultaneous ephemeral ports (~4k/host, far
+  //   under the ~55,534 per-host range) and near-zero conn/s churn, so TIME_WAIT pressure is negligible.
+  //
+  // PREREQUISITE: the backend must permit ≥10k concurrent connections. Mongos ceiling is ~1e6 (fine);
+  //   confirm the DocumentDB vCore tier's max-connections allows ≥12k or the hold will plateau at the tier cap.
+  "Extends": "full-workload.json",
+
+  // Keepalive interval for the held connection (ms). Light: ~1 find per connection every 10 s keeps the
+  // socket alive/Ready without turning the hold into a throughput test.
+  "TaskSleepMs": 10000,
+
+  // Keep each connection Ready for the whole window instead of the 4-op churn cycle.
+  "Workload": {
+    "Mode": "Hold",
+    "SingleOpType": "FindInput"
+  },
+
+  "Scenario": {
+    // PER-HOST parked concurrency. 3 hosts × 4,000 = 12,000 combined ceiling (clears ≥10,000).
+    "MaxConcurrentTasks": 4000,
+
+    "Steady": { "Enabled": false },
+
+    "Burst": {
+      "Enabled": true,
+
+      // CLOSED-LOOP: the gate is the concurrency limiter. This is what makes the hold population = the cap.
+      "OpenLoop": false,
+
+      // Ramp only — fills the 4,000-slot gate in the first few seconds, then back-pressures and holds.
+      "JobsPerSecondLambda": 4.0,
+      "MinTasksPerJob": 150,
+      "MaxTasksPerJob": 500
+    }
+  }
+}

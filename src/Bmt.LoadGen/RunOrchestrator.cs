@@ -249,6 +249,10 @@ public sealed class RunOrchestrator
         var drainStartedUtc = startedUtc;
         long connectionsReadyAtArrivalStop = 0;
 
+        // Hold workload: bound the keep-Ready loop to the arrival window so the drain phase can complete
+        // (no effect on churn/single-op modes, whose Tasks self-terminate after one cycle).
+        runner.HoldDeadlineUtc = startedUtc.AddSeconds(effectiveDurationSec);
+
         // ---- Execute the selected scenario(s) under the explicit §2 arrival→drain model ----
         //   arrival: generators schedule new Tasks for the configured window
         //   arrival stop: generators complete; snapshot outstanding backlog; NO new Tasks scheduled
@@ -487,6 +491,7 @@ public sealed class RunOrchestrator
     // full = full 4-op cycle; query = single-op find; insert = single-op insert.
     private string WorkloadLabel() => _config.Workload.Mode switch
     {
+        WorkloadMode.Hold => "hold",
         WorkloadMode.FullWorkload => "full",
         WorkloadMode.SingleOp => _config.Workload.SingleOpType switch
         {
