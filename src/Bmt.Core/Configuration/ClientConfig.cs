@@ -32,6 +32,20 @@ public sealed class ClientConfig
     /// </summary>
     public bool DirectConnectionForSingleNode { get; set; } = true;
 
+    /// <summary>
+    /// When true, sets <c>AllowInsecureTls</c> on the per-Task client for the self-managed MongoDB
+    /// targets (<c>mongo-shard</c>, <c>mongo-vm</c>). Those endpoints present a certificate that chains
+    /// to a PRIVATE CA, so every fresh TLS handshake makes the Windows cert-chain engine build/validate
+    /// the chain against the machine trust store. Under the no-reuse model's storm of thousands of
+    /// SIMULTANEOUS cold handshakes that validation serializes inside schannel and throttles connection
+    /// ESTABLISHMENT to single-digit conn/s while the mongos/mongod CPU sits idle — capping achievable
+    /// concurrency far below the server's capacity. Managed DocumentDB presents a publicly-trusted cert
+    /// (fast, cached validation) and is unaffected. Skipping chain validation removes this client-side
+    /// PKI artifact so the measured concurrency reflects the SERVER's capacity, not the client's TLS
+    /// bookkeeping. Only ever applied to the mongo targets; DocumentDB/Cosmos are never altered.
+    /// </summary>
+    public bool MongoAllowInsecureTls { get; set; }
+
     public void Validate()
     {
         if (ServerSelectionTimeoutMs <= 0)

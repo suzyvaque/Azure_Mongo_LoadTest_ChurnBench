@@ -139,6 +139,16 @@ public sealed class TaskConnectionFactory
             settings.RetryWrites = false;
         }
 
+        // Self-managed MongoDB (mongo-shard/mongo-vm) presents a PRIVATE-CA certificate. Under the
+        // no-reuse storm of thousands of simultaneous cold TLS handshakes, Windows schannel serializes
+        // the per-handshake cert-chain validation, throttling connection establishment to single-digit
+        // conn/s while the servers sit idle — capping achievable concurrency. Skipping chain validation
+        // for these targets removes that client-side PKI bottleneck. Never applied to managed targets.
+        if (_tuning.MongoAllowInsecureTls && (Target == TargetKey.MongoShard || Target == TargetKey.MongoVm))
+        {
+            settings.AllowInsecureTls = true;
+        }
+
         // Surface connection-monitoring events to the observer(s) (§2.3/§7.2/§3). The shared observer
         // aggregates campaign-wide lifecycle counters; the optional per-Task recorder correlates THIS
         // client's single connection for demand-to-ready timing. We ALWAYS assign a fresh
