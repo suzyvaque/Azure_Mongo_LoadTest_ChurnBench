@@ -59,6 +59,12 @@ public sealed class RunResult
 
     public long DatasetDocumentCount { get; set; }
 
+    /// <summary>Item 7: wall-clock seconds spent in the untimed data-cache warm-up before the timed phase.</summary>
+    public double WarmupSeconds { get; set; }
+
+    /// <summary>Item 7: number of input documents read by the warm-up sweep (== dataset size when warming all).</summary>
+    public long WarmupDocCount { get; set; }
+
     /// <summary>Whether a preflight ran and whether it permitted the run (gate result).</summary>
     public PreflightGateInfo Preflight { get; set; } = new();
 

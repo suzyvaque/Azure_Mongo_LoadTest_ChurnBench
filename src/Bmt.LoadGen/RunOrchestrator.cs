@@ -24,6 +24,8 @@ public sealed class RunOrchestrator
     private readonly BmtConfig _config;
     private readonly RunOptions _options;
     private readonly string _connectionString;
+    private double _warmupSeconds;
+    private long _warmupDocCount;
 
     public RunOrchestrator(BmtConfig config, RunOptions options)
     {
@@ -343,6 +345,8 @@ public sealed class RunOrchestrator
         result.DurationSeconds = Math.Round(runClock.Elapsed.TotalSeconds, 3);
         result.MaskedConnectionString = ConnectionStringMasker.Mask(_connectionString);
         result.TaskSleepMs = _config.TaskSleepMs;
+        result.WarmupSeconds = _warmupSeconds;
+        result.WarmupDocCount = _warmupDocCount;
         result.DatasetDocumentCount = datasetCount;
         result.Preflight = gate;
 
@@ -538,7 +542,9 @@ public sealed class RunOrchestrator
         }
 
         sw.Stop();
-        ConsoleLog.Info($"Warm-up complete in {sw.Elapsed.TotalSeconds:F1}s ({read:N0} docs read; throwaway connection disposed; none retained).");
+        _warmupSeconds = Math.Round(sw.Elapsed.TotalSeconds, 1);
+        _warmupDocCount = read;
+        ConsoleLog.Info($"Warm-up complete in {_warmupSeconds:F1}s ({read:N0} docs read; throwaway connection disposed; none retained).");
     }
 
     // Short database label for compact folder names.

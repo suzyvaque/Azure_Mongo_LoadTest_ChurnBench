@@ -82,12 +82,15 @@ function Get-TargetStats {
         $wsPeakMB = [math]::Round((@($hosts | ForEach-Object { [double]$_.Process.PeakWorkingSetBytes / 1MB }) | Measure-Object -Maximum).Maximum, 0)
         $retryEnabled = [bool]($hosts[0].Retry.RetryWritesEnabled)
         $retryFail = (@($hosts | ForEach-Object { [long]$_.Retry.RetryableCommandFailures }) | Measure-Object -Sum).Sum
+        $warmupSec = [math]::Round((@($hosts | ForEach-Object { [double]$_.WarmupSeconds }) | Measure-Object -Average).Average, 1)
+        $warmupDocs = [long]($hosts[0].WarmupDocCount)
         $perHostPeak = @($hosts | ForEach-Object { [int]$_.Lifecycle.PeakActiveReady }) -join ' / '
 
         $perIter += [pscustomobject]@{
             Iter = $n; Hosts = $hosts.Count; MaxConn = $maxConn; AvgConn = $avgConn; PerHostPeak = $perHostPeak
             Tps = $tps; ErrPct = $errPct; Conn = $conn; Cycle = $cyc; Find = $fi; Remove = $rem; Insert = $ins; FindOut = $fo
             CpuPeak = $cpuPeak; WsPeakMB = $wsPeakMB; RetryEnabled = $retryEnabled; RetryFail = $retryFail
+            WarmupSec = $warmupSec; WarmupDocs = $warmupDocs
         }
     }
     if (-not $perIter) { return $null }
@@ -113,6 +116,8 @@ function Get-TargetStats {
         CpuPeak = MeanOf { param($x) $x.CpuPeak }; WsPeakMB = MeanOf { param($x) $x.WsPeakMB }
         RetryEnabled = $perIter[0].RetryEnabled
         RetryFail = (@($perIter | ForEach-Object { $_.RetryFail }) | Measure-Object -Sum).Sum
+        WarmupSec = MeanOf { param($x) $x.WarmupSec }
+        WarmupDocs = $perIter[0].WarmupDocs
     }
     return $srv
 }
@@ -171,6 +176,7 @@ $hrows = @(
     @('Error rate (%)',                 { param($t) "$($t.ErrPct)" }),
     @('Client CPU peak (%)',            { param($t) "$($t.CpuPeak)" }),
     @('Client working set peak (MB)',   { param($t) "$($t.WsPeakMB)" }),
+    @('Warm-up time (s, all docs)',     { param($t) "$($t.WarmupSec)  ($($t.WarmupDocs) docs)" }),
     @('Retry writes enabled',           { param($t) "$($t.RetryEnabled)" }),
     @('Retryable command failures',     { param($t) "$($t.RetryFail)" })
 )
