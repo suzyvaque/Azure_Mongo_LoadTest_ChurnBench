@@ -83,6 +83,15 @@ public sealed class RunOptions
 
     public string ResultsDirectory { get; private set; } = "results";
 
+    /// <summary>
+    /// Optional override for the campaign FOLDER name (Item 3). When set, artifacts land in
+    /// <c>&lt;results&gt;/&lt;campaign-name&gt;/iter-NN/</c> instead of the auto compact name, so a
+    /// sequential coordinator can group a run as <c>results/run-{date}-{num}/&lt;target&gt;/iter-NN/</c>.
+    /// Multi-host per-host files still carry a <c>-hN</c> suffix in their FILENAME to avoid collision
+    /// when the three hosts' artifacts are later collected into one place.
+    /// </summary>
+    public string CampaignName { get; private set; } = string.Empty;
+
     /// <summary>1-based id of this load-generating host within a coordinated multi-host campaign.</summary>
     public int HostId { get; private set; } = 1;
 
@@ -145,6 +154,9 @@ public sealed class RunOptions
                     break;
                 case "--results":
                     options.ResultsDirectory = RequireValue(args, ref i, arg);
+                    break;
+                case "--campaign-name":
+                    options.CampaignName = RequireValue(args, ref i, arg);
                     break;
                 case "--host-id":
                     options.HostId = ParsePositive(RequireValue(args, ref i, arg), arg);
@@ -258,6 +270,8 @@ public sealed class RunOptions
         Console.WriteLine("  --scenario, -s      steady (A) | burst (B) | both (default: both).");
         Console.WriteLine("  --duration-sec, -d  Override each iteration's duration in seconds (for short smoke runs).");
         Console.WriteLine("  --results           Output directory for campaign folder (default: results).");
+        Console.WriteLine("  --campaign-name N   Override the campaign FOLDER name (Item 3). Artifacts land in");
+        Console.WriteLine("                      <results>/<campaign-name>/iter-NN/. Multi-host files keep a -hN suffix.");
         Console.WriteLine("  --host-id N         1-based id of this generator host in a multi-host burst (default 1).");
         Console.WriteLine("  --host-count M      Total generator hosts in the campaign (default 1). Per-host churn/");
         Console.WriteLine("                      concurrent preflight target = ceil(total / M). Seeds are offset by host.");

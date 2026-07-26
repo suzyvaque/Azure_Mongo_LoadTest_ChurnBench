@@ -29,6 +29,14 @@ public sealed class PreflightConfig
     /// <summary>Sample size for the queryability spot-check (check 1) and warm-up sweep (check 10).</summary>
     public int SampleSize { get; set; } = 1_000;
 
+    /// <summary>
+    /// Item 7: number of input documents the untimed cache warm-up sweep reads before the timed run.
+    /// Kept SEPARATE from <see cref="SampleSize"/> (which drives the cheap spot-checks) so warm-up can
+    /// cover the full dataset without bloating the preflight spot-checks. Set to the dataset size (e.g.
+    /// 100000) to warm every document; capped to the live dataset count at run time. Default 1,000.
+    /// </summary>
+    public int WarmupSampleSize { get; set; } = 1_000;
+
     /// <summary>Max age of the warm-up sentinel before check 10 warns it is stale. Default 6 h.</summary>
     public int WarmupMaxAgeMinutes { get; set; } = 360;
 
@@ -55,6 +63,7 @@ public sealed class PreflightConfig
             ConcurrentConnectionTarget <= 0 ||
             ConnectionChurnPerSecTarget <= 0 ||
             SampleSize <= 0 ||
+            WarmupSampleSize <= 0 ||
             WarmupMaxAgeMinutes <= 0 ||
             CosmosExpectedRuPerSec <= 0)
         {

@@ -124,8 +124,13 @@ public sealed class RunOrchestrator
         }
 
         // ---- Optional coordinated start: all hosts begin the timed phase at the SAME wall-clock
-        // instant so their bursts overlap and combined conn/s + concurrency provably sum (§6.2). ----
-        await WaitForCoordinatedStartAsync(ct).ConfigureAwait(false);
+        // instant so their bursts overlap and combined conn/s + concurrency provably sum (§6.2). A
+        // missed gate on a multi-host run aborts here (non-zero) so the coordinator re-runs the whole
+        // synchronized iteration with more lead, rather than emitting a misaligned result (Item 6). ----
+        if (!WaitForCoordinatedStart(ct))
+        {
+            return 3;
+        }
 
         // ---- Campaign folder (shared by all iterations + aggregate) ----
         // Compact, human-scannable name: <db>-<loop>-<workload>-<MMdd>-<stamp>[-hN].
@@ -143,7 +148,22 @@ public sealed class RunOrchestrator
         var mmdd = stampSeed.ToString("MMdd");
         var stamp = Base36Suffix(((DateTimeOffset)stampSeed).ToUnixTimeSeconds(), 3);
         var hostSuffix = _options.HostCount > 1 ? $"-h{_options.HostId}" : string.Empty;
-        var campaignId = $"{DbLabel(cliName)}-{LoopLabel()}-{WorkloadLabel()}-{mmdd}-{stamp}{hostSuffix}";
+        // Item 3: when --campaign-name is set the FOLDER is that name (no host suffix, so all hosts of a
+        // campaign write into the same results/run-.../<target>/ tree); the -hN suffix moves to the file
+        // name so per-host artifacts never collide when collected together. Otherwise keep the legacy
+        // compact per-host folder name (folder == file tag == <db>-<loop>-<workload>-<MMdd>-<stamp>[-hN]).
+        string campaignId;
+        string fileTag;
+        if (!string.IsNullOrWhiteSpace(_options.CampaignName))
+        {
+            campaignId = _options.CampaignName;
+            fileTag = $"{_options.CampaignName}{hostSuffix}";
+        }
+        else
+        {
+            campaignId = $"{DbLabel(cliName)}-{LoopLabel()}-{WorkloadLabel()}-{mmdd}-{stamp}{hostSuffix}";
+            fileTag = campaignId;
+        }
         var campaignDir = Path.Combine(_options.ResultsDirectory, campaignId);
         Directory.CreateDirectory(campaignDir);
         ConsoleLog.Info($"Campaign folder: {campaignDir}");
@@ -170,7 +190,7 @@ public sealed class RunOrchestrator
             ConsoleLog.Info($">>> Iteration {iterNumber}/{iterTotal} <<<");
 
             var (result, relPath) = await RunIterationAsync(
-                iterNumber, iterTotal, campaignId, campaignDir,
+                iterNumber, iterTotal, campaignId, fileTag, campaignDir,
                 datasetCount, effectiveDurationSec, gate, cliName, ct).ConfigureAwait(false);
 
             iterResults.Add(result);
@@ -197,6 +217,7 @@ public sealed class RunOrchestrator
         int iterNumber,
         int totalIters,
         string campaignId,
+        string fileTag,
         string campaignDir,
         long datasetCount,
         int effectiveDurationSec,
@@ -206,10 +227,11 @@ public sealed class RunOrchestrator
     {
         // ---- Wire fresh metrics + per-Task no-reuse connection factory (new per iteration) ----
         var counters = new ConnectionEventCounters();
+        var retryCounters = new RetryEventCounters();
         var metrics = new MetricsCollector();
         metrics.BindConnectionCounters(counters);
         var observer = new CompositeConnectionObserver(counters, metrics);
-        var factory = new TaskConnectionFactory(_options.Target, _connectionString, observer, _config.Client);
+        var factory = new TaskConnectionFactory(_options.Target, _connectionString, observer, _config.Client, retryCounters);
         var runner = new TaskRunner(factory, metrics, _options.Target, _config.TaskSleepMs, _config.Workload);
 
         // Per-host RNG seed offset: with independent seeds the Poisson superposition of M hosts is
@@ -299,6 +321,12 @@ public sealed class RunOrchestrator
 
         // ---- Build result ----
         var result = metrics.Build(counters, sampler.Samples(), sampler.Peaks());
+        result.Retry = new RetryStats
+        {
+            RetryWritesEnabled = RetryWritesEnabledFor(_options.Target),
+            TotalCommandFailures = retryCounters.CommandFailures,
+            RetryableCommandFailures = retryCounters.RetryableCommandFailures,
+        };
         result.TargetTcpSamples = sampler.TargetTcpSamples().ToList();
         result.TargetTcp = sampler.TargetTcpInfo();
         result.Target = cliName;
@@ -350,7 +378,7 @@ public sealed class RunOrchestrator
         Directory.CreateDirectory(iterDir);
 
         var fileStamp = startedUtc.ToString("yyyyMMdd-HHmmss");
-        var runId = $"{campaignId}-{iterLabel}-{fileStamp}";
+        var runId = $"{fileTag}-{iterLabel}-{fileStamp}";
 
         var jsonPath = Path.Combine(iterDir, runId + ".json");
         var tsPath = Path.Combine(iterDir, runId + "-timeseries.csv");
@@ -417,28 +445,68 @@ public sealed class RunOrchestrator
 
     /// <summary>
     /// When <c>--start-at</c> is supplied, block until that UTC instant so every host in a multi-host
-    /// campaign begins its timed phase together. A past instant starts immediately (with a warning).
+    /// campaign begins its timed phase together. Returns <c>false</c> when the gate was MISSED on a
+    /// coordinated multi-host run (init — build/preflight/warmup — overran the coordinator's lead), so the
+    /// caller aborts with a non-zero exit and the coordinator re-runs the whole synchronized iteration
+    /// with more lead instead of producing a silently-misaligned (unusable) result. The time remaining
+    /// when the gate is reached is logged as the init safety margin, to tune the coordinator lead (Item 6).
     /// </summary>
-    private async Task WaitForCoordinatedStartAsync(CancellationToken ct)
+    private bool WaitForCoordinatedStart(CancellationToken ct)
     {
         if (_options.StartAtUtc is not { } startAt)
         {
-            return;
+            return true;
         }
 
         var now = DateTime.UtcNow;
         var wait = startAt - now;
         if (wait <= TimeSpan.Zero)
         {
-            ConsoleLog.Warn($"--start-at {startAt:O} is in the past ({(-wait).TotalSeconds:F1}s ago); starting now. " +
-                            "Combined concurrency across hosts may be misaligned.");
-            return;
+            var lateBy = (-wait).TotalSeconds;
+            if (_options.HostCount > 1)
+            {
+                ConsoleLog.Error(
+                    $"Coordinated start MISSED: --start-at {startAt:O} was {lateBy:F1}s in the past when init " +
+                    $"(build+preflight+warmup) completed on host {_options.HostId}/{_options.HostCount}. Aborting so " +
+                    "the coordinator re-runs this iteration with more lead (a late host would misalign combined " +
+                    "concurrency and invalidate the merge). Increase the coordinator's lead seconds and retry.");
+                return false;
+            }
+
+            ConsoleLog.Warn($"--start-at {startAt:O} is in the past ({lateBy:F1}s ago); starting now (single host).");
+            return true;
         }
 
-        ConsoleLog.Info($"Coordinated start: waiting {wait.TotalSeconds:F1}s until {startAt:O} (host {_options.HostId}/{_options.HostCount})...");
-        await Task.Delay(wait, ct).ConfigureAwait(false);
+        ConsoleLog.Info(
+            $"Coordinated start: reached the gate with {wait.TotalSeconds:F1}s init safety margin; waiting until " +
+            $"{startAt:O} (host {_options.HostId}/{_options.HostCount})...");
+        if (wait < TimeSpan.FromSeconds(10) && _options.HostCount > 1)
+        {
+            ConsoleLog.Warn(
+                $"Init safety margin is only {wait.TotalSeconds:F1}s — the coordinator lead is tight; a slower host " +
+                "could miss the gate. Consider increasing the lead (esp. with a full 100k warm-up).");
+        }
+
+        try
+        {
+            Task.Delay(wait, ct).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+
         ConsoleLog.Info("Coordinated start instant reached — beginning timed phase.");
+        return true;
     }
+
+    /// <summary>
+    /// Item 1: whether retryable writes are in force for a target — off for cosmos-ru (unsupported),
+    /// on for documentdb (forced on in the factory) and self-managed mongo (driver default). Recorded in
+    /// <see cref="RetryStats.RetryWritesEnabled"/> so a run's retryable-failure counts are interpretable.
+    /// </summary>
+    private static bool RetryWritesEnabledFor(TargetKey target) =>
+        !TargetConnection.RequiresRetryWritesDisabled(target);
 
     private async Task<long> CountInputAsync(CancellationToken ct)
     {
@@ -454,8 +522,11 @@ public sealed class RunOrchestrator
     /// </summary>
     private async Task WarmCacheAsync(long datasetCount, CancellationToken ct)
     {
-        var sample = (int)Math.Min(datasetCount, _config.Preflight.SampleSize);
-        ConsoleLog.Info($"Warming data cache (untimed): reading {sample} input docs by ReqId...");
+        var sample = (int)Math.Min(datasetCount, _config.Preflight.WarmupSampleSize);
+        var warmAll = sample >= datasetCount;
+        ConsoleLog.Info($"Warming data cache (untimed): reading {sample:N0} input docs by ReqId" +
+                        $"{(warmAll ? " (ALL documents)" : " (sampled)")}...");
+        var sw = Stopwatch.StartNew();
         using var conn = new TaskConnectionFactory(_options.Target, _connectionString, tuning: _config.Client).Create();
         var step = Math.Max(1, datasetCount / Math.Max(1, sample));
         var read = 0;
@@ -466,7 +537,8 @@ public sealed class RunOrchestrator
             await conn.CalcInput.Find(filter).FirstOrDefaultAsync(ct).ConfigureAwait(false);
         }
 
-        ConsoleLog.Info("Warm-up complete (throwaway connection disposed; none retained).");
+        sw.Stop();
+        ConsoleLog.Info($"Warm-up complete in {sw.Elapsed.TotalSeconds:F1}s ({read:N0} docs read; throwaway connection disposed; none retained).");
     }
 
     // Short database label for compact folder names.

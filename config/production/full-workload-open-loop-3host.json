@@ -22,6 +22,12 @@
   // Hold so 3 hosts sustain ≈11,700 concurrent at a safe ~3,900 conn/s combined (see math above).
   "TaskSleepMs": 2900,
 
+  // Item 7: warm ALL 100,000 input documents (untimed) before the timed phase so every backend starts
+  // from an identically warm cache. Kept separate from Preflight.SampleSize (the cheap spot-checks).
+  "Preflight": {
+    "WarmupSampleSize": 100000
+  },
+
   "Scenario": {
     "Burst": {
       "Enabled": true,

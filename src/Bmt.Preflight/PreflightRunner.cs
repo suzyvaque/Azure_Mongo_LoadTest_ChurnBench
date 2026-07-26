@@ -631,7 +631,7 @@ public sealed class PreflightRunner
     private async Task<long> WarmUpAsync(IMongoDatabase db, CancellationToken ct)
     {
         var input = db.GetCollection<CalcInputDoc>(BmtConstants.CalcInputCollection);
-        var limit = _config.Preflight.SampleSize;
+        var limit = _config.Preflight.WarmupSampleSize;
         return await CosmosAware(async () =>
         {
             var read = 0L;

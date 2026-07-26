@@ -41,6 +41,9 @@
 .PARAMETER Config        Config path passed to each host.
 .PARAMETER Scenario      steady | burst | both. Default burst.
 .PARAMETER RepoDir       Repo root on each host. Default C:\bmt.
+.PARAMETER CampaignName  Item 3: per-target subfolder name; hosts write to <ResultsDir>/<CampaignName>/iter-NN/.
+.PARAMETER ResultsDir    Item 3: results ROOT on each host (e.g. results/run-20260728-01). Default 'results'.
+.PARAMETER CleanOutputAfter  Item 2: run `clean-output` (empty calc_output) on the operator box after the campaign.
 .PARAMETER PushResults   Tell each host to git-push its results (recommended for later merge).
 .PARAMETER NoPreflight   Pass --no-preflight to each host (NOT recommended).
 
@@ -62,6 +65,9 @@ param(
     [string]$Config = 'config/production/full-workload-open-loop-3host.json',
     [ValidateSet('steady','burst','both')] [string]$Scenario = 'burst',
     [string]$RepoDir = 'C:\bmt',
+    [string]$CampaignName,
+    [string]$ResultsDir = 'results',
+    [switch]$CleanOutputAfter,
     [switch]$PushResults,
     [switch]$NoPreflight
 )
@@ -128,6 +134,11 @@ Write-Host "==========================================" -ForegroundColor Cyan
 $scriptPath = "$RepoDir\scripts\run\Run-BurstHost.ps1"
 $pushFlag   = if ($PushResults) { '-PushResults' } else { '' }
 $noPfFlag   = if ($NoPreflight) { '-NoPreflight' } else { '' }
+# Item 3: grouped results folder plumbing. When -CampaignName is set each host writes to
+# <ResultsDir>/<CampaignName>/iter-NN/ (per-host files carry -hN), so a sequential wrapper can group a
+# run as results/run-{date}-{num}/<target>/. Default keeps the legacy per-host compact folder.
+$campaignArg = if ($CampaignName) { "-CampaignName '$CampaignName'" } else { '' }
+$resultsArg  = "-ResultsDir '$ResultsDir'"
 
 # ---- Launch ONE synchronized iteration across all hosts and validate completeness. Returns a hashtable
 #      with Ok (all hosts completed), StartAt, and per-host outputs. A host is considered complete only
@@ -147,7 +158,7 @@ function Invoke-CampaignIteration {
         $hostId = $i + 1
 
         # Single-line remote payload (az vm run-command drops newlines that PS backtick continuations need).
-        $remote = "& '$scriptPath' -Target '$Target' -HostId $hostId -HostCount $hostCount -RunTag '$RunTag' -StartAtUtc '$startAt' -IterationNumber $IterationNumber -IterationCount $TotalIterations -Config '$Config' -Scenario '$Scenario' -RepoDir '$RepoDir' $pushFlag $noPfFlag"
+        $remote = "& '$scriptPath' -Target '$Target' -HostId $hostId -HostCount $hostCount -RunTag '$RunTag' -StartAtUtc '$startAt' -IterationNumber $IterationNumber -IterationCount $TotalIterations -Config '$Config' -Scenario '$Scenario' -RepoDir '$RepoDir' $resultsArg $campaignArg $pushFlag $noPfFlag"
 
         Write-Host "[launch] iter $IterationNumber host $hostId/$hostCount -> $vm" -ForegroundColor Green
         $jobs += Start-Job -Name "burst-$vm-i$IterationNumber" -ScriptBlock {
@@ -298,5 +309,29 @@ try {
 Write-Host ""
 Write-Host "Campaign '$RunTag' complete: $Iterations synchronized iteration(s) on all $hostCount hosts." -ForegroundColor Green
 Write-Host "Server-side artifacts: $campaignRoot" -ForegroundColor Green
+
+# ---- Item 2: clean calc_output after the campaign. An insert-heavy full-workload run appends to
+#      calc_output every Task; left unbounded it bloats the dataset and skews the NEXT run's warm-up and
+#      preflight. clean-output empties ONLY calc_output (keeps calc_input + the ReqId index), so the next
+#      sequential target/run starts from a clean, comparable state. Runs once on THIS operator box (the
+#      collection is shared, so a single clean suffices — not per host). Guarded: never fails the run. ----
+if ($CleanOutputAfter) {
+    Write-Host ""
+    Write-Host "[clean-output] emptying calc_output for '$Target' (post-campaign hygiene)..." -ForegroundColor Cyan
+    try {
+        Push-Location $RepoDir
+        dotnet run --project src/Bmt.Seeder -c Release -- clean-output --target $Target --config $Config
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[clean-output] calc_output emptied for '$Target'." -ForegroundColor Green
+        } else {
+            Write-Host "[clean-output] non-zero exit ($LASTEXITCODE); check calc_output manually before the next run." -ForegroundColor DarkYellow
+        }
+    } catch {
+        Write-Host "[clean-output] failed (non-fatal): $($_.Exception.Message)" -ForegroundColor DarkYellow
+    } finally {
+        Pop-Location
+    }
+}
+
 Write-Host "Next: once each host has pushed its results/, run:" -ForegroundColor Green
 Write-Host "  .\Merge-Campaign.ps1 -RunTag $RunTag -InputDir <results-dir-with-all-hosts>" -ForegroundColor Green

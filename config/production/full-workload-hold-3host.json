@@ -50,6 +50,12 @@
     "MongoAllowInsecureTls": true
   },
 
+  // Item 7: warm ALL 100,000 input documents (untimed) before the timed phase so every backend starts
+  // from an identically warm cache. Kept separate from Preflight.SampleSize (the cheap spot-checks).
+  "Preflight": {
+    "WarmupSampleSize": 100000
+  },
+
   "Scenario": {
     // PER-HOST parked concurrency. 3 hosts × 4,000 = 12,000 combined ceiling (clears ≥10,000).
     "MaxConcurrentTasks": 4000,

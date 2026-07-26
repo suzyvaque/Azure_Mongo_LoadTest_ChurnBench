@@ -46,6 +46,8 @@ param(
     [string]$Config = 'config/production/full-workload-open-loop-multihost.json',
     [ValidateSet('steady','burst','both')] [string]$Scenario = 'burst',
     [string]$RepoDir = 'C:\bmt',
+    [string]$CampaignName = '',
+    [string]$ResultsDir = 'results',
     [switch]$PushResults,
     [switch]$NoPreflight
 )
@@ -111,6 +113,11 @@ if ($IterationNumber -gt 0) {
     if ($IterationCount -gt 0) { $iterArg += @('--iteration-count', $IterationCount) }
 }
 
+# Item 3: grouped results folder. -ResultsDir sets the results ROOT (e.g. results/run-20260728-01) and
+# -CampaignName sets the per-target subfolder, so artifacts land in <ResultsDir>/<CampaignName>/iter-NN/.
+$campaignArg = @()
+if ($CampaignName) { $campaignArg = @('--campaign-name', $CampaignName) }
+
 Write-Host "[host $HostId/$HostCount] launching timed run$(if ($IterationNumber -gt 0) { " (iteration $IterationNumber/$IterationCount)" })..." -ForegroundColor Green
 dotnet run --project src/Bmt.LoadGen -c Release --no-build -- `
     test `
@@ -121,7 +128,8 @@ dotnet run --project src/Bmt.LoadGen -c Release --no-build -- `
     --host-count $HostCount `
     --run-tag $RunTag `
     --start-at $StartAtUtc `
-    --results results `
+    --results $ResultsDir `
+    @campaignArg `
     @iterArg `
     @preflightArg
 $runExit = $LASTEXITCODE

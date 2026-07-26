@@ -64,6 +64,9 @@ public sealed class RunResult
 
     public TaskTotals Totals { get; set; } = new();
 
+    /// <summary>Item 1: retryable-write telemetry (retry-writes enabled flag + retryable-failure counts).</summary>
+    public RetryStats Retry { get; set; } = new();
+
     /// <summary>
     /// §2 open-loop generator-fidelity + latency decomposition: scheduled/started counts and rates,
     /// scheduler-queue / execution / true offered-to-finished latency (authoritative over ALL Tasks
@@ -191,6 +194,24 @@ public sealed class TaskTotals
 
     /// <summary>§2: peak scheduled-but-not-started backlog (thread-pool dispatch pressure).</summary>
     public long PeakScheduledNotStartedBacklog { get; set; }
+}
+
+/// <summary>
+/// Retryable-write telemetry (Item 1). <see cref="RetryWritesEnabled"/> records whether the driver was
+/// configured to retry writes for this target (forced on for documentdb/mongo, off for cosmos-ru). The
+/// failure counters are the best-effort retry signal: the driver retries transparently without a
+/// per-attempt event, so we count the retryable command FAILURES that trigger those retries, to be
+/// cross-referenced with the §7.4 <c>ErrorsByType</c> (e.g. ThrottlingOrRateLimit) and server-side 429s.
+/// </summary>
+public sealed class RetryStats
+{
+    public bool RetryWritesEnabled { get; set; }
+
+    /// <summary>Total non-handshake (workload) command failures observed via driver command events.</summary>
+    public long TotalCommandFailures { get; set; }
+
+    /// <summary>Subset that are retryable conditions (RetryableWriteError label / network / timeout) — retry triggers.</summary>
+    public long RetryableCommandFailures { get; set; }
 }
 
 /// <summary>

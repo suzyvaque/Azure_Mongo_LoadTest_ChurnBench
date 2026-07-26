@@ -29,6 +29,7 @@ public sealed class TaskConnectionFactory
     private readonly string _connectionString;
     private readonly bool _disableRetryWrites;
     private readonly IConnectionEventObserver? _observer;
+    private readonly RetryEventCounters? _retryCounters;
     private readonly ClientConfig _tuning;
     private int _rrCounter = -1;
 
@@ -36,7 +37,8 @@ public sealed class TaskConnectionFactory
         TargetKey target,
         string connectionString,
         IConnectionEventObserver? observer = null,
-        ClientConfig? tuning = null)
+        ClientConfig? tuning = null,
+        RetryEventCounters? retryCounters = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -47,6 +49,7 @@ public sealed class TaskConnectionFactory
         _connectionString = connectionString;
         _disableRetryWrites = TargetConnection.RequiresRetryWritesDisabled(target);
         _observer = observer;
+        _retryCounters = retryCounters;
         _tuning = tuning ?? new ClientConfig();
     }
 
@@ -103,6 +106,15 @@ public sealed class TaskConnectionFactory
         // monitor (not the DB) becomes the bottleneck. The no-reuse model is unchanged; we just avoid
         // paying topology-discovery overhead per Task. Managed targets (SRV / gateway) are left exactly
         // as their connection string specifies.
+        //
+        // ITEM 5 — ACCESS-PATH ASYMMETRY (must be disclosed in every result summary): this direct-pin
+        // optimization applies ONLY to the self-managed mongo targets, which expose MULTIPLE mongos
+        // routers (so a per-client SDAM monitor per router would explode generator threads). DocumentDB
+        // is a SINGLE managed SRV/gateway endpoint with internal load-balancing — there is no multi-node
+        // topology to monitor, so there is NO equivalent optimization to apply (and forcing
+        // directConnection on it would defeat the gateway's routing). Consequently the comparison is
+        // between each backend's PRODUCTION ACCESS PATH (mongo direct-to-router vs DocumentDB SRV
+        // gateway), not a pure database-engine isolation. Build-RunSummary.ps1 emits this caveat.
         if (_tuning.DirectConnectionForSingleNode)
         {
             if (Target == TargetKey.MongoVm)
@@ -133,10 +145,18 @@ public sealed class TaskConnectionFactory
             }
         }
 
-        // Cosmos RU does not support retryable writes (handoff §3).
+        // Cosmos RU does not support retryable writes (handoff §3). DocumentDB and self-managed mongo
+        // DO support them, so retryable writes are FORCED ON for documentdb here — independent of the
+        // connection-string flag (the production env string historically carried retrywrites=false).
+        // Retryable failures that trigger a retry are counted via the retry-event subscription below and
+        // surfaced as RetryStats for later cross-checking against throttling/429 metrics.
         if (_disableRetryWrites)
         {
             settings.RetryWrites = false;
+        }
+        else if (Target == TargetKey.DocumentDb)
+        {
+            settings.RetryWrites = true;
         }
 
         // Self-managed MongoDB (mongo-shard/mongo-vm) presents a PRIVATE-CA certificate. Under the
@@ -200,6 +220,12 @@ public sealed class TaskConnectionFactory
                 if (IsHandshakeCommand(e.CommandName))
                 {
                     Notify(observers, o => o.OnHandshakeCommand(e.CommandName, e.Duration, success: false));
+                }
+                else
+                {
+                    // Non-handshake (workload) command failure: record it for the retry taxonomy so a run
+                    // can later correlate retryable conditions with throttling/429s. Best-effort, O(1).
+                    _retryCounters?.OnCommandFailed(e.Failure);
                 }
             });
         };
