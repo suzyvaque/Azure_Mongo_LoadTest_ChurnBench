@@ -183,5 +183,8 @@ These are changes to the **shared live cluster** and were flagged, not applied u
 - mongo-shard hold figures are the **post-TLS-fix** campaign (`mongo-hold-fix-0724a`); the pre-fix campaign
   (`mongo-hold-0724a`) is retained for the null-result comparison. DocumentDB hold = `docdb-hold-0724a`;
   churn tags = `docdb-3host-0724a` / `mongo-3host-0724a`.
-- Raw per-host artifacts remain on the generator VMs under `C:\bmt\results\<tag>\iter-NN\`; this summary was
-  compiled from the compact per-iteration collectors plus post-run Azure Monitor pulls.
+- Raw per-host artifacts were collected via the compact per-iteration metric collectors (concurrency +
+  latency + peaks) and are captured in this summary; the full per-host JSON/CSV artifacts were **not
+  retained** after collection (they lived only on the generator VMs under `C:\bmt\results\<tag>\iter-NN\`
+  and were cleared when the hosts were redeployed for the final-test fixes). This summary plus the compact
+  metrics are the authoritative record for the 3-host campaigns.

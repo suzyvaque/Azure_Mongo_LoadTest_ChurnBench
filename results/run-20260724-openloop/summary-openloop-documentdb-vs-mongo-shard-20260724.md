@@ -17,9 +17,9 @@ To survive no-reuse churn against the sharded topology, each per-Task client is 
 mongos as a direct single-server connection** (`directConnection=true`) — preserving 2× router fan-out while
 avoiding the per-client SDAM monitor-thread explosion (see `INCIDENT-runaway-concurrency-meltdown.md`).
 
-**Raw data:** `results/_openloop_docdb/docdb-open-full-0724-2dr/` and
-`results/_openloop_mongo/mongo-open-full-0724-4tk/` (per-iteration `*.json`, timeseries/latency/target-tcp
-CSVs, and `aggregate.json`).
+**Raw data:** `results/run-20260724-openloop/docdb/` and `results/run-20260724-openloop/mongo/` — each with
+`iter-01..03/` (per-iteration `*.json`, timeseries/latency/target-tcp CSVs) and `aggregate.json`. Layout
+follows the grouped `run-{date}/<target>/iter-NN/` convention (Item 3).
 
 ## How the metrics are separated (read this first)
 
