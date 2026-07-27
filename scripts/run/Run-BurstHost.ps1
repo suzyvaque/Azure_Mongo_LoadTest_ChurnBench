@@ -76,21 +76,23 @@ if ($lead -lt 0) {
     Write-Warning "start-at is in the past; the run will start immediately and may be misaligned with other hosts."
 }
 
-# Confirm the target's connection env var is present (do NOT print its value).
+# Resolve the target's connection env var (do NOT print its value). ALWAYS prefer the MACHINE-scope
+# value: the run-command agent process caches env vars from when it started, so an operator's later
+# `SetEnvironmentVariable(...,'Machine')` update (e.g. adding mongos seeds) would otherwise be masked by
+# the agent's stale inherited process value. Re-reading Machine scope here guarantees the freshest
+# connection string (extra mongos routers, rotated creds) is used. Falls back to the process value only
+# if Machine scope is unset (e.g. a user-scope-only dev box).
 $envVar = switch ($Target) {
     'documentdb'  { 'BMT_CONN' }
     'mongo-vm'    { 'BMT_CONN_MONGO' }
     'mongo-shard' { 'BMT_CONN_MONGO_SHARD' }
     'cosmos-ru'   { 'BMT_CONN_COSMOS' }
 }
-if (-not [Environment]::GetEnvironmentVariable($envVar)) {
-    # Fall back to machine scope (run-command runs as SYSTEM and may not inherit the user env).
-    $machineVal = [Environment]::GetEnvironmentVariable($envVar, 'Machine')
-    if ($machineVal) {
-        Set-Item -Path "Env:$envVar" -Value $machineVal
-    } else {
-        throw "Connection env var '$envVar' for target '$Target' is not set (user or machine scope). Set it first (see runbook STEP 4)."
-    }
+$machineVal = [Environment]::GetEnvironmentVariable($envVar, 'Machine')
+if ($machineVal) {
+    Set-Item -Path "Env:$envVar" -Value $machineVal
+} elseif (-not [Environment]::GetEnvironmentVariable($envVar)) {
+    throw "Connection env var '$envVar' for target '$Target' is not set (user or machine scope). Set it first (see runbook STEP 4)."
 }
 Write-Host "[host $HostId/$HostCount] connection env '$envVar' present (value hidden)." -ForegroundColor DarkGray
 
