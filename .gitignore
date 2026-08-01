@@ -446,3 +446,7 @@ scripts/ops/cosmos-ru.log
 *.tfstate.*
 .terraform.lock.hcl
 infra/**/terraform.tfvars
+scripts/ops/docdb-admin/bin/
+scripts/ops/docdb-admin/obj/
+scripts/ops/**/_deploy.ps1
+
