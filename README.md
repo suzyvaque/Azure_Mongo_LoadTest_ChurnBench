@@ -1,36 +1,69 @@
 # Azure Mongo Load-Test — Connection-Churn Benchmark
 
-A MongoDB-wire-protocol **connection-churn** benchmark for comparing three Azure Mongo-compatible
-backends under an HPC-style workload where **every Task opens a brand-new connection and closes it**
-(no pooling/reuse between requests). It seeds a fixed 100,000-document dataset, runs a strict 4-operation
-Task cycle under steady + bursty load, and produces a self-contained HTML comparison report.
+A MongoDB-wire-protocol **connection-churn** benchmark comparing self-managed **MongoDB (sharded)**
+against **Azure DocumentDB (Cosmos vCore)** under an HPC-style workload where **every task opens a
+brand-new connection and closes it** (no pooling/reuse). This isolates **per-connection establishment
+cost** (TCP + TLS + SCRAM auth) — the dimension that dominates connection-churn workloads.
 
-> **This benchmark deliberately models the worst case for connection handling** (new client per request,
-> `maxPoolSize=1`, `minPoolSize=0`). It does **NOT** represent typical long-lived connection-pool
-> application performance. It is a comparison study with **no pass/fail thresholds** — prioritize the
-> **p99 / p95 / p99.9** tail latencies over averages.
+> **📊 [Final consolidated report → `results/REPORT-mongo-vs-documentdb-churn-benchmark.md`](results/REPORT-mongo-vs-documentdb-churn-benchmark.md)**
+> Full methodology, evidence matrix, result tables, DocumentDB tier comparison, and the MongoDB-vs-DocumentDB
+> conclusion — all backed by measured log data.
+
+> **Worst-case by design.** New client per task (`maxPoolSize=1`, `minPoolSize=0`), so this does **NOT**
+> represent typical connection-pool application performance. No pass/fail thresholds — prioritize the
+> **p90 / p99** tail latencies over averages.
+
+---
+
+## Test structure
+
+Two complementary tests share the same tool, dataset, and no-reuse model:
+
+| Test | Question it answers | Traffic model | Per-task work |
+|---|---|---|---|
+| **Open-loop** (churn) | Can the system meet throughput/latency under continuous average load? | Open-loop Poisson arrivals (rate independent of response → exposes saturation) | Full **4-op cycle**: `find`→`remove`→`insert`→`find` |
+| **Hold** (saturation) | How far can concurrency be sustained, and where does it bottleneck? | Closed-loop gate parking a fixed population (**12,000 combined**, 4,000/host) | Keepalive `find` holding one connection Ready for the window |
+
+**Shared parameters:** 100,000-document dataset (~4.4 GiB, fixed seed 42 → byte-identical across targets),
+3 synchronized generator hosts, 3 iterations, all 100k docs warmed before each run. Concurrency =
+combined per-second SUM of each host's driver `ActiveReady` gauge.
 
 ---
 
 ## Targets
 
-| CLI `--target` | Backend | Env var (connection string) | Notes |
+Final comparison spans **7 configurations** (all full 4-op workload, both tests):
+
+| Backend | Configurations tested | Env var | Notes |
 |---|---|---|---|
-| `mongo-vm` | MongoDB on a VM (single-node `rs0`) | `BMT_CONN_MONGO` | `authSource=admin`; only `_id` index by default, so `prepare-data` adds the `ReqId` index. |
-| `cosmos-ru` | Azure Cosmos DB for MongoDB (RU) | `BMT_CONN_COSMOS` | `RetryWrites=false`; **fixed 100,000 RU/s (100k RU/s)** (held constant within a campaign, never auto-raised); 429/`RetryAfterMs` backoff; `ReqId` index is **non-unique** (platform constraint). **Excluded from the current run; kept for a future round.** |
-| `documentdb` | Azure DocumentDB / Cosmos vCore | `BMT_CONN` | `mongodb+srv://` SRV resolution; `retrywrites=false` in URI. |
+| **MongoDB sharded** (self-managed) | **2-router** (baseline), **4-router** (scaled-out) | `BMT_CONN_MONGO_SHARD` | 2-shard MongoDB 7.0; tasks pinned round-robin to `mongos` router(s), `directConnection=true`. TLS (self-signed CA) + SCRAM. |
+| **Azure DocumentDB** (Cosmos vCore) | **1-shard** M80/M200, **2-shard** M60/M80/M200 | `BMT_CONN` | `mongodb+srv://` SRV gateway; TLS + SCRAM-SHA-256; `retrywrites` forced on. "2-shard" = data genuinely distributed across both physical shards (see report). |
 
-**Secrets never live in the repo.** Connection strings are read at runtime from the env vars above. On
-VM1 set them at User scope, e.g.:
+> **Legacy targets** `mongo-vm` (single node, `BMT_CONN_MONGO`) and `cosmos-ru` (Cosmos RU, `BMT_CONN_COSMOS`)
+> remain wired in the tool for earlier rounds but are **not part of the final comparison**.
 
-```powershell
-[Environment]::SetEnvironmentVariable("BMT_CONN_MONGO", "mongodb://user:pass@10.3.0.4:27017/bmt_db?replicaSet=rs0&authSource=admin", "User")
-[Environment]::SetEnvironmentVariable("BMT_CONN_COSMOS", "<cosmos-ru connection string>", "User")
-[Environment]::SetEnvironmentVariable("BMT_CONN",        "<documentdb mongodb+srv connection string>", "User")
-```
+**Secrets never live in the repo** — connection strings are read at runtime from the env vars above
+(set at Machine/User scope on each host). Targets run **one at a time**, never in parallel, so each gets
+the generators' full capacity and the comparison stays apples-to-apples.
 
-Targets are run **one at a time on VM1, never in parallel**, so the generator's full capacity is
-available to each and the comparison stays apples-to-apples.
+---
+
+## Results at a glance
+
+Headline measured findings (full detail + caveats in the **[final report](results/REPORT-mongo-vs-documentdb-churn-benchmark.md)**):
+
+| Config | Hold max concurrent | Cleared 10k? | Open-loop conn p99 |
+|---|---|---|---|
+| Mongo 2-router | 4,714 | ❌ (99.7% VM CPU ceiling) | 240.7 s |
+| Mongo 4-router | **12,000** | ✅ | 159.7 s |
+| DocDB 1-shard (M80 / M200) | ~11,000 | ✅ (~11k plateau) | 20.8 / 47.4 s |
+| DocDB 2-shard (M60 / M80 / M200) | **12,000** | ✅ (all tiers) | 45.1 / 22.3 / 27.1 s |
+
+- **The bottleneck is per-connection TLS+SCRAM establishment, not the database engine** — DocumentDB server
+  CPU stayed idle (~1.5%) in every run; mongo's fix was router CPU headroom (2→4 routers), not engine tuning.
+- **Genuine 2-shard distribution** lets DocumentDB clear the full 12,000 gate at every tier (vs ~11k single-shard)
+  and cuts hold keepalive p99 ~4–5×, by engaging a second connection front-end.
+- **Tier size drives churn throughput / warm-op latency, not hold concurrency** (which is data-distribution-bound).
 
 ---
 
