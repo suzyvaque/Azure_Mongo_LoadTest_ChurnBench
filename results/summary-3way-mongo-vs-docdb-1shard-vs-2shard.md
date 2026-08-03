@@ -78,6 +78,25 @@ Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS o
 At 135/s the mongos router count is immaterial (routers only bottleneck under establishment saturation), so
 the MongoDB 2-shard result is a valid single-op service-time measurement for the sharded MongoDB cluster.
 
+**Key findings (single-op service time):**
+
+- **DocumentDB has the lower typical (median) latency; MongoDB has the tighter tail.** DocumentDB serves the
+  median op faster (find p50 27–34 ms, insert p50 28–35 ms) than MongoDB (find 41 ms, insert 44 ms), but
+  MongoDB holds the **tighter p99** on both ops (find 70 ms vs DocumentDB 108–199 ms; insert 92 ms vs
+  111–126 ms). For tail-sensitive workloads the self-managed MongoDB engine delivers more predictable service
+  time on an already-open socket.
+- **DocumentDB tier size does not materially change single-op service time.** M60, M80, and M200 land within
+  run-to-run noise of each other (find p50 27–34 ms; insert p50 28–35 ms) — a single indexed keyed op at
+  135/s is far too light to be compute-bound, so extra vCores do not lower its service latency.
+- **This refines the open-loop result above.** Under the saturated 4-op churn, DocumentDB warm-op p99
+  *appeared* to improve with tier (insert p99 11.1 s → 5.3 s, M60→M200). Isolated from saturation here, raw
+  single-op service time is **tier-independent** — the earlier gain came from higher tiers easing queueing,
+  not from faster operation execution.
+- **MongoDB opens connections faster even unsaturated** (conn-open p99 44–50 ms vs DocumentDB 78–105 ms),
+  consistent with the direct-to-router pin versus the DocumentDB SRV/gateway handshake path.
+- **Both serve at low client CPU (27–38%)** with zero failures, confirming 135/s is a clean, non-saturating
+  operating point for both backends.
+
 ---
 
 ## Verdict
@@ -87,7 +106,10 @@ the MongoDB 2-shard result is a valid single-op service-time measurement for the
 | **Best raw concurrency (hold)** | Tie: Mongo 4-router = DocDB 2-shard = **12,000**. DocDB 1-shard = 11,365. |
 | **Best establishment under churn** | **DocDB 2-shard** (connection p99 27s vs 1-shard 47s vs mongo 160s). |
 | **Best hold latency** | **Mongo 4-router** (keepalive 15s), then DocDB 2-shard (28s), far ahead of 1-shard (139s). |
+| **Best single-op tail latency** | **MongoDB 2-shard** (find p99 70ms, insert p99 92ms) vs DocumentDB 108–199ms. |
+| **Best single-op median latency** | **DocumentDB 2-shard** (find/insert p50 ~27–34ms) vs MongoDB ~41–44ms. |
 | **Effect of DocDB sharding** | Genuine 2-shard distribution **raised the hold ceiling to the full gate** and **cut hold latency ~5×** and connection-churn latency ~2× vs 1-shard — the second shard adds a real connection front-end. |
+| **Effect of DocDB tier on service time** | None material — single-op latency is tier-independent (M60 ≈ M80 ≈ M200). Tier matters for concurrency/churn capacity, not per-op service time. |
 | **Operational cost** | DocDB: managed, ~1.5% server CPU, but M200 open-loop is **throttle-prone** under sustained same-day churn. Mongo 4-router: 4 router VMs at ~20% CPU, no throttling but self-managed. |
 
-**Bottom line:** distributing DocumentDB across both physical shards closes most of the gap with the scaled-out (4-router) mongo — matching it on hold concurrency (12,000) and dramatically improving DocumentDB's own hold latency (~5×). Mongo 4-router still wins hold *latency*; DocumentDB 2-shard wins *connection-establishment* latency under churn. The persistent bottleneck for every configuration remains per-connection TLS+SCRAM establishment, not the database engine (DocumentDB server CPU idle at ~1.5% throughout).
+**Bottom line:** distributing DocumentDB across both physical shards closes most of the gap with the scaled-out (4-router) mongo — matching it on hold concurrency (12,000) and dramatically improving DocumentDB's own hold latency (~5×). Under churn and hold, **MongoDB 4-router wins hold latency while DocumentDB 2-shard wins connection-establishment latency**; at a non-saturating single-op load the two are close, with **DocumentDB delivering the lower median and MongoDB the tighter tail**. DocumentDB tier selection should be driven by connection-concurrency capacity and churn throughput (where higher tiers and 2-shard distribution demonstrably help), not by single-operation service latency, which is tier-independent. The persistent bottleneck for every configuration remains per-connection TLS+SCRAM establishment, not the database engine (DocumentDB server CPU idle at ~1.5% throughout).
