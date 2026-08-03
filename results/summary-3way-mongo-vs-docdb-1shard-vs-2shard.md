@@ -1,7 +1,8 @@
 # Three-way comparison — Mongo (4-router) vs DocumentDB 1-shard vs DocumentDB 2-shard
 
-Generated 2026-08-02. Full 4-op workload, 3 synchronized generator hosts, 3 iterations each.
+Generated 2026-08-02 (single-op section added 2026-08-03). Full 4-op workload, 3 synchronized generator hosts, 3 iterations each.
 **Open-loop** = churn (fresh connection per task, 4-op cycle). **Hold** = park ~12k connections, keepalive find.
+A third **single-operation service-time** test (non-saturating 135 tasks/s) isolates clean per-op latency.
 DocumentDB both columns are **M200** (apples-to-apples tier); the only DocumentDB variable is physical data
 distribution. Concurrency = combined per-second SUM of driver ActiveReady (max of the 3 iterations' peaks).
 
@@ -53,6 +54,29 @@ distribution. Concurrency = combined per-second SUM of driver ActiveReady (max o
 † Establish (Demand→Ready) latency wasn't captured in the 2-shard hold compacts; keepalive-find p99 is the common metric.
 
 **Hold read:** The topology effect is decisive here. **1-shard M200 plateaued at 11,365** (couldn't quite hold the full gate) with a brutal keepalive-find p99 of **139s**. **2-shard M200 held the full 12,000 gate on all 3 iters** and cut keepalive-find p99 to **28s — a ~4.9× improvement** — because splitting the ~12k held connections across two shard nodes halves each node's serving load. Mongo 4-router also holds 12,000 and posts the best hold latencies of all (establish 34s, keepalive 15s) thanks to 4 stateless routers absorbing the handshake load.
+
+---
+
+## Single-operation service time (non-saturating)
+
+A third test isolates **clean per-operation service time** — one indexed op (`find` on `calc_input`, or
+`insert` into `calc_output`) per fresh connection at a **non-saturating 135 tasks/s** steady rate. Because
+this rate never saturates any backend (**every run completed with 0 failures**), the latencies are true
+service time, free of the establishment/backlog effects that dominate the open-loop and hold tests above.
+Values are the steady-state mean (iterations 2–3; iteration 1 dropped as a first-touch transient).
+
+| Metric | MongoDB (2-shard) | DocDB 2-shard M60 | DocDB 2-shard M80 | DocDB 2-shard M200 |
+|---|---|---|---|---|
+| **find** op p50 / p90 / p99 (ms) | 41.2 / 55.8 / **69.8** | **26.5** / 47.8 / 107.7 | 34.3 / 75.7 / 198.8 | 28.7 / 58.0 / 154.1 |
+| **insert** op p50 / p90 / p99 (ms) | 44.2 / 59.0 / **91.8** | **27.6** / 48.8 / 117.6 | 34.6 / 68.0 / 126.0 | 29.9 / 54.5 / 111.3 |
+| Connection-open p99 (find / insert, ms) | **43.5 / 50.2** | 77.9 / 86.2 | 105.0 / 89.3 | 96.6 / 82.2 |
+| Client CPU peak (%) | 29–38 | 28–32 | 29–33 | 27–31 |
+| Failures | 0 | 0 | 0 | 0 |
+
+Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS on, 3×600 s); DocumentDB =
+`run-20260803-01/docdb-{m60,m80,m200}` (single-op steady, 3×300 s). All at 135 tasks/s, no connection reuse.
+At 135/s the mongos router count is immaterial (routers only bottleneck under establishment saturation), so
+the MongoDB 2-shard result is a valid single-op service-time measurement for the sharded MongoDB cluster.
 
 ---
 
