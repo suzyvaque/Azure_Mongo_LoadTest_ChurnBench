@@ -1,0 +1,34 @@
+{
+  // PRODUCTION config — CLOSED-LOOP full 4-op workload at steady ~135 tasks/s (average HPC workload).
+  // Validates Dimension A (workload processing) at the production task rate, NOT connection churn.
+  // Single-host invocation is sufficient at 135 tasks/s.
+  //
+  //   Steady scenario ENABLED at 135 tasks/s (closed-loop: OpenLoop=false on Burst, Burst disabled).
+  //   Full 4-op cycle per connection; TaskSleepMs=0 (no calc-time sleep) per this campaign's spec.
+  //   Warm-up reads all 100k docs before the timed phase.
+  //
+  // NOTE vs the previous-config §4a baseline (run-20260624-prevconfig): that campaign used
+  // TaskSleepMs=10000 and 610 s iterations on older code; this config uses TaskSleepMs=0 and 300 s.
+  // TaskSleepMs affects total-cycle latency only, not per-operation service latency.
+  "Extends": "full-workload.json",
+
+  // No calc-time sleep for this campaign (per spec). Full-workload normally holds ~2 s; here 0.
+  "TaskSleepMs": 0,
+
+  // Item 7: warm ALL 100,000 input documents (untimed) before the timed phase.
+  "Preflight": {
+    "WarmupSampleSize": 100000
+  },
+
+  "Scenario": {
+    // Closed-loop steady at the production rate; disable Burst so only Steady drives arrivals.
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 135
+    },
+    "Burst": {
+      "Enabled": false,
+      "OpenLoop": false
+    }
+  }
+}
