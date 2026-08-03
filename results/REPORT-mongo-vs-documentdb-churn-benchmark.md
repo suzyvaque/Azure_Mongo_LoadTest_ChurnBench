@@ -208,6 +208,8 @@ Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS o
 | M80 | ~16 | 12,000 (2/3) | 23,271 ms | 8,408 ms | Best hold keepalive latency of the 2-shard set. |
 | M200 | 64 | 12,000 (3/3) | 28,273 ms | **5,318 ms** | Only tier to clear 10k on all 3 hold iters; best warm-op latency; **throttle-prone under sustained churn**. |
 
+> **Note:** "Hold max concurrent" is **connection-holding capacity** (idle-capable, established/held connections), **not** active-operation throughput. It answers Dimension B (how many connections can be held), not how much 4-op work is served concurrently.
+
 **Key findings on tier scaling (observed):**
 - **Concurrency (hold) is NOT tier-bound once data is 2-shard distributed** — M60, M80, M200 all reach the full 12,000 gate; server CPU idle (~1.5%) throughout. *Interpretation: the ≥10k hold limit is a data-distribution/front-end property, not a compute property.*
 - **Data distribution matters far more than tier for the hold ceiling:** single-shard M80 and M200 both plateau at ~11,000 and post 4–6× worse keepalive p99 (113–139 s) than any 2-shard tier (23–34 s). *Interpretation: distributing the held connections across two shard nodes halves each node's serving load.*
@@ -228,9 +230,9 @@ Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS o
 - **Hold latency:** mongo 4-router is best (establish p99 **34 s**, keepalive **15 s**); DocDB 2-shard is next (keepalive 23–34 s); DocDB 1-shard is worst (114–139 s).
 
 ### 6c. Connection & scaling behaviour
-- **Both reach 12,000 concurrent** in their best configs (mongo 4-router; DocDB 2-shard any tier). 
-- **DocDB 1-shard plateaus at ~11,000** regardless of tier — a single connection front-end.
-- **Mongo 2-router caps at 4,714** — the CPU-saturation baseline.
+- **Both sustain 12,000 held connections** in their best configs (mongo 4-router; DocDB 2-shard any tier) — above the ~11k production accumulation.
+- **DocDB 1-shard plateaus at ~11,000 held connections** regardless of tier — a single connection front-end.
+- **Mongo 2-router caps at 4,714 held connections** — the CPU-saturation baseline.
 - **Scaling lever differs fundamentally:** mongo adds cheap stateless routers; DocumentDB adds shards (stateful, data-moving) or tier (vertical). For pure connection-front-end capacity, mongo's router scale-out is lighter-weight.
 
 ### 6d. Bottleneck patterns (measured)
@@ -251,9 +253,36 @@ Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS o
 | Scenario | Recommended |
 |---|---|
 | **Connection-churn-heavy, minimal ops effort** | **DocumentDB** — best establishment throughput, managed, idle server CPU (add shards / raise tier for capacity). |
-| **Sustained high concurrency with lowest hold latency** | **Mongo 4-router** — best hold latency, holds full gate — if you can operate the router fleet. |
+| **Sustained high connection-holding with lowest hold latency** | **Mongo 4-router** — best hold latency, holds 12,000 connections — if you can operate the router fleet. |
 | **Realistic apps with connection reuse/pooling** | **Either** — the handshake bottleneck largely disappears; pick on ops model & cost. This no-reuse benchmark is a worst-case stress test. |
-| **Small managed footprint, ≥10k concurrency required** | **DocumentDB 2-shard M200** — clears the full gate at ~1.5% server CPU from a single managed endpoint. |
+| **Small managed footprint, ≥10k connection-holding required** | **DocumentDB 2-shard M200** — holds 12,000 connections at ~1.5% server CPU from a single managed endpoint. |
+
+---
+
+### 6g. Conclusion — validated against production requirements
+
+The benchmark is evaluated against the **two independent production dimensions** (§1), not a single combined figure.
+
+**Dimension A — workload processing (~135 tasks/s, 4 ops/task).** *Direct closed-loop validation pending (§4a).* Supporting evidence to date: at a non-saturating 135 tasks/s the single-operation baseline (§4d) shows **0 failures** and low, stable per-op latency on both backends (DocumentDB median find/insert ~27–35 ms; MongoDB ~41–44 ms with a tighter p99); production server-side op latency is ~0 ms with peak workload only ~393 ops/s. No evidence suggests either backend is workload-throughput-bound at production rates; the closed-loop test will confirm sustained 4-op throughput/latency directly.
+
+**Dimension B — connection holding (~11k accumulation).** **Validated (measured).** Both **mongo 4-router** and **DocumentDB 2-shard (M60/M80/M200)** sustain **12,000 held connections** — above the ~11k production spike — while the database engine stays idle (DocumentDB server CPU ~1.5%). DocumentDB **1-shard** holds ~11,000 and **mongo 2-router** caps at ~4,714 (VM-CPU saturated), so those configurations do **not** meet the holding requirement with headroom. Failure/throttling is characterised: DocumentDB's ceiling is managed-gateway admission (idle CPU); mongo's is TLS/SCRAM VM CPU; DocumentDB M200 can intermittently throttle admission under sustained churn (recovers on cooldown).
+
+**Metric-driven verdict.**
+
+| Requirement | Metric | Result |
+|---|---|---|
+| Task throughput | ~135 tasks/s sustained | Supported by §4d (0 failures at 135/s) + production (~0 ms op latency); closed-loop confirmation pending (§4a) |
+| Operation latency | per-op p50/p90/p99 | Low & stable at 135/s (§4d); DocumentDB lower median, MongoDB tighter tail |
+| Connection holding | ≥ ~11k held | **Met** by mongo 4-router and DocumentDB 2-shard (12,000); **not met** by DocumentDB 1-shard (~11k, no headroom) or mongo 2-router (~4.7k) |
+| Failure / throttling | failure layer & rate | Characterised (§4c, §6d); no engine-level failure — bottleneck is connection establishment/admission |
+
+- **What is validated:** connection-holding scalability to ≥12,000 for the recommended configs (mongo 4-router, DocumentDB 2-shard), and stable operation-level latency at the production 135 tasks/s rate.
+- **What capacity dimension is validated:** primarily **Dimension B (connection holding)** by direct measurement; **Dimension A (workload processing)** is supported by the single-op baseline and production evidence, with closed-loop full-workload confirmation pending (§4a).
+- **What is NOT claimed:** these results do **not** claim the database serves ~11,000 simultaneous active 4-op workloads. Production reaches ~11k via connection accumulation (mostly-idle held connections at ~5 ops/s) — a fundamentally different requirement from 11k active operations, which no test here simulates and which production does not exhibit.
+
+### 6h. Scope limitation — driver/runtime connection behaviour
+
+Absolute connection-establishment behaviour (per-task connection count, handshake/SDAM footprint, accept rate) depends on the MongoDB **driver and runtime** in use — production reaches ~9 connections per task via driver topology monitoring (SDAM), whereas the benchmark pins `directConnection=true` to control the access path. Absolute connection-footprint and establishment-latency numbers may therefore vary with the driver/runtime. The **relative MongoDB-vs-DocumentDB comparison remains valid**, since both targets are exercised under identical client tooling, dataset, and network path.
 
 ---
 
@@ -264,3 +293,5 @@ Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS o
 4. **Establish p99 absent for 2-shard hold:** compact schema difference; keepalive-find p99 used as the common metric.
 5. **Server CPU** figures are from Azure Monitor (DocumentDB `CpuPercent`; mongo VM `Percentage CPU`) over each run window; **client CPU** from the tool's `Process.MaxCpuPercent`.
 6. **One cold/anomalous hold iteration** occurred per 2-shard tier (first-touch); "cleared 10k" counts the sustained iterations.
+7. **Single-operation results (§4d) are an operation-level reference**, not the closed-loop full-workload result; the closed-loop full-workload matrix (§4a) is pending.
+8. **Production baseline figures** are from `prod_log` (2026-03-26: mongostat `metrics.json`, `mongod.log` connection events, and the query profiler). "Held/concurrent connections" denotes established connections, **not** simultaneously-executing operations (~11k held at ~5 ops/s at peak).
