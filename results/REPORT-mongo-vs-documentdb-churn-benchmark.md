@@ -123,7 +123,23 @@ The tool records, per host per iteration: task totals (`Totals.*`), per-operatio
 
 Sustained ~135 tasks/s with the full 4-op cycle at a steady, non-saturating pace — the normal production processing pattern. Measures whether each backend processes the real task workload at stable throughput and latency.
 
-> **Measured results pending.** Closed-loop full-workload runs for the final config matrix are deferred. In the interim, the per-operation costs of the 4-op cycle are characterised in the single-operation baseline (§4d, non-saturating) and under establishment stress in §4b (open-loop churn). This subsection will hold the closed-loop throughput/latency table once those runs are executed.
+**Partial results — previous-config baseline (measured); remaining cells pending.** The **DocDB 1-shard** and **Mongo 2-router** columns below are from an earlier self-consistent campaign (`results/run-20260624-prevconfig`, 3×610 s steady). The **DocDB 2-shard (M60/M80/M200)** and **Mongo 4-router** cells are **pending** fresh runs (see the pending-run note after this table).
+
+| Metric | DocDB 1-shard (prev) | DocDB 2s-M60 | DocDB 2s-M80 | DocDB 2s-M200 | Mongo 2-router (prev) | Mongo 4-router |
+|---|---|---|---|---|---|---|
+| Throughput (tasks/s) | 132.8 | — | — | — | 132.8 | — |
+| Error % | 0.006 | — | — | — | 0.006 | — |
+| find p50 / p90 / p99 (ms) | 28.9 / 93.2 / 159.0 | — | — | — | 70.2 / 141.1 / 211.8 | — |
+| remove p50 / p90 / p99 (ms) | 2.4 / 5.0 / 77.1 | — | — | — | 4.1 / 6.5 / 80.2 | — |
+| insert p50 / p90 / p99 (ms) | 2.8 / 5.1 / 79.1 | — | — | — | 4.5 / 7.3 / 83.2 | — |
+| find_output p50 / p90 / p99 (ms) | 0.7 / 2.9 / 53.6 | — | — | — | 1.1 / 4.2 / 16.0 | — |
+| Connection-open p90 / p99 (ms) ‖ | 30.9 / 113.0 | — | — | — | 89.7 / 137.1 | — |
+
+**Read (previous-config baseline):** at the production rate both backends process the **full 4-op workload at ~133 tasks/s with ~0% error** (15 and 14 failed tasks across 3×610 s ≈ 0.006%), confirming Dimension A is met by both at average load. DocumentDB has the lower `find_input` latency (p50 29 ms vs 70 ms); warm `remove`/`insert`/`find_output` are single-digit-ms p50 on both. This validates workload-processing capability at the production task rate.
+
+> ‖ **Comparability caveats for this baseline.** Source campaign predates three later changes — the R2/R3 connection-lifecycle refactor, the mongo TLS-chain-validation bypass, and DocumentDB retry-writes-on. **Per-operation service latency is comparable** across versions (server-side op timing is stable); **connection-open figures are NOT directly comparable** to §4b/§4c/§4d and are shown only for context. The DocumentDB **tier for this June campaign is not recorded** (labelled "1-shard (prev)", not M80/M200); data was single-physical-shard, HA-on. Iterations were 610 s (vs 300 s elsewhere) with `TaskSleepMs=10000`.
+
+> **Pending runs (—):** closed-loop full-workload for **DocDB 2-shard M60/M80/M200** and **Mongo 4-router** at the final code version (300 s ×3) will fill the remaining cells and provide a code-consistent DocumentDB 1-shard/2-router re-baseline. Test details to be confirmed before execution.
 
 ### 4b. Open-Loop churn (full 4-op) — measured, mean of 3 iterations
 
