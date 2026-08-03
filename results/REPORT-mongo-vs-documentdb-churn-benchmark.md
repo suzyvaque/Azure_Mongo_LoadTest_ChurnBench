@@ -99,6 +99,8 @@ The tool records, per host per iteration: task totals (`Totals.*`), per-operatio
 
 ### 4a. Open-Loop (full 4-op churn) — measured, mean of 3 iterations
 
+Full 4-op cycle (`find`→`remove`→`insert`→`find`) with a fresh connection per task, offered open-loop at ≈3,900 new connections/s combined (Poisson, ~1,300/s/host). Arrival rate is independent of response, so a slowing backend backs up — this is the throughput/latency-under-churn test; each iteration offers ~71k–77k tasks/host over ~300 s.
+
 | Metric | DocDB 1s-M80 | DocDB 1s-M200 | DocDB 2s-M60 | DocDB 2s-M80 | DocDB 2s-M200 | Mongo 2-router | Mongo 4-router |
 |---|---|---|---|---|---|---|---|
 | Throughput (tasks/s) | 22.0 | **154.7** | 48.3 | 72.9 | 74.9 † | 29.4 | 71.2 |
@@ -116,6 +118,8 @@ The tool records, per host per iteration: task totals (`Totals.*`), per-operatio
 † **DocDB 2s-M200 open-loop was gateway-throttled** (request-admission throttling under sustained same-day churn; only 1 of 3 iters healthy). Its **latency figures are valid**, but **throughput/completion are suppressed and NOT comparable** to the clean 1s-M200 OL run. Server CPU stayed idle (~1.2%), confirming throttle ≠ compute saturation.
 
 ### 4b. Hold (saturation) — measured, mean of 3 iterations
+
+Closed-loop gate parking a fixed population of 4,000 connections/host (**12,000 combined**), each held Ready for the full 5-min window with a light keepalive `find` — the concurrency-capacity and bottleneck test (does it clear ≥10,000, and where does it fail?).
 
 | Metric | DocDB 1s-M80 | DocDB 1s-M200 | DocDB 2s-M60 | DocDB 2s-M80 | DocDB 2s-M200 | Mongo 2-router | Mongo 4-router |
 |---|---|---|---|---|---|---|---|
