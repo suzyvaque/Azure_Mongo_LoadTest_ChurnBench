@@ -88,29 +88,35 @@ The tool records, per host per iteration: task totals (`Totals.*`), per-operatio
 
 ### 4a. Open-Loop (full 4-op churn) — measured, mean of 3 iterations
 
-| Config | Throughput (tasks/s) | Conn p90/p99 (ms) | find-cold p90/p99 (ms) | insert-warm p99 (ms) | Cycle p99 (ms) | Completion (succ/3 iters) | Error % | Conn-open fails | Max conc | Client CPU% | DB server CPU |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| DocDB 1s-M80 | 22.0 | 13,409 / 20,788 | 39,056 / 50,912 | 10,341 | 65,534 | 19,942 | 96.7 | 36,245 | 4,485 | 87 | ~1.5% |
-| DocDB 1s-M200 | **154.7** | 40,194 / 47,412 | 47,814 / 59,049 | 7,149 | 67,901 | **140,620** | **72.1** | 386 | 16,035 | 90 | ~1.2% |
-| DocDB 2s-M60 | 48.3 | 35,957 / 45,093 | 50,323 / 59,136 | 11,127 | 73,078 | 44,373 | 92.3 | 516 | 16,420 | 89 | ~1.5% |
-| DocDB 2s-M80 | 72.9 | 18,568 / 22,340 | 27,147 / 32,630 | 8,408 | 49,933 | 66,063 | 89.1 | 268 | 9,927 | 85 | ~1.5% |
-| DocDB 2s-M200 | 74.9 † | 23,616 / **27,108** | 30,924 / **43,180** | **5,318** | 60,066 | 67,842 † | 88.1 † | 819 | **17,530** | 83 | ~1.2% |
-| Mongo 2-router | 29.4 | 99,307 / 240,699 | 235,179 / 318,431 | 113,316 | 78,512 | 26,592 | 97.8 | 12,132 | 3,165 | 79 | **99.7% (sat)** |
-| Mongo 4-router | 71.2 | 42,634 / 159,686 | 45,018 / 110,204 | 6,098 | 38,640 | 64,333 | 94.9 | 610 | 2,351 | 66 | ~20%/router |
+| Metric | DocDB 1s-M80 | DocDB 1s-M200 | DocDB 2s-M60 | DocDB 2s-M80 | DocDB 2s-M200 | Mongo 2-router | Mongo 4-router |
+|---|---|---|---|---|---|---|---|
+| Throughput (tasks/s) | 22.0 | **154.7** | 48.3 | 72.9 | 74.9 † | 29.4 | 71.2 |
+| Conn p90/p99 (ms) | 13,409 / 20,788 | 40,194 / 47,412 | 35,957 / 45,093 | 18,568 / 22,340 | 23,616 / **27,108** | 99,307 / 240,699 | 42,634 / 159,686 |
+| find-cold p90/p99 (ms) | 39,056 / 50,912 | 47,814 / 59,049 | 50,323 / 59,136 | 27,147 / 32,630 | 30,924 / **43,180** | 235,179 / 318,431 | 45,018 / 110,204 |
+| insert-warm p99 (ms) | 10,341 | 7,149 | 11,127 | 8,408 | **5,318** | 113,316 | 6,098 |
+| Cycle p99 (ms) | 65,534 | 67,901 | 73,078 | 49,933 | 60,066 | 78,512 | 38,640 |
+| Completion (succ/3 iters) | 19,942 | **140,620** | 44,373 | 66,063 | 67,842 † | 26,592 | 64,333 |
+| Error % | 96.7 | **72.1** | 92.3 | 89.1 | 88.1 † | 97.8 | 94.9 |
+| Conn-open fails | 36,245 | 386 | 516 | 268 | 819 | 12,132 | 610 |
+| Max conc | 4,485 | 16,035 | 16,420 | 9,927 | **17,530** | 3,165 | 2,351 |
+| Client CPU% | 87 | 90 | 89 | 85 | 83 | 79 | 66 |
+| DB server CPU | ~1.5% | ~1.2% | ~1.5% | ~1.5% | ~1.2% | **99.7% (sat)** | ~20%/router |
 
 † **DocDB 2s-M200 open-loop was gateway-throttled** (request-admission throttling under sustained same-day churn; only 1 of 3 iters healthy). Its **latency figures are valid**, but **throughput/completion are suppressed and NOT comparable** to the clean 1s-M200 OL run. Server CPU stayed idle (~1.2%), confirming throttle ≠ compute saturation.
 
 ### 4b. Hold (saturation) — measured, mean of 3 iterations
 
-| Config | Max conc (best) | Avg conc | Cleared 10k? | Establish p90/p99 (ms) | Keepalive-find p99 (ms) | Conn attempts / fails | Client CPU% | Server CPU | Bottleneck layer |
-|---|---|---|---|---|---|---|---|---|---|
-| DocDB 1s-M80 | 11,154 | 3,866 | 2/3 iters | 108,090 / 121,137 | 113,743 | 92,301 / 33,763 | 89 | ~1.5% | Managed gateway (establish) |
-| DocDB 1s-M200 | 11,365 | 4,572 | 3/3 | 102,653 / 131,835 | 138,544 | 75,512 / 28,553 | 82 | ~0.8% | Managed gateway (establish) |
-| DocDB 2s-M60 | **12,000** | 3,908 | 2/3 | n/a ‡ | 34,212 | 42,893 / 418 | 90 | ~1.5% | Gateway (eased) |
-| DocDB 2s-M80 | **12,000** | 4,476 | 2/3 | n/a ‡ | 23,271 | 49,885 / 88 | 88 | ~1.5% | Gateway (eased) |
-| DocDB 2s-M200 | **12,000** | 6,019 | 3/3 | n/a ‡ | 28,273 | 47,693 / 44 | 92 | ~1.5% | Gateway (eased) |
-| Mongo 2-router | 4,714 | 3,363 | **0/3** | 51,248 / 144,600 | 170,446 | 15,755 / 2,806 | 77 | **99.7% (sat)** | **mongo VM CPU (TLS/SCRAM)** |
-| Mongo 4-router | **12,000** | **10,570** | 3/3 | **17,923 / 34,005** | **14,803** | 38,991 / 2,377 | 88 | ~17–21%/router | Client / balanced |
+| Metric | DocDB 1s-M80 | DocDB 1s-M200 | DocDB 2s-M60 | DocDB 2s-M80 | DocDB 2s-M200 | Mongo 2-router | Mongo 4-router |
+|---|---|---|---|---|---|---|---|
+| Max conc (best) | 11,154 | 11,365 | **12,000** | **12,000** | **12,000** | 4,714 | **12,000** |
+| Avg conc | 3,866 | 4,572 | 3,908 | 4,476 | 6,019 | 3,363 | **10,570** |
+| Cleared 10k? | 2/3 iters | 3/3 | 2/3 | 2/3 | 3/3 | **0/3** | 3/3 |
+| Establish p90/p99 (ms) | 108,090 / 121,137 | 102,653 / 131,835 | n/a ‡ | n/a ‡ | n/a ‡ | 51,248 / 144,600 | **17,923 / 34,005** |
+| Keepalive-find p99 (ms) | 113,743 | 138,544 | 34,212 | 23,271 | 28,273 | 170,446 | **14,803** |
+| Conn attempts / fails | 92,301 / 33,763 | 75,512 / 28,553 | 42,893 / 418 | 49,885 / 88 | 47,693 / 44 | 15,755 / 2,806 | 38,991 / 2,377 |
+| Client CPU% | 89 | 82 | 90 | 88 | 92 | 77 | 88 |
+| Server CPU | ~1.5% | ~0.8% | ~1.5% | ~1.5% | ~1.5% | **99.7% (sat)** | ~17–21%/router |
+| Bottleneck layer | Managed gateway (establish) | Managed gateway (establish) | Gateway (eased) | Gateway (eased) | Gateway (eased) | **mongo VM CPU (TLS/SCRAM)** | Client / balanced |
 
 ‡ Establish (Demand→Ready) latency was not captured in the 2-shard hold compacts; keepalive-find p99 is the common metric there.
 
