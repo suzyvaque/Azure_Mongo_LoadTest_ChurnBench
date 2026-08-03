@@ -2,14 +2,14 @@
 ### Full-Workload Open-Loop and Hold Tests — Consolidated Report
 
 **Generated:** 2026-08-02
-**Scope:** 7 database configurations × 2 test scenarios (open-loop churn, saturation hold), 3 iterations each, three synchronized generator hosts.
+**Scope:** 7 database configurations × 2 primary scenarios (open-loop churn, saturation hold), 3 iterations each, three synchronized generator hosts. A supplementary **single-operation service-time** test (non-saturating) covers MongoDB and the DocumentDB 2-shard tiers.
 **Data provenance:** All figures are aggregated from per-host compact metrics captured directly from the load generators (`results/run-*`). Observed measurements are stated as such; interpretations are labelled.
 
 ---
 
 ## 1. Test Overview
 
-Both tests use the **same .NET 8 load-generation tool**, the **same 100,000-document dataset**, and a strict **no-connection-reuse model**: every logical task opens a brand-new `MongoClient`/connection, performs its work, and disconnects. This deliberately isolates **per-connection establishment cost** (TCP + TLS + SCRAM auth) — the dimension that dominates connection-churn workloads — from steady-state query performance.
+All tests use the **same .NET 8 load-generation tool**, the **same 100,000-document dataset**, and a strict **no-connection-reuse model**: every logical task opens a brand-new `MongoClient`/connection, performs its work, and disconnects. This deliberately isolates **per-connection establishment cost** (TCP + TLS + SCRAM auth) — the dimension that dominates connection-churn workloads — from steady-state query performance. Two scenarios drive the connection-churn story (open-loop, hold); a third, non-saturating single-operation test isolates clean per-op service time.
 
 ### 1a. Open-Loop Test (throughput/latency under average load)
 
@@ -33,6 +33,17 @@ Both tests use the **same .NET 8 load-generation tool**, the **same 100,000-docu
 **Shared parameters & assumptions.** Dataset = 100,000 documents (Small 6 KiB ×10k, Medium 16 KiB ×15k, Large 50 KiB ×35k, XL 58 KiB ×40k; ~4.4 GiB total, fixed RNG seed 42 → byte-identical across all targets). Warm-up reads all 100,000 docs untimed before every iteration. Read/write ratio is fixed by the workload definition (open-loop = 2 reads + 1 delete + 1 insert per task; hold = read-only keepalive). Retry-writes forced ON for DocumentDB. All generators, network path (private endpoint), and gate sizing are identical across targets.
 
 > **Concurrency definition (used throughout):** the combined per-second SUM of each host's driver `ActiveReady` gauge (the `report merge` convention). **Max concurrent = the peak of that summed gauge over the run**; the reported value is the best of the 3 iterations.
+
+### 1c. Single-Operation Service-Time Test (non-saturating)
+
+| Aspect | Detail |
+|---|---|
+| **Objective** | Isolate **clean per-operation service time** (one `find` or one `insert`), free of the establishment/backlog effects that dominate the open-loop and hold tests. |
+| **Traffic model** | **Steady, non-saturating** 135 tasks/s. Because no backend saturates at this rate (**0 failures**), latencies reflect true service time rather than timeout tails. |
+| **Workload per task** | One indexed op by `ReqId` on a fresh connection (no reuse): either `find` on `calc_input` or `insert` into `calc_output`. |
+| **Coverage** | MongoDB (2-shard) and DocumentDB 2-shard at **M60 / M80 / M200** (single generator host). |
+| **Evaluation** | Operation p50/p90/p99 and connection-open p99 (steady-state mean of iterations 2–3; iteration 1 dropped as a first-touch transient). |
+
 
 ---
 
@@ -121,6 +132,26 @@ The tool records, per host per iteration: task totals (`Totals.*`), per-operatio
 ‡ Establish (Demand→Ready) latency was not captured in the 2-shard hold compacts; keepalive-find p99 is the common metric there.
 
 **Resource utilisation & bottleneck (measured).** DocumentDB **server CPU stayed idle (0.8–1.5%) in every scenario** — it is never compute-bound; its ceiling is the managed gateway's connection/request admission. Mongo **2-router saturated at 99.7% VM CPU** (per-connection TLS+SCRAM on the shared shard/router VMs) — a hard client-independent ceiling at ~4.7k. Mongo **4-router** spread that handshake CPU to ~17–21% per router, removing the ceiling. Client CPU peaked 66–92% across all runs (a secondary constraint at extreme churn).
+
+### 4c. Single-operation service time (non-saturating) — measured, steady-state mean of iterations 2–3
+
+One indexed op per fresh connection at a steady **135 tasks/s** (no reuse). This rate saturates no backend (**0 failures**), so these are clean service times rather than the saturation-blended latencies of §4a. Values are the steady-state mean (iterations 2–3; iteration 1 dropped as a first-touch transient).
+
+| Metric | MongoDB (2-shard) | DocDB 2s-M60 | DocDB 2s-M80 | DocDB 2s-M200 |
+|---|---|---|---|---|
+| find op p50 / p90 / p99 (ms) | 41.2 / 55.8 / **69.8** | **26.5** / 47.8 / 107.7 | 34.3 / 75.7 / 198.8 | 28.7 / 58.0 / 154.1 |
+| insert op p50 / p90 / p99 (ms) | 44.2 / 59.0 / **91.8** | **27.6** / 48.8 / 117.6 | 34.6 / 68.0 / 126.0 | 29.9 / 54.5 / 111.3 |
+| Connection-open p99 (find / insert, ms) | **43.5 / 50.2** | 77.9 / 86.2 | 105.0 / 89.3 | 96.6 / 82.2 |
+| Client CPU peak (%) | 29–38 | 28–32 | 29–33 | 27–31 |
+| Failures | 0 | 0 | 0 | 0 |
+
+Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS on, 3×600 s); DocumentDB = `run-20260803-01/docdb-{m60,m80,m200}` (single-op steady, 3×300 s). At 135/s the mongos router count is immaterial (routers only bottleneck under establishment saturation), so the MongoDB 2-shard result is a valid single-op service-time measurement for the sharded MongoDB cluster.
+
+**Findings (single-op service time, measured):**
+- **DocumentDB has the lower typical (median) latency; MongoDB has the tighter tail.** DocumentDB serves the median op faster (find p50 27–34 ms, insert p50 28–35 ms) than MongoDB (find 41 ms, insert 44 ms), but MongoDB holds the **tighter p99** on both ops (find 70 ms vs DocumentDB 108–199 ms; insert 92 ms vs 111–126 ms).
+- **DocumentDB tier size does not materially change single-op service time.** M60, M80, and M200 land within run-to-run noise of each other — a single indexed keyed op at 135/s is too light to be compute-bound, so extra vCores do not lower its service latency.
+- **This refines the §4a / §5 warm-op observation.** Under the saturated 4-op churn, DocumentDB warm-op p99 *appeared* to improve with tier (insert p99 11.1 s → 5.3 s, M60→M200). Isolated from saturation, raw single-op service time is **tier-independent** — the earlier gain came from higher tiers easing queueing, not faster operation execution.
+- **MongoDB opens connections faster even unsaturated** (conn-open p99 44–50 ms vs DocumentDB 78–105 ms), consistent with the direct-to-router pin versus the DocumentDB SRV/gateway handshake path.
 
 ---
 
