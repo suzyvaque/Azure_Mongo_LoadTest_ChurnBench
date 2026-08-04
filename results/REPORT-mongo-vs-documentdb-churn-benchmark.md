@@ -191,6 +191,18 @@ Unlike the churn-storm matrix above (deliberate ≈3,900 conn/s overload), this 
 
 > ‡ **Comparability caveat for the mongo column.** This same-day campaign (2026-07-15) **predates the mongo TLS-chain-validation bypass** (Jul 25) and the connection-lifecycle refactor, so the mongo-shard connection-establishment and error figures are **pessimistic** and **not comparable** to the newer §4b/§4c mongo results. It is shown as the campaign's same-day counterpart for context only. The DocumentDB single-shard M80 column is the primary production-shape result; DocumentDB is never altered by the mongo TLS setting. Both columns are 2-host and share the identical pinned arrival schedule.
 
+#### 4b insight — for DocumentDB, tier beats shard count under connection churn
+
+The two subsections above answer the practical question *"does DocumentDB need a second shard for the connection-churn / peak-concurrency dimension?"* — and the metrics say **the effective lever is compute tier, not shard count**:
+
+- **The bottleneck is gateway connection-admission, not shard compute.** Across every §4b config, **DB server CPU stays idle (~1.2–1.5%)** while errors run 72–97%. Failures occur at connection establishment (the managed gateway front door), **upstream of the shards** — so sharding, which distributes data/ops, does not target the actual limit here.
+- **Raising the tier on one shard is the strongest fix.** M80→M200 on a *single* shard turned the collapsed baseline (22.0 tps, 36,245 conn-open fails) into the **best open-loop performer** (154.7 tps, 386 fails, 16k concurrent).
+- **1×M200 outperforms 2×M80** on throughput (154.7 vs 72.9 tps) and concurrency (16.0k vs 9.9k) at comparable total compute — a single larger gateway admits churn better than two smaller ones.
+- **More shards can hurt:** **2s-M200 hit gateway admission throttling** (only 1 of 3 iters healthy, †) with server CPU still idle — no churn headroom gained, and a throttling failure mode the consolidated 1s-M200 avoided.
+- **At the real production rate, one shard already holds (§4b-peak):** single-shard M80 sustains **~10k concurrent live/idle at ~109 tps**, with 31% errors being front-door queueing rather than shard saturation — the 11k-connection spike is absorbed **without** a second shard.
+
+**Conclusion (scoped to the churn/holding dimension):** for surviving the production connection spike, **prefer raising a single shard's tier (→M200) over adding a shard.** Sharding remains the right mechanism for *data-distribution* and *sustained operation-throughput* needs — but §4a shows both tiers already meet the ~135 tasks/s workload, and §4b/§4c show the real production pressure is connection admission, which tier addresses more directly.
+
 
 ### 4c. Hold — connection-holding scalability — measured, mean of 3 iterations
 
