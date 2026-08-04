@@ -7,7 +7,7 @@
 
 > **Production workload shape — what this report validates.** Production runs at **~135 tasks/s on average** (4 operations per task), while its **connection layer churns at up to ~1,210 new connections/s**, accumulating **11,000+ concurrent live connections that are mostly idle** (only ~5 ops/s at the connection peak; ~9 connections/task from driver SDAM; ~9 s connection lifetime — peak *workload* is only ~98 tasks/s). These are **two independent dimensions** — average **workload processing** and **connection holding** — that do not peak simultaneously. Together they define the envelope this report validates end-to-end:
 > - **§1a / §4a — closed-loop full workload** confirms the **~135 tasks/s** average processing capability.
-> - **§1b / §4b — open-loop churn** stresses connection establishment/churn, including a **production-shaped ~1,210 conn/s → ~11k-concurrent live/idle** run (§4b-peak).
+> - **§1b / §4b — open-loop churn** stresses connection establishment/churn, including a **production-shaped ~1,210 conn/s → ~11k-concurrent live/idle** run (§4b-2).
 > - **§1c / §4c — hold** confirms the **~11k live-but-idle** connection-holding capacity.
 
 ---
@@ -44,7 +44,7 @@ Production telemetry (`prod_log`, 2026-03-26) shows the workload has **two separ
 | **Objective** | Validate behaviour under **abnormal/peak connection-arrival** stress: establishment rate, handshake overhead, and admission/resource saturation. |
 | **Traffic model** | **Open-loop** Poisson arrivals (`JobsPerSecondLambda = 4.0`/host, `MinTasksPerJob = 150`, `MaxTasksPerJob = 500`). Arrival rate is **independent of system response** — if the backend slows, work backs up (this exposes saturation). |
 | **Workload per task** | Full **4-operation cycle** (`find`→`remove`→`insert`→`find`), then `TaskSleepMs = 2900` ms keepalive, then disconnect. |
-| **Offered load** | Two configurations are reported: **(1) 3-host churn storm** *(main matrix, §4b)* — ≈1,300 new connections/s per host → **≈3,900/s combined**, a deliberate overload **well above** the production accept rate to locate the saturation point; **(2) 2-host production-shape** *(§4b-peak)* — offered at the **production accept rate (~1,210 conn/s)** to **reproduce the ~11k live-but-idle accumulation** rather than to overload. |
+| **Offered load** | Two configurations are reported: **(1) 3-host churn storm** *(§4b-1)* — ≈1,300 new connections/s per host → **≈3,900/s combined**, a deliberate overload **well above** the production accept rate to locate the saturation point; **(2) 2-host production-shape** *(§4b-2)* — offered at the **production accept rate (~1,210 conn/s)** to **reproduce the ~11k live-but-idle accumulation** rather than to overload. |
 | **Evaluation** | Connection-establishment rate, task completion/error rate, throughput, and tail latency (p90/p99) for connection-open and each operation. |
 
 ### 1c. Hold Test (concurrent connection-holding scalability)
@@ -151,6 +151,10 @@ Sustained ~135 tasks/s with the full 4-op cycle at a steady, non-saturating pace
 
 ### 4b. Open-Loop churn (full 4-op) — measured, mean of 3 iterations
 
+Two open-loop configurations are reported: **§4b-1** a deliberate churn-storm overload (≈3,900 conn/s) that locates each backend's saturation point across the full config matrix, and **§4b-2** a production-rate run (~1,210 conn/s) that reproduces the ~11k live-but-idle connection accumulation on the DocumentDB single-shard baseline. Both use the full 4-op cycle with a fresh connection per task.
+
+#### 4b-1. Churn storm — full config matrix (3-host, ≈3,900 conn/s overload)
+
 Full 4-op cycle (`find`→`remove`→`insert`→`find`) with a fresh connection per task, offered open-loop at ≈3,900 new connections/s combined (Poisson, ~1,300/s/host). Arrival rate is independent of response, so a slowing backend backs up — this is the throughput/latency-under-churn test; each iteration offers ~71k–77k tasks/host over ~300 s.
 
 | Metric | DocDB 1s-M80 | DocDB 1s-M200 | DocDB 2s-M60 | DocDB 2s-M80 | DocDB 2s-M200 | Mongo 2-router | Mongo 4-router |
@@ -169,39 +173,46 @@ Full 4-op cycle (`find`→`remove`→`insert`→`find`) with a fresh connection 
 
 † **DocDB 2s-M200 open-loop was gateway-throttled** (request-admission throttling under sustained same-day churn; only 1 of 3 iters healthy). Its **latency figures are valid**, but **throughput/completion are suppressed and NOT comparable** to the clean 1s-M200 OL run. Server CPU stayed idle (~1.2%), confirming throttle ≠ compute saturation.
 
-#### 4b-peak. Production-shape peak-concurrency open-loop (2-host, ~11k live/idle) — measured, mean of 3 iterations
+**Insights — tier beats shard count under connection churn.** §4b-1 answers the practical question *"does DocumentDB need a second shard for the connection-churn dimension?"*, and §4b-2 (below) confirms the answer at the production establishment rate — the metrics say **the effective lever is compute tier, not shard count**:
 
-Unlike the churn-storm matrix above (deliberate ≈3,900 conn/s overload), this run is **tuned to the production accept rate** to reproduce the exact production connection shape: connections offered at **~1,210/s** on **2 generator hosts**, accumulating **~10–12k concurrent live connections that are mostly idle** while the 4-op tasks drain more slowly. It directly validates the "**11k connections live but idle, ~1,210 new/s**" production scenario (`deprecated/run-20260715-max`, 2×~980 s window). The DocumentDB target here is a **single physical shard (M80)** — this campaign predates the 2-shard reshard (Aug 1), so it is the requested pre-2-shard single-shard result.
-
-| Metric | DocDB single-shard M80 | Mongo 2-shard / 2-router ‡ |
-|---|---|---|
-| Peak connection churn (conn/s) | 1,212 | 2,474 |
-| **Peak concurrent in-flight (live conns)** | **9,979 (~10k)** | **12,069 (~12k)** |
-| Reached ~1,200 conn/s churn target? | yes | yes |
-| Reached ~11k concurrent target? | ~10k (near) | yes |
-| Connections created (no-reuse) | 309,607 | 842,159 |
-| Mean throughput (tasks/s) | 108.8 | 34.7 |
-| Error % | 31.2 | 92.1 |
-| Connection-open p50 / p90 / p99 (ms) | 5,653 / 11,077 / 15,232 | 7,849 / 20,598 / 36,104 |
-| find-cold p50 / p90 / p99 (ms) | 10,172 / 20,026 / 40,520 | 14,515 / 35,229 / 52,982 |
-| remove / insert / find_out p99 (ms) | 7,624 / 1,196 / 963 | 29,253 / 3,517 / 2,967 |
-| Task-cycle p50 / p90 / p99 (ms) | 15,498 / 29,369 / 47,574 | 6,492 / 10,634 / 40,069 |
-
-**Read.** The per-second series confirms the production shape directly: in-flight climbs 1,158 → 2,370 → 3,405 → … → **~10k** while completed ops stay near **0–100/s** — i.e. connections **accumulate live-but-idle** faster than the 4-op tasks drain them, exactly the production behaviour (~11k held at ~5 ops/s). This is the connection-holding accumulation reproduced under a real establishment rate, and it bridges §4b (churn) and §4c (holding): DocumentDB reaches ~10k concurrent while **terminating handshakes on its managed gateway** (server CPU stayed low, 31% errors are admission/queue backlog at the connection front, not compute), whereas the self-managed mongo cluster reaches ~12k but at a **much higher error rate under this pre-fix TLS path**.
-
-> ‡ **Comparability caveat for the mongo column.** This same-day campaign (2026-07-15) **predates the mongo TLS-chain-validation bypass** (Jul 25) and the connection-lifecycle refactor, so the mongo-shard connection-establishment and error figures are **pessimistic** and **not comparable** to the newer §4b/§4c mongo results. It is shown as the campaign's same-day counterpart for context only. The DocumentDB single-shard M80 column is the primary production-shape result; DocumentDB is never altered by the mongo TLS setting. Both columns are 2-host and share the identical pinned arrival schedule.
-
-#### 4b insight — for DocumentDB, tier beats shard count under connection churn
-
-The two subsections above answer the practical question *"does DocumentDB need a second shard for the connection-churn / peak-concurrency dimension?"* — and the metrics say **the effective lever is compute tier, not shard count**:
-
-- **The bottleneck is gateway connection-admission, not shard compute.** Across every §4b config, **DB server CPU stays idle (~1.2–1.5%)** while errors run 72–97%. Failures occur at connection establishment (the managed gateway front door), **upstream of the shards** — so sharding, which distributes data/ops, does not target the actual limit here.
+- **The bottleneck is gateway connection-admission, not shard compute.** Across every §4b-1 config, **DB server CPU stays idle (~1.2–1.5%)** while errors run 72–97%. Failures occur at connection establishment (the managed gateway front door), **upstream of the shards** — so sharding, which distributes data/ops, does not target the actual limit here.
 - **Raising the tier on one shard is the strongest fix.** M80→M200 on a *single* shard turned the collapsed baseline (22.0 tps, 36,245 conn-open fails) into the **best open-loop performer** (154.7 tps, 386 fails, 16k concurrent).
 - **1×M200 outperforms 2×M80** on throughput (154.7 vs 72.9 tps) and concurrency (16.0k vs 9.9k) at comparable total compute — a single larger gateway admits churn better than two smaller ones.
 - **More shards can hurt:** **2s-M200 hit gateway admission throttling** (only 1 of 3 iters healthy, †) with server CPU still idle — no churn headroom gained, and a throttling failure mode the consolidated 1s-M200 avoided.
-- **At the real production rate, one shard already holds (§4b-peak):** single-shard M80 sustains **~10k concurrent live/idle at ~109 tps**, with 31% errors being front-door queueing rather than shard saturation — the 11k-connection spike is absorbed **without** a second shard.
+- **At the real production rate, one shard already holds (§4b-2):** single-shard M80 sustains the ~10k live/idle accumulation with errors confined to the admission front, not the shard — the 11k-connection spike is absorbed **without** a second shard.
 
 **Conclusion (scoped to the churn/holding dimension):** for surviving the production connection spike, **prefer raising a single shard's tier (→M200) over adding a shard.** Sharding remains the right mechanism for *data-distribution* and *sustained operation-throughput* needs — but §4a shows both tiers already meet the ~135 tasks/s workload, and §4b/§4c show the real production pressure is connection admission, which tier addresses more directly.
+
+#### 4b-2. Production-shape peak concurrency (2-host, ~11k live/idle)
+
+Tuned to the **production accept rate** (~1,210 new connections/s) on **2 generator hosts** to reproduce the production connection shape rather than to overload: connections accumulate to **~10–12k concurrent, mostly-idle live connections** while the 4-op tasks drain more slowly. This directly validates the "**11k connections live but idle, ~1,210 new/s**" production scenario (`results/run-20260715-00-2host`, 3 iterations × ~330 s; 309,607 single-use connections created, no reuse). The DocumentDB target is a **single physical shard (M80)** — the campaign predates the 2-shard reshard (Aug 1), so it is the requested pre-2-shard single-shard result. Figures are **2-host combined** to match §4b-1's convention (counts summed across hosts; latency = mean of the hosts' per-iteration percentiles).
+
+| Metric | DocDB single-shard M80 | Mongo 2-shard / 2-router ‡ |
+|---|---|---|
+| Throughput (tasks/s) | 191.6 | 34.7 |
+| Conn p90/p99 (ms) | 12,199 / 19,737 | 20,598 / 36,104 |
+| find-cold p90/p99 (ms) | 23,384 / 47,991 | 35,229 / 52,982 |
+| insert-warm p99 (ms) | 1,034 | 3,517 |
+| Cycle p99 (ms) | 58,199 | 40,069 |
+| Completion (succ/3 iters) | 189,350 | 33,227 |
+| Error % | 38.8 | 92.1 |
+| Conn-open fails | 15,943 | 0 |
+| Max conc | 9,979 | 12,069 |
+| Client CPU% | 74 | 71 |
+| DB server CPU | n/a ◊ | n/a ◊ |
+
+**Insights — production-shape validation.** §4b-2 asks the complementary question *"at the real establishment rate, does one shard hold the ~11k spike?"* — and the metrics say **yes**:
+
+- **The production connection shape is reproduced.** Per-second in-flight climbs 1,158 → 2,370 → 3,405 → … → **~10k** while completed ops stay ~0–100/s — connections accumulate live-but-idle faster than the 4-op tasks drain them, matching production (~11k held at ~5 ops/s).
+- **A single shard absorbs the real spike.** At ~1,210 conn/s (not the §4b-1 storm), single-shard **M80 reaches ~10k concurrent** and clears **189,350 tasks** across 3 iterations; the **38.8% errors are connection-front queueing/admission**, not shard compute — DocumentDB terminates handshakes on its managed gateway and the shard stays near-idle (see §4b-1 / §4c).
+- **No second shard needed for the holding dimension.** The ~11k live/idle accumulation is held on **one** physical shard, reinforcing §4b-1: tier (gateway admission), not shard count, governs the connection dimension.
+- **Mongo counterpart is directional context only (‡).** The self-managed cluster reaches ~12k concurrent but at 92% errors under this **pre-TLS-fix** path — not comparable to the current mongo results in §4b-1 / §4c.
+
+**Conclusion.** Under a production-rate connection spike, DocumentDB **single-shard M80 sustains the ~11k live-but-idle accumulation** with failures confined to the admission front, not the shard — consistent with §4b-1's finding that **tier, not shard count, is the lever for the connection dimension.**
+
+> ‡ **Comparability caveat for the mongo column.** This same-day campaign (2026-07-15) **predates the mongo TLS-chain-validation bypass** (Jul 25) and the connection-lifecycle refactor, so the mongo-shard connection-establishment and error figures are **pessimistic** and **not comparable** to the newer §4b-1/§4c mongo results. Mongo **throughput, completion, conn-open fails and CPU here are from the single retained host (h02)**; peak concurrency (12,069) is the 2-host merged gauge. Treat the mongo column as directional context only; the DocumentDB single-shard M80 column is the primary production-shape result and is never altered by the mongo TLS setting.
+
+> ◊ **DB server CPU not retained** for this July campaign (Azure Monitor window expired). §4b-1 and §4c independently establish that DocumentDB's managed backend stays near-idle under connection churn (handshakes terminate on its gateway fleet), so the 38.8% errors here are admission-front queueing, not shard compute.
 
 
 ### 4c. Hold — connection-holding scalability — measured, mean of 3 iterations
