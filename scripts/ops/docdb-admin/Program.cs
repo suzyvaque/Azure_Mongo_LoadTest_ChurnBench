@@ -120,6 +120,26 @@ try
             }
             break;
         }
+        case "count": // count <coll> : accurate countDocuments + fast count + distinct ReqId
+        {
+            var coll = args[1];
+            var c = bmt.GetCollection<BsonDocument>(coll);
+            long accurate = c.CountDocuments(new BsonDocument());
+            var fast = Run(bmt, "{count:\"" + coll + "\"}");
+            long fastN = fast.Contains("n") ? fast["n"].ToInt64() : -1;
+            // distinct ReqId cardinality (guards against duplicate/missing ReqIds)
+            long distinctReqId = -1;
+            try {
+                var distinct = c.Distinct<BsonValue>("ReqId", new BsonDocument()).ToList();
+                distinctReqId = distinct.Count;
+            } catch (Exception e) { Console.WriteLine("distinct err: " + e.Message); }
+            Console.WriteLine($"collection={coll}");
+            Console.WriteLine($"  countDocuments (accurate) = {accurate}");
+            Console.WriteLine($"  count (fast/metadata)     = {fastN}");
+            Console.WriteLine($"  distinct ReqId            = {distinctReqId}");
+            Console.WriteLine($"  MATCHES 100000            = {accurate == 100000}");
+            break;
+        }
         case "cmd": // cmd <db> <json>
             Console.WriteLine(Run(client.GetDatabase(args[1]), args[2]).ToJson()); break;
         case "dist": // dist <coll> : per-physical-shard doc counts via $collStats aggregation

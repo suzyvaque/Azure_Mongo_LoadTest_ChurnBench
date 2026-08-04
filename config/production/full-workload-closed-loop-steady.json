@@ -15,6 +15,15 @@
   // No calc-time sleep for this campaign (per spec). Full-workload normally holds ~2 s; here 0.
   "TaskSleepMs": 0,
 
+  // Skip client-side TLS chain/name validation for the self-managed mongo routers ONLY (never DocDB).
+  // The 4-router mongo-shard topology includes routers whose private-CA cert does not enumerate every
+  // router IP; without this the driver rejects those routers (RemoteCertificateNameMismatch) and the
+  // round-robin loses ~50% of tasks. This is the same uniform TLS relaxation used by the 3-host open-loop
+  // and hold campaigns; it removes a client-side PKI artifact and does not affect server-side latency.
+  "Client": {
+    "MongoAllowInsecureTls": true
+  },
+
   // Item 7: warm ALL 100,000 input documents (untimed) before the timed phase.
   "Preflight": {
     "WarmupSampleSize": 100000
