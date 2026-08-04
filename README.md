@@ -8,6 +8,9 @@ cost** (TCP + TLS + SCRAM auth) — the dimension that dominates connection-chur
 > **📊 [Final consolidated report → `results/REPORT-mongo-vs-documentdb-churn-benchmark.md`](results/REPORT-mongo-vs-documentdb-churn-benchmark.md)**
 > Full methodology, evidence matrix, result tables, DocumentDB tier comparison, and the MongoDB-vs-DocumentDB
 > conclusion — all backed by measured log data.
+>
+> **📄 [Executive summary → `results/EXECUTIVE-SUMMARY-mongo-vs-documentdb.md`](results/EXECUTIVE-SUMMARY-mongo-vs-documentdb.md)**
+> A condensed two-section brief: the DocumentDB-vs-MongoDB comparison and the "second shard for M200?" analysis.
 
 > **Worst-case by design.** New client per task (`maxPoolSize=1`, `minPoolSize=0`), so this does **NOT**
 > represent typical connection-pool application performance. No pass/fail thresholds — prioritize the
@@ -17,22 +20,28 @@ cost** (TCP + TLS + SCRAM auth) — the dimension that dominates connection-chur
 
 ## Test structure
 
-Two complementary tests share the same tool, dataset, and no-reuse model:
+The benchmark spans **three test dimensions** plus an operation-level baseline, all sharing the same tool,
+dataset, and no-reuse model. Each maps to a section of the [final report](results/REPORT-mongo-vs-documentdb-churn-benchmark.md):
 
 | Test | Question it answers | Traffic model | Per-task work |
 |---|---|---|---|
-| **Open-loop** (churn) | Can the system meet throughput/latency under continuous average load? | Open-loop Poisson arrivals (rate independent of response → exposes saturation) | Full **4-op cycle**: `find`→`remove`→`insert`→`find` |
-| **Hold** (saturation) | How far can concurrency be sustained, and where does it bottleneck? | Closed-loop gate parking a fixed population (**12,000 combined**, 4,000/host) | Keepalive `find` holding one connection Ready for the window |
+| **Closed-loop** (average workload) | Can the system process the average production task rate at stable latency? | Closed-loop steady ~135 tasks/s (arrival paced to completion) | Full **4-op cycle**: `find`→`remove`→`insert`→`find` |
+| **Open-loop** (churn) | How does the system behave under connection-establishment / churn stress? | Open-loop Poisson arrivals (rate independent of response → exposes saturation) | Full **4-op cycle**: `find`→`remove`→`insert`→`find` |
+| **Hold** (connection-holding) | How many concurrent connections can be held, and where does it bottleneck? | Closed-loop gate parking a fixed population (**12,000 combined**, 4,000/host) | Keepalive `find` holding one connection Ready for the window |
+| **Single-op** (baseline) | What is the isolated per-operation service time? | Steady ~135 tasks/s, single indexed op per connection | One op only (`find` **or** `insert`) |
+
+These map to two independent production dimensions described in the report: **workload processing** (closed-loop)
+and **connection holding** (open-loop churn + hold); the single-op run is an operation-level reference.
 
 **Shared parameters:** 100,000-document dataset (~4.4 GiB, fixed seed 42 → byte-identical across targets),
-3 synchronized generator hosts, 3 iterations, all 100k docs warmed before each run. Concurrency =
+synchronized generator hosts, 3 iterations, all 100k docs warmed before each run. Concurrency =
 combined per-second SUM of each host's driver `ActiveReady` gauge.
 
 ---
 
 ## Targets
 
-Final comparison spans **7 configurations** (all full 4-op workload, both tests):
+Final comparison spans **7 configurations** (all full 4-op workload, across the test dimensions above):
 
 | Backend | Configurations tested | Env var | Notes |
 |---|---|---|---|
@@ -48,22 +57,14 @@ the generators' full capacity and the comparison stays apples-to-apples.
 
 ---
 
-## Results at a glance
+## Results
 
-Headline measured findings (full detail + caveats in the **[final report](results/REPORT-mongo-vs-documentdb-churn-benchmark.md)**):
+Measured results, comparison matrices, DocumentDB tier analysis, and conclusions live in the reports — not
+in this README:
 
-| Config | Hold max concurrent | Cleared 10k? | Open-loop conn p99 |
-|---|---|---|---|
-| Mongo 2-router | 4,714 | ❌ (99.7% VM CPU ceiling) | 240.7 s |
-| Mongo 4-router | **12,000** | ✅ | 159.7 s |
-| DocDB 1-shard (M80 / M200) | ~11,000 | ✅ (~11k plateau) | 20.8 / 47.4 s |
-| DocDB 2-shard (M60 / M80 / M200) | **12,000** | ✅ (all tiers) | 45.1 / 22.3 / 27.1 s |
-
-- **The bottleneck is per-connection TLS+SCRAM establishment, not the database engine** — DocumentDB server
-  CPU stayed idle (~1.5%) in every run; mongo's fix was router CPU headroom (2→4 routers), not engine tuning.
-- **Genuine 2-shard distribution** lets DocumentDB clear the full 12,000 gate at every tier (vs ~11k single-shard)
-  and cuts hold keepalive p99 ~4–5×, by engaging a second connection front-end.
-- **Tier size drives churn throughput / warm-op latency, not hold concurrency** (which is data-distribution-bound).
+- **[Consolidated report](results/REPORT-mongo-vs-documentdb-churn-benchmark.md)** — full methodology, per-test result tables (§4a closed-loop, §4b open-loop, §4c hold, §4d single-op), tier comparison, and conclusions.
+- **[Executive summary](results/EXECUTIVE-SUMMARY-mongo-vs-documentdb.md)** — condensed DocumentDB-vs-MongoDB comparison and the "second shard for M200?" analysis.
+- Per-campaign artifacts (raw JSON/CSV + comparison HTML) are under `results/<campaign>/`.
 
 ---
 
@@ -212,14 +213,15 @@ single self-contained HTML report. Run `test` once per `--target` (with
 Configs are split into **`config/production/`** (full 100k dataset) and **`config/smoke/`** (tiny/fast
 validation). **The workload mode is selected by which config you pass** — there is no CLI flag for it.
 
-**Final-run configs** (the 3-host open-loop + hold tests behind the report):
+**Final-run configs** (the tests behind the report):
 
 | Test | Config | Key knobs |
 |---|---|---|
+| **Closed-loop full workload** | `config/production/full-workload-closed-loop-steady.json` | Closed-loop steady `Steady.TasksPerSecond=135`, `Mode=FullWorkload`, `TaskSleepMs=0` |
 | **Open-loop churn** | `config/production/full-workload-open-loop-3host.json` | Open-loop Poisson `JobsPerSecondLambda=4.0`/host, `MinTasksPerJob..MaxTasksPerJob=150..500`, `TaskSleepMs=2900` |
 | **Saturation hold** | `config/production/full-workload-hold-3host.json` | Closed-loop gate `MaxConcurrentTasks=4000`/host (12,000 combined), `Workload.Mode=Hold` (keepalive `find`), `TaskSleepMs=10000` |
 
-Both warm all 100,000 docs (`WarmupSampleSize=100000`) before the timed phase.
+All warm the 100,000 docs (`WarmupSampleSize=100000`) before the timed phase.
 
 **Other production/smoke configs** (single-op isolation + smoke checks) remain available:
 
@@ -314,10 +316,10 @@ these, so the **tail percentiles are the headline numbers**.
 tasks** (`created/task ≈ 1.0`). A ratio well below 1.0 means connections were reused (constraint violated);
 a large created-vs-closed gap means connections leaked. The report surfaces this directly.
 
-**Bottleneck location is the headline for the hold test.** The measured ceiling in every configuration is
-**per-connection TLS+SCRAM establishment**, not the database engine — DocumentDB server CPU stays idle
-(~1.5%) while mongo's 2-router config saturates its VM CPU at 99.7%. Read the hold results for *where and
-how* each system fails, not just the max connection count.
+**Bottleneck location is the headline for the hold test.** Read the hold results for *where and how* each
+system reaches its ceiling — per-connection establishment (TLS/SCRAM), managed-gateway admission, router/VM
+CPU, or the client — not just the max connection count. The report attributes the bottleneck layer per
+configuration.
 
 **Index assumption (critical).** Results assume a `ReqId` index on **both** `calc_input` and `calc_output`
 on every target (created by `prepare-data`, verified by `preflight`). An unindexed run forces collection
