@@ -39,10 +39,12 @@ public sealed class ClientConfig
     /// the chain against the machine trust store. Under the no-reuse model's storm of thousands of
     /// SIMULTANEOUS cold handshakes that validation serializes inside schannel and throttles connection
     /// ESTABLISHMENT to single-digit conn/s while the mongos/mongod CPU sits idle — capping achievable
-    /// concurrency far below the server's capacity. Managed DocumentDB presents a publicly-trusted cert
-    /// (fast, cached validation) and is unaffected. Skipping chain validation removes this client-side
+    /// concurrency far below the server's capacity. Skipping chain validation removes this client-side
     /// PKI artifact so the measured concurrency reflects the SERVER's capacity, not the client's TLS
-    /// bookkeeping. Only ever applied to the mongo targets; DocumentDB/Cosmos are never altered.
+    /// bookkeeping. Only ever applied to the mongo targets; DocumentDB/Cosmos keep full chain validation
+    /// (see <see cref="Connections.TaskConnectionFactory.BuildSettings"/>, which disables only the
+    /// revocation-check portion for those publicly-trusted-cert targets — a separate, always-on
+    /// mitigation for the same class of concurrent-cold-handshake problem behind a private endpoint).
     /// </summary>
     public bool MongoAllowInsecureTls { get; set; }
 

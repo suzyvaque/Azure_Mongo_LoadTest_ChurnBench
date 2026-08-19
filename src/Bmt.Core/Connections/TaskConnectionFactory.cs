@@ -169,6 +169,21 @@ public sealed class TaskConnectionFactory
             settings.AllowInsecureTls = true;
         }
 
+        // ALL targets whose certificate chains to a PUBLIC CA (DocumentDB, Cosmos RU) are reached here
+        // only via a PRIVATE ENDPOINT with no internet egress guaranteed for the client VNet. Schannel's
+        // certificate-chain build still validates hostname/chain/trust normally, but ALSO tries to fetch
+        // CRL/OCSP revocation data over the internet per handshake. A single cold handshake absorbs that
+        // fetch in a few hundred ms (then caches), but under the no-reuse model's storm of tens of
+        // SIMULTANEOUS cold handshakes, concurrent revocation fetches serialize/contend and each one can
+        // block for ~30 s before the connection completes — measured directly: 40 concurrent handshakes to
+        // docdb-dbtest-hpc-1 each took ~29.5 s (vs <100 ms sequentially), which snowballs into the
+        // ServerSelectionTimeout storm this ClientConfig's fail-fast timeouts are meant to avoid. This is
+        // the standard Microsoft-recommended mitigation for PaaS-behind-private-endpoint TLS clients:
+        // disable ONLY the revocation check, keeping full chain + hostname validation intact (unlike
+        // AllowInsecureTls above, which bypasses validation entirely and is reserved for the private-CA
+        // mongo targets).
+        settings.SslSettings = new SslSettings { CheckCertificateRevocation = false };
+
         // Surface connection-monitoring events to the observer(s) (§2.3/§7.2/§3). The shared observer
         // aggregates campaign-wide lifecycle counters; the optional per-Task recorder correlates THIS
         // client's single connection for demand-to-ready timing. We ALWAYS assign a fresh
