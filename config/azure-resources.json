@@ -20,9 +20,22 @@
   // CollectionName, ...). There is NO dedicated active-connection counter, but the request Count gives
   // server-side throughput and the StatusCodeClass dimension surfaces 4xx/5xx (throttles/errors).
   // Concurrent/created connection counts for docdb still come from the client-side merged concurrency.
+  // ACTIVE TARGET this round: docdb-dbtest-hpc-1 (M80/M200 tier sweep, no autoscale). Reconfigured to
+  // the fixed spec — 2 physical shards (hashed ReqId key, empty-first-reshard + reseed, 33/32 chunk
+  // split verified), HA enabled (ZoneRedundantPreferred), private-only (publicNetworkAccess Disabled,
+  // reachable via pe-docdb-hpc1-vcore in vm-dbtest-hpc-0-vnet). Update Tier below to match the current
+  // resize before each campaign / metric pull. docdb-dbtest-hpc-0 identifiers are further below (kept,
+  // not currently targeted).
   "DocumentDb": {
-    "ClusterName": "docdb-dbtest-hpc-0",
+    "ClusterName": "docdb-dbtest-hpc-1",
     "Tier": "M80",
+    "MetricsResourceId": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1"
+  },
+
+  // Previous round's target (docdb-dbtest-hpc-0) — kept for reference / future re-use.
+  "DocumentDbHpc0": {
+    "ClusterName": "docdb-dbtest-hpc-0",
+    "Tier": "M30",
     "MetricsResourceId": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-0"
   },
 
