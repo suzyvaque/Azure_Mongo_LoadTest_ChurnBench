@@ -35,29 +35,26 @@ public sealed class TaskConnectionFactory
     // construction — i.e. once per `new MongoClient(...)`, which under the no-reuse model means once per
     // Task. We resolve the SRV record OURSELVES (via DnsClient, same package Bmt.LoadGen's
     // TargetEndpointResolver already uses) on a periodic cache, and rewrite the cached settings to a
-    // PLAIN mongodb:// scheme pointed at the resolved host:port — this both removes the redundant
-    // per-Task DNS lookup AND makes DirectConnection legal (the driver rejects DirectConnection on an
-    // SRV-scheme client: "SRV cannot be used with direct connections"), letting DocumentDB skip its
-    // per-client SDAM topology monitor exactly like the mongo-vm/mongo-shard mitigations below.
+    // PLAIN mongodb:// scheme pointed at the resolved host:port — this removes the redundant per-Task
+    // DNS lookup. (It also makes DirectConnection legal for DocumentDB; that specific combination was
+    // tried and reverted — see the ACCESS-PATH ASYMMETRY note below.)
     //
-    // INCIDENT (documentdb private-endpoint connection-storm, two compounding causes):
+    // INCIDENT (documentdb private-endpoint connection-storm, three compounding causes found in order):
     //  1. TLS certificate-revocation checks (see the CheckCertificateRevocation=false fix below) serialized
     //     under concurrent cold handshakes — 40 concurrent handshakes each took ~29.5s vs <100ms sequential.
     //  2. Even after fixing (1), a sustained 135 tasks/s steady campaign still degraded badly (mean
     //     successful ~39/s, ServerSelectionTimeout dominant, p99 cycle latency in the hundreds of
     //     seconds) while Azure Monitor showed the DATABASE ITSELF idle (~0.4-0.6% CPU) throughout — a
-    //     purely client-side pile-up. This matches the documented mongo-shard "runaway concurrency
-    //     meltdown" mechanism (see results/run-20260624-1host-singleop/INCIDENT-runaway-concurrency-
-    //     meltdown.md): every live per-Task MongoClient that is NOT a direct single-server connection
-    //     keeps a background SDAM heartbeat monitor running for as long as that client object is alive;
-    //     once anything makes ops even slightly slower than expected, live-client count balloons (bounded
-    //     only by MaxConcurrentTasks), and thousands of accumulating monitors/threads snowball into the
-    //     observed tail-latency blowup. mongo-vm/mongo-shard were already fixed this way; DocumentDB was
-    //     originally assumed not to need it because it exposes a single gateway endpoint — true, but the
-    //     mitigation still requires DirectConnection=true, which needs the SRV rewrite above to be legal.
-    //     Confirmed via TargetEndpointResolver logs that this cluster's SRV record resolves to exactly ONE
-    //     host regardless of shardCount=2 (shard routing happens inside that one gateway node, invisible
-    //     to the client), so DirectConnection=true does not defeat any client-visible routing.
+    //     purely client-side pile-up. Caching the SRV resolution here (this comment) was applied next but
+    //     did not fix the sustained-load case either, nor did additionally forcing DirectConnection=true
+    //     (which made it slightly worse — see the DocumentDB DirectConnection revert note below).
+    //  3. Root cause: .NET ThreadPool starvation (see Program.cs's ThreadPool.SetMinThreads) — the
+    //     default MinThreads floor (= core count) can't keep up with the sudden concurrent-continuation
+    //     demand this no-reuse churn model creates, and the "hill-climbing" injector only grows the pool
+    //     ~1 thread/0.5-2s, so thousands of queued continuations under sustained load produce exactly the
+    //     same symptom signature (idle DB, ballooning client-side latency) as (1) and looked at first like
+    //     a DNS/SDAM-monitor problem. All three fixes are kept: (1) and this SRV-cache rewrite are real,
+    //     narrowly-scoped improvements; (3) is the fix that actually resolved sustained-load throughput.
     private static readonly TimeSpan SrvCacheRefreshInterval = TimeSpan.FromSeconds(15);
 
     private readonly string _connectionString;
@@ -141,22 +138,24 @@ public sealed class TaskConnectionFactory
         // Direct, single-server per-Task connections so each fresh client skips topology discovery +
         // its background heartbeat (SDAM) monitor. At thousands of concurrent clients that per-client
         // monitor (not the DB) becomes the bottleneck. The no-reuse model is unchanged; we just avoid
-        // paying topology-discovery overhead per Task.
+        // paying topology-discovery overhead per Task. Managed targets (SRV / gateway) are left exactly
+        // as their connection string specifies.
         //
-        // ITEM 5 — ACCESS-PATH ASYMMETRY (must be disclosed in every result summary): mongo-vm/mongo-shard
-        // pin to a direct single-server connection because their topology is otherwise MULTIPLE mongos
-        // routers (2 SDAM monitors/client). DocumentDB is a SINGLE managed SRV/gateway endpoint — no
-        // multi-router fan-out to preserve — but it turns out the SAME per-client SDAM-monitor cost still
-        // applies to ANY non-direct client regardless of router count, and still snowballs into a
-        // client-side meltdown at sustained high concurrency (see the class-level SRV-storm/meltdown
-        // comment above `SrvCacheRefreshInterval`). DocumentDB's connection string is first rewritten to a
-        // plain mongodb:// scheme pointed at its one resolved gateway host (see
-        // <see cref="ResolveSrvToDirectSettings"/>), which makes DirectConnection legal here too. Internal
-        // shard routing happens entirely inside that one gateway node, invisible to the client, so this
-        // does NOT defeat any client-visible routing — unlike mongo-shard there is no router fan-out being
-        // given up, so this is a pure overhead removal, not an access-path trade-off. Build-RunSummary.ps1
-        // still emits the general access-path-asymmetry caveat since mongo-vm/mongo-shard's direct pin
-        // trades away router fan-out while DocumentDB's does not.
+        // ITEM 5 — ACCESS-PATH ASYMMETRY (must be disclosed in every result summary): this direct-pin
+        // optimization applies ONLY to the self-managed mongo targets, which expose MULTIPLE mongos
+        // routers (so a per-client SDAM monitor per router would explode generator threads). DocumentDB
+        // is a SINGLE managed SRV/gateway endpoint with internal load-balancing.
+        //
+        // NOTE — DocumentDB DirectConnection was tried and REVERTED: after rewriting the connection to a
+        // plain mongodb:// scheme (see <see cref="ResolveSrvToDirectSettings"/>, kept — it is a real,
+        // measured improvement on its own), also forcing DirectConnection=true + ReplicaSetName=null was
+        // tested under the FULL sustained 135 tasks/s / 3x300s steady campaign and made things WORSE, not
+        // better: AuthenticationFailure jumped ~27x (27 -> 761) and created-connections-per-task rose
+        // ~37% (1.075 -> 1.467) versus the non-direct run, while the client-side pile-up (handles,
+        // ports, tail latency) was unchanged or worse. Root cause was later found to be ThreadPool
+        // starvation (see Program.cs's ThreadPool.SetMinThreads), NOT the SDAM monitor — so this
+        // DocumentDB-specific direct-pin traded away nothing proven and only added risk. Kept OFF pending
+        // a clean re-test once ThreadPool starvation is fixed.
         if (_tuning.DirectConnectionForSingleNode)
         {
             if (Target == TargetKey.MongoVm)
@@ -184,16 +183,6 @@ public sealed class TaskConnectionFactory
                     settings.DirectConnection = true;
                     settings.ReplicaSetName = null;
                 }
-            }
-            else if (Target == TargetKey.DocumentDb && settings.Scheme == ConnectionStringScheme.MongoDB)
-            {
-                // Only legal once ResolveSrvToDirectSettings has successfully rewritten the scheme away
-                // from SRV (the driver throws "SRV cannot be used with direct connections" otherwise). On
-                // the rare fallback path (SRV resolution failed and Scheme is still MongoDBPlusSrv), skip
-                // this and let the driver fall back to its own per-client SRV resolution instead of
-                // throwing.
-                settings.DirectConnection = true;
-                settings.ReplicaSetName = null;
             }
         }
 

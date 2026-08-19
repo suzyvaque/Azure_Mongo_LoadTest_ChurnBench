@@ -11,6 +11,24 @@ internal static class Program
         try
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+            // ---- ThreadPool floor (INCIDENT: sustained-load client meltdown, see TaskConnectionFactory's
+            // SRV-storm/meltdown comment) ----
+            // .NET's ThreadPool.MinThreads defaults to Environment.ProcessorCount (8 on this VM's
+            // Standard_D8ds_v5). Once concurrently-runnable continuations exceed that floor, the
+            // "hill-climbing" injector grows the pool by roughly ONE thread per ~0.5-2s — fine for
+            // gradual load, catastrophic for a benchmark that intentionally creates a fresh
+            // MongoClient + issues 4 ops per Task at 135 Tasks/s. Under sustained load, thousands of
+            // async continuations (connection-open callbacks, command callbacks) pile up waiting for a
+            // worker thread, and that queueing delay is indistinguishable from — and was originally
+            // misattributed to — DNS/TLS/DB latency: p50/p95/p99 op latencies balloon into the
+            // hundreds of seconds while Azure Monitor shows the database itself idle. Raising the floor
+            // up front avoids the slow ramp-up entirely. This costs some memory (each pool thread
+            // reserves ~1 MB of stack) but is negligible against the VM's 32 GB and is NOT one-thread-
+            // per-connection (operations are async I/O; pool threads are only borrowed briefly to run
+            // continuations, then returned).
+            ThreadPool.SetMinThreads(512, 512);
+
             var options = RunOptions.Parse(args);
             if (options.ShowHelp)
             {
