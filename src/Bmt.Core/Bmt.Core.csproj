@@ -11,6 +11,10 @@
 
   <ItemGroup>
     <PackageReference Include="MongoDB.Driver" Version="2.30.0" />
+    <!-- Used only to resolve DocumentDB's mongodb+srv SRV record ONCE per cache refresh (see
+         TaskConnectionFactory's SRV-storm mitigation) instead of per-Task; same package/version
+         Bmt.LoadGen already uses for TargetEndpointResolver. -->
+    <PackageReference Include="DnsClient" Version="1.6.1" />
   </ItemGroup>
 
 </Project>
