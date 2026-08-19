@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   In-run server-side sampler for self-managed MongoDB (Package B5, gap-fill). Polls serverStatus on
   EACH mongos router directly every -IntervalSeconds and appends a CSV row per router per tick, so a

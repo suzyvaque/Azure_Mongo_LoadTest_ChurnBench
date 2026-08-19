@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Create (or update) the read-only monitoring user `bmt_monitor` with the built-in `clusterMonitor`
   role on the `admin` database, so preflight and the post-run metric pull can call `serverStatus` /

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Runs ONE generator host's share of a coordinated multi-host open-loop burst campaign
   (test_instruction.md §6.2). Executes locally on each load-gen VM.

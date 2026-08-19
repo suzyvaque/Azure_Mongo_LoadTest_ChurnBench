@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Aggregates a coordinated multi-host burst campaign's per-host artifacts into combined per-second
   conn/s + concurrency and reports whether the ≥1,200 conn/s / ≥11,000 concurrent envelope was

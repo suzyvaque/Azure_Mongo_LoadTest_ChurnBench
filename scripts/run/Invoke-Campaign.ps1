@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Coordinator that OWNS the synchronized multi-host iteration loop for one target (test_instruction.md
   §6.2 Track C / §1). Runs from an operator box with Azure CLI.

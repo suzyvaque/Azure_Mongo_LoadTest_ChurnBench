@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Item 4/5: build an aggregated mongo-vs-documentdb markdown summary for ONE grouped run folder
   (results/run-{date}-{num}/) produced by a sequential campaign. Reads each target's per-iteration,

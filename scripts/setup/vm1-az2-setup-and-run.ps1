@@ -1,4 +1,4 @@
-# VM1-az2 Setup & DocumentDB Test Runbook
+﻿# VM1-az2 Setup & DocumentDB Test Runbook
 #
 # Run this script on VM1-az2 (Windows Server 2025) as Administrator in PowerShell.
 # It sets up the benchmark harness identically to VM1 and runs the DocumentDB Phase-1 tests.

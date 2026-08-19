@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Show or change the SHARED database-level provisioned throughput (RU/s) on the Cosmos DB for
     MongoDB (RU) backend used by this benchmark — for cost control between test rounds.

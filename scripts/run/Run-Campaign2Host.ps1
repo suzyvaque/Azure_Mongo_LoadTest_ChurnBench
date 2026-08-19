@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Run ONE host's share of the CANONICAL 2-host open-loop burst campaign. Every load-shaping constant is
   PINNED here so the run is byte-identical across targets — the DocumentDB campaign on the az2 pair and

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Server-side metric capture over a completed campaign's run window (handoff Package B5, report §8.7 #3).
   Pulls per-target backend evidence AFTER the run so there is zero load-gen impact and the timestamps

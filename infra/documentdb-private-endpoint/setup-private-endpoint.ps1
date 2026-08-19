@@ -1,4 +1,4 @@
-# Azure DocumentDB Private Endpoint Setup Automation
+﻿# Azure DocumentDB Private Endpoint Setup Automation
 # 
 # This script automates the setup of a private connection between DocumentDB and VM1-az2.
 # It performs VNet peering (if needed), links the Private DNS zone, and validates connectivity.

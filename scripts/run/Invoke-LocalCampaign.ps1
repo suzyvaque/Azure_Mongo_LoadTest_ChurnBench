@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Run a full benchmark campaign on ONE machine (or one co-located VM set), SEQUENTIALLY across targets,
   then auto-generate the summary + cross-target comparison + HTML report — no manual "summarize this"
