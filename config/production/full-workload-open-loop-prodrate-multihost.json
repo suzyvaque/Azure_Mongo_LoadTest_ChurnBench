@@ -1,0 +1,39 @@
+{
+  // PRODUCTION config -- MULTI-HOST open-loop tuned to the PRODUCTION ACCEPT RATE (~1,210 conn/s combined),
+  // used to reproduce the production connection SHAPE on a healthy backend rather than to overload it (sec 4b-2).
+  //
+  // Goal: offer ~1,210 new connections/s combined (production accept rate). Full 4-op workload. THREE
+  // co-located generators (host-count 3) are used: a single host's arrival loop is thread-pool-throttled to
+  // a few hundred conn/s for this no-reuse shape even at low CPU, so the load is spread and each host runs
+  // with a raised ThreadPool floor (DOTNET_ThreadPool_ForceMinWorkerThreads) set by the runner.
+  //
+  //   Run each host with:  --host-id N --host-count 3 --run-tag <campaign> --start-at <UTC> --scenario burst
+  //   Then aggregate with: report merge --input results --tag <campaign>
+  //
+  // SIZING MATH (3 hosts):
+  //   * Offered conn/s per host = JobsPerSecondLambda * mean(MinTasksPerJob..MaxTasksPerJob)
+  //                             = 2.02 * mean(100..300 = 200) = ~404 conn/s/host.
+  //   * Combined offered conn/s = 3 * 404 = ~1,212 conn/s  (~= production accept rate).
+  //   * Concurrency = combined conn/s * per-Task hold (~3.6 s) = 1,212 * 3.6 = ~4,400 concurrent on a
+  //     HEALTHY backend (fast establishment). NOTE: this reproduces the production RATE; the concurrency
+  //     that emerges depends on backend health -- a healthy 2-shard cluster does NOT accumulate to ~11k the
+  //     way the collapsing single-shard baseline did. TaskSleepMs is kept at the sec-4b-2 baseline (3,500 ms).
+  //   Verify the ACTUAL peak conn/s and concurrency in the run JSON / report merge.
+  "Extends": "full-workload-open-loop-multihost.json",
+
+  // Match the sec-4b-2 baseline hold (3,500 ms). A longer hold makes open-loop accumulate in-flight tasks
+  // faster than a saturating backend can drain them (runaway), so 3,500 ms keeps the run convergent.
+  "TaskSleepMs": 3500,
+
+  "Scenario": {
+    "Burst": {
+      "Enabled": true,
+      "OpenLoop": true,
+
+      // Per-host arrival tuned to ~404 conn/s (2.02 * mean(100..300)=200 = ~404); 3 hosts -> ~1,212 combined.
+      "JobsPerSecondLambda": 2.02,
+      "MinTasksPerJob": 100,
+      "MaxTasksPerJob": 300
+    }
+  }
+}
