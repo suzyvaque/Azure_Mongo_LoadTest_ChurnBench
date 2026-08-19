@@ -26,11 +26,35 @@ public sealed class TaskConnectionFactory
     private static readonly HashSet<string> HandshakeCommands =
         new(StringComparer.OrdinalIgnoreCase) { "hello", "isMaster", "saslStart", "saslContinue" };
 
+    // DocumentDB's connection string uses the mongodb+srv scheme, whose FIRST resolution requires a
+    // "_mongodb._tcp.<host>" SRV lookup (plus a TXT lookup for default options) against the private-zone
+    // resolver. `MongoClientSettings.FromConnectionString` performs that lookup synchronously EVERY time
+    // it is called — see INCIDENT below. We resolve it once per this interval and hand every Task a
+    // Clone() of the already-resolved settings instead, which carries zero further DNS cost (Clone()
+    // copies the already-resolved Servers list; nothing re-resolves SRV at connect time).
+    //
+    // INCIDENT (documentdb private-endpoint DNS storm): under the no-reuse model's concurrent Task
+    // creation, each Task independently called FromConnectionString on the raw "mongodb+srv://..."
+    // string, so hundreds of Tasks/sec each fired their OWN SRV lookup. Measured directly: 40 concurrent
+    // SRV lookups against docdb-dbtest-hpc-1's privatelink zone left only ~3/40 completing within 45 s
+    // (even with a warmed resolver cache — ruling out a simple cache-stampede and pointing at a genuine
+    // per-source concurrent-query ceiling on this private-zone resolution path), which snowballed into the
+    // ServerSelectionTimeout storm seen in the M80 steady campaign (28% success, p50 connection-open
+    // ~53 s) despite the database itself sitting idle (~0.5% CPU) throughout. Caching the resolution here
+    // removes the redundant per-Task DNS work entirely while still handing every Task a brand-new
+    // MongoClientSettings/MongoClient (no violation of the no-reuse model — only the DNS ANSWER is
+    // reused, refreshed well inside the SRV record's 30 s TTL). Scoped to DocumentDB only: the other
+    // targets use plain mongodb:// seeds and never pay this cost.
+    private static readonly TimeSpan SrvCacheRefreshInterval = TimeSpan.FromSeconds(15);
+
     private readonly string _connectionString;
     private readonly bool _disableRetryWrites;
     private readonly IConnectionEventObserver? _observer;
     private readonly RetryEventCounters? _retryCounters;
     private readonly ClientConfig _tuning;
+    private readonly object _srvCacheLock = new();
+    private volatile MongoClientSettings? _cachedResolvedSettings;
+    private DateTime _cachedResolvedAtUtc = DateTime.MinValue;
     private int _rrCounter = -1;
 
     public TaskConnectionFactory(
@@ -85,7 +109,7 @@ public sealed class TaskConnectionFactory
     /// </summary>
     public MongoClientSettings BuildSettings(IConnectionEventObserver? perTaskObserver = null)
     {
-        var settings = MongoClientSettings.FromConnectionString(_connectionString);
+        var settings = ResolveBaseSettings();
 
         // Hard no-reuse constraints (§2.3): pool of exactly one, never pre-warmed.
         settings.MaxConnectionPoolSize = 1;
@@ -246,6 +270,43 @@ public sealed class TaskConnectionFactory
         };
 
         return settings;
+    }
+
+    /// <summary>
+    /// Parse <see cref="_connectionString"/> into a fresh <see cref="MongoClientSettings"/> base, per Task
+    /// for every target EXCEPT DocumentDB. For DocumentDB (mongodb+srv scheme), reuse a periodically
+    /// refreshed cached parse via <see cref="MongoClientSettings.Clone"/> — see the class-level SRV-storm
+    /// comment on <see cref="SrvCacheRefreshInterval"/>. <c>Clone()</c> copies the already-resolved
+    /// <c>Servers</c> list; nothing re-resolves SRV at connect time, so every Task still gets its own
+    /// settings/client instance with zero incremental DNS cost.
+    /// </summary>
+    private MongoClientSettings ResolveBaseSettings()
+    {
+        if (Target != TargetKey.DocumentDb)
+        {
+            return MongoClientSettings.FromConnectionString(_connectionString);
+        }
+
+        var cached = _cachedResolvedSettings;
+        if (cached is not null && DateTime.UtcNow - _cachedResolvedAtUtc < SrvCacheRefreshInterval)
+        {
+            return cached.Clone();
+        }
+
+        lock (_srvCacheLock)
+        {
+            // Re-check inside the lock: another Task may have refreshed while we were waiting.
+            cached = _cachedResolvedSettings;
+            if (cached is not null && DateTime.UtcNow - _cachedResolvedAtUtc < SrvCacheRefreshInterval)
+            {
+                return cached.Clone();
+            }
+
+            var fresh = MongoClientSettings.FromConnectionString(_connectionString);
+            _cachedResolvedSettings = fresh;
+            _cachedResolvedAtUtc = DateTime.UtcNow;
+            return fresh.Clone();
+        }
     }
 
     private static void Notify(IConnectionEventObserver[] observers, Action<IConnectionEventObserver> action)
