@@ -1,0 +1,50 @@
+{
+  // PRODUCTION config — M80-vs-M200 TIER SIZING TEST (docdb-tier-test campaign).
+  // Reproduces the stated production workload envelope on the FIXED architecture (2 shards, HA, private):
+  //     ~1,200 NEW connections/sec  AND  ~11,000 mostly-idle CONCURRENT connections, held simultaneously.
+  //
+  // This single config is used IDENTICALLY for all six measured runs (M80 x3, M200 x3) so the two tiers
+  // are directly comparable. Only the DocumentDB tier changes between campaigns; the offered workload does
+  // not. Runs open-loop (ungated) across the three AZ1 generators so realized load == offered schedule on
+  // both tiers (a controlled INPUT for a fair cross-tier comparison).
+  //
+  //   Run each host with:  --host-id N --host-count 3 --run-tag <campaign> --start-at <UTC> --scenario burst
+  //   Then aggregate with: report merge --input results --tag <campaign>
+  //
+  // SIZING MATH (3 hosts, open-loop):
+  //   * Offered conn/s per host = JobsPerSecondLambda * mean(MinTasksPerJob..MaxTasksPerJob)
+  //                             = 2.02 * mean(100..300 = 200) = ~404 conn/s/host  (< 1,850 port ceiling).
+  //   * Combined offered conn/s = 3 * 404 = ~1,212 conn/s   (== the ~1,200 conn/s production accept rate).
+  //   * Concurrency = combined conn/s * per-Task hold. Hold = TaskSleepMs (9,000 ms idle, "mostly-idle")
+  //                   + ~0.1-0.2 s op/establishment ≈ 9.2 s.  1,212 * 9.2 ≈ ~11,150 concurrent
+  //                   (== the ~11,000 concurrent target). ~3,700 held connections/host (demonstrated
+  //                   feasible: the hold config parks 4,000/host).
+  //   Verify the ACTUAL peak conn/s and concurrency in the run JSON / report merge for every run.
+  //
+  // NOTE ON HEALTH: at 9 s hold and only 404 conn/s/host, open-loop steady-state concurrency is ~3,700/host
+  // PROVIDED establishment stays fast. If a tier cannot establish 1,212 conn/s while holding ~11k idle, the
+  // in-flight population grows (runaway) and tail E2E latency climbs — that divergence is itself a primary
+  // sizing signal (connection-admission bottleneck), so it is intentionally left un-clamped here.
+  "Extends": "full-workload-open-loop-multihost.json",
+
+  // 9 s idle hold per Task ("mostly-idle" connection) so ~1,212 conn/s accumulates to ~11,000 concurrent.
+  "TaskSleepMs": 9000,
+
+  // Item 7: warm ALL 100,000 input documents (untimed) before the timed phase so both tiers start from an
+  // identically warm cache (comparable cold-cache-free measurement).
+  "Preflight": {
+    "WarmupSampleSize": 100000
+  },
+
+  "Scenario": {
+    "Burst": {
+      "Enabled": true,
+      "OpenLoop": true,
+
+      // Per-host arrival tuned to ~404 conn/s (2.02 * mean(100..300)=200); 3 hosts -> ~1,212 combined.
+      "JobsPerSecondLambda": 2.02,
+      "MinTasksPerJob": 100,
+      "MaxTasksPerJob": 300
+    }
+  }
+}

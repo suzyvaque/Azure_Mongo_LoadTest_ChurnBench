@@ -1,0 +1,181 @@
+{
+  "runWindowStartUtc": "2026-08-20T02:34:35Z",
+  "runWindowEndUtc": "2026-08-20T02:41:15Z",
+  "capturedUtc": "2026-08-20T04:01:55.3535924Z",
+  "subscription": "01c04f52-ad2b-4cc0-b77b-61508ec58f51",
+  "resourceGroup": "rg-db-test-hpc",
+  "targets": [
+    "documentdb"
+  ],
+  "captured": true,
+  "perTarget": {
+    "documentdb": {
+      "captured": true,
+      "kind": "vcore-cluster",
+      "cluster": "docdb-dbtest-hpc-1",
+      "tier": "M80",
+      "note": "vCore has no active-connection counter, but MongoRequestDurationMs Count = server-side RPS and its StatusCodeClass dimension surfaces 4xx/5xx (throttles). Concurrent/created connection counts still come from the client-side merge.",
+      "metrics": {
+        "CpuPercent": {
+          "unit": "Percent",
+          "avg": 3.473,
+          "max": 22.136,
+          "min": 0.34,
+          "total": 182.756,
+          "count": 52.0,
+          "samples": 7
+        },
+        "MemoryPercent": {
+          "unit": "Percent",
+          "avg": 29.397,
+          "max": 31.791,
+          "min": 28.718,
+          "total": 1528.923,
+          "count": 52.0,
+          "samples": 7
+        },
+        "CommittedMemoryPercent": {
+          "unit": "Percent",
+          "avg": 3.897,
+          "max": 6.515,
+          "min": 2.926,
+          "total": 202.686,
+          "count": 52.0,
+          "samples": 7
+        },
+        "AutoscaleUtilizationPercent": {
+          "unit": "Percent",
+          "avg": null,
+          "max": null,
+          "min": null,
+          "total": null,
+          "count": 7.0,
+          "samples": 7
+        },
+        "StoragePercent": {
+          "unit": "Percent",
+          "avg": 6.129,
+          "max": 6.15,
+          "min": 6.116,
+          "total": 318.689,
+          "count": 52.0,
+          "samples": 7
+        },
+        "StorageUsed": {
+          "unit": "Bytes",
+          "avg": 33096750484.027,
+          "max": 33209688064.0,
+          "min": 33023823872.0,
+          "total": 1720850468864.0,
+          "count": 52.0,
+          "samples": 7
+        },
+        "IOPS": {
+          "unit": "Count",
+          "avg": 202.006,
+          "max": 353.0,
+          "min": 0.0,
+          "total": 10202.0,
+          "count": 52.0,
+          "samples": 7
+        },
+        "NetworkBytesIngress": {
+          "unit": "Bytes",
+          "avg": 117367703.489,
+          "max": 1124298335.0,
+          "min": 179180.0,
+          "total": 12533792905.0,
+          "count": 104.0,
+          "samples": 7
+        },
+        "NetworkBytesEgress": {
+          "unit": "Bytes",
+          "avg": 306883415.37,
+          "max": 2219216925.0,
+          "min": 301643.0,
+          "total": 32399713507.0,
+          "count": 104.0,
+          "samples": 7
+        },
+        "MongoRequestDurationMs": {
+          "unit": "MilliSeconds",
+          "avg": 0.889,
+          "max": 1064.0,
+          "min": 0.0,
+          "total": 1357468.0,
+          "count": 1460370.0,
+          "samples": 7
+        }
+      },
+      "requestByOperation": {
+        "IsMaster": {
+          "requestCount": 577474.0,
+          "avgMs": 0.0,
+          "maxMs": 6.0
+        },
+        "Find": {
+          "requestCount": 311207.0,
+          "avgMs": 0.8,
+          "maxMs": 1042.0
+        },
+        "SaslStart": {
+          "requestCount": 156995.0,
+          "avgMs": 0.15,
+          "maxMs": 125.0
+        },
+        "SaslContinue": {
+          "requestCount": 155615.0,
+          "avgMs": 0.24,
+          "maxMs": 159.0
+        },
+        "Delete": {
+          "requestCount": 130498.0,
+          "avgMs": 4.77,
+          "maxMs": 820.0
+        },
+        "Insert": {
+          "requestCount": 128585.0,
+          "avgMs": 4.02,
+          "maxMs": 1064.0
+        },
+        "Ping": {
+          "requestCount": 7.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "BuildInfo": {
+          "requestCount": 7.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "Aggregate": {
+          "requestCount": 7.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "ListIndexes": {
+          "requestCount": 7.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "GetMore": {
+          "requestCount": 7.0,
+          "avgMs": null,
+          "maxMs": null
+        }
+      },
+      "requestByStatus": {
+        "2xx": {
+          "requestCount": 1460325.0,
+          "avgMs": 0.89,
+          "maxMs": 1064.0
+        },
+        "4xx": {
+          "requestCount": 46.0,
+          "avgMs": 22.56,
+          "maxMs": 251.0
+        }
+      }
+    }
+  }
+}

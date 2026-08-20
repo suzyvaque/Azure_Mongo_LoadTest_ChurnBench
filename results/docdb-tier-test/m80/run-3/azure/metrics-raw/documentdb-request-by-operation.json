@@ -1,0 +1,506 @@
+{
+  "cost": 18,
+  "interval": "PT1M",
+  "namespace": "Microsoft.DocumentDB/mongoClusters",
+  "resourceregion": "koreacentral",
+  "timespan": "2026-08-20T02:55:55Z/2026-08-20T03:02:35Z",
+  "value": [
+    {
+      "displayDescription": "The end-to-end duration in milliseconds of client Mongo DB requests handled by the Mongo cluster. Updated every 60 seconds.",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/MongoRequestDurationMs",
+      "name": {
+        "localizedValue": "Mongo request duration",
+        "value": "MongoRequestDurationMs"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 0.0,
+              "count": 24.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 8397.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 6.260564702936204e-05,
+              "count": 95838.0,
+              "maximum": 2.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 1.9887634863023915e-05,
+              "count": 100565.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 8.375069094320028e-05,
+              "count": 119402.0,
+              "maximum": 6.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 111315.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 8.743475181645697e-05,
+              "count": 114371.0,
+              "maximum": 2.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "IsMaster"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "average": 0.5480085810869377,
+              "count": 92296.0,
+              "maximum": 73.0,
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.8192712154561017,
+              "count": 4089.0,
+              "maximum": 55.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 0.5606643780991019,
+              "count": 57678.0,
+              "maximum": 158.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 0.5432017663911243,
+              "count": 54801.0,
+              "maximum": 120.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 0.6048266071790712,
+              "count": 49310.0,
+              "maximum": 125.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.9589698905992836,
+              "count": 51645.0,
+              "maximum": 1037.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 0.6775456919060052,
+              "count": 49790.0,
+              "maximum": 1045.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Find"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.00505293551491819,
+              "count": 4156.0,
+              "maximum": 4.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 0.016345629947758084,
+              "count": 31201.0,
+              "maximum": 24.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 0.016569637259292433,
+              "count": 29029.0,
+              "maximum": 9.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 0.013485087521598677,
+              "count": 26622.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.07922328627124418,
+              "count": 26419.0,
+              "maximum": 80.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 0.014892668795959296,
+              "count": 26926.0,
+              "maximum": 9.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "SaslStart"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.022821073075989316,
+              "count": 4119.0,
+              "maximum": 6.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 0.033893936464978416,
+              "count": 31038.0,
+              "maximum": 25.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 0.03874938798349304,
+              "count": 28594.0,
+              "maximum": 11.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 0.03269370159844352,
+              "count": 26213.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.09734005961935335,
+              "count": 26166.0,
+              "maximum": 94.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 0.03646738719673494,
+              "count": 26462.0,
+              "maximum": 11.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "SaslContinue"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 3.4346142162818953,
+              "count": 26336.0,
+              "maximum": 212.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 3.3756415166602833,
+              "count": 26110.0,
+              "maximum": 59.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 3.5813653546808983,
+              "count": 22485.0,
+              "maximum": 218.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 3.7622285948381813,
+              "count": 24410.0,
+              "maximum": 368.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 3.7013015957921014,
+              "count": 22434.0,
+              "maximum": 249.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Insert"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 3.68293758729692,
+              "count": 27206.0,
+              "maximum": 217.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 3.5573398758410466,
+              "count": 26901.0,
+              "maximum": 61.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 3.7782618771726537,
+              "count": 21575.0,
+              "maximum": 131.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 4.601807900276551,
+              "count": 24227.0,
+              "maximum": 1043.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 3.923243292991579,
+              "count": 21731.0,
+              "maximum": 428.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Delete"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "ListIndexes"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "GetMore"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Ping"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Aggregate"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "BuildInfo"
+            }
+          ]
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "MilliSeconds"
+    }
+  ]
+}
+

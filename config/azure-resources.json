@@ -28,7 +28,7 @@
   // not currently targeted).
   "DocumentDb": {
     "ClusterName": "docdb-dbtest-hpc-1",
-    "Tier": "M80",
+    "Tier": "M200",
     "MetricsResourceId": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1"
   },
 

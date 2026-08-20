@@ -1,0 +1,119 @@
+{
+  "cost": 15,
+  "interval": "PT1M",
+  "namespace": "Microsoft.DocumentDB/mongoClusters",
+  "resourceregion": "koreacentral",
+  "timespan": "2026-08-20T02:45:17Z/2026-08-20T02:51:57Z",
+  "value": [
+    {
+      "displayDescription": "The end-to-end duration in milliseconds of client Mongo DB requests handled by the Mongo cluster. Updated every 60 seconds.",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/MongoRequestDurationMs",
+      "name": {
+        "localizedValue": "Mongo request duration",
+        "value": "MongoRequestDurationMs"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 0.4858720810321516,
+              "count": 43637.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 0.7858091017413299,
+              "count": 191348.0,
+              "maximum": 228.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 0.8289925815307233,
+              "count": 269193.0,
+              "maximum": 222.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 0.7688857490828945,
+              "count": 271779.0,
+              "maximum": 67.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 0.6946783220710181,
+              "count": 267115.0,
+              "maximum": 329.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 0.9546908134861594,
+              "count": 265487.0,
+              "maximum": 367.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "statuscodeclass",
+                "value": "statuscodeclass"
+              },
+              "value": "2xx"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 3.75,
+              "count": 4.0,
+              "maximum": 5.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 8.666666666666666,
+              "count": 6.0,
+              "maximum": 16.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 10.4,
+              "count": 10.0,
+              "maximum": 26.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 9.88888888888889,
+              "count": 9.0,
+              "maximum": 19.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 15.875,
+              "count": 8.0,
+              "maximum": 39.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "statuscodeclass",
+                "value": "statuscodeclass"
+              },
+              "value": "4xx"
+            }
+          ]
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "MilliSeconds"
+    }
+  ]
+}
+
