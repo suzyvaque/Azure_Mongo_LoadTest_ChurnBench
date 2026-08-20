@@ -1,0 +1,211 @@
+{
+  "runWindowStartUtc": "2026-08-19T14:10:00Z",
+  "runWindowEndUtc": "2026-08-19T14:29:30Z",
+  "capturedUtc": "2026-08-19T14:35:32.1793371Z",
+  "subscription": "01c04f52-ad2b-4cc0-b77b-61508ec58f51",
+  "resourceGroup": "rg-db-test-hpc",
+  "targets": [
+    "documentdb"
+  ],
+  "captured": true,
+  "perTarget": {
+    "documentdb": {
+      "captured": true,
+      "kind": "vcore-cluster",
+      "cluster": "docdb-dbtest-hpc-1",
+      "tier": "M80",
+      "note": "vCore has no active-connection counter, but MongoRequestDurationMs Count = server-side RPS and its StatusCodeClass dimension surfaces 4xx/5xx (throttles). Concurrent/created connection counts still come from the client-side merge.",
+      "metrics": {
+        "CpuPercent": {
+          "unit": "Percent",
+          "avg": 1.341,
+          "max": 4.698,
+          "min": 0.283,
+          "total": 203.419,
+          "count": 151.0,
+          "samples": 19
+        },
+        "MemoryPercent": {
+          "unit": "Percent",
+          "avg": 28.799,
+          "max": 28.988,
+          "min": 28.658,
+          "total": 4348.635,
+          "count": 151.0,
+          "samples": 19
+        },
+        "CommittedMemoryPercent": {
+          "unit": "Percent",
+          "avg": 3.014,
+          "max": 3.339,
+          "min": 2.846,
+          "total": 455.103,
+          "count": 151.0,
+          "samples": 19
+        },
+        "AutoscaleUtilizationPercent": {
+          "unit": "Percent",
+          "avg": null,
+          "max": null,
+          "min": null,
+          "total": null,
+          "count": 19.0,
+          "samples": 19
+        },
+        "StoragePercent": {
+          "unit": "Percent",
+          "avg": 6.464,
+          "max": 7.292,
+          "min": 6.445,
+          "total": 975.995,
+          "count": 151.0,
+          "samples": 19
+        },
+        "StorageUsed": {
+          "unit": "Bytes",
+          "avg": 34901669437.594,
+          "max": 39375609856.0,
+          "min": 34803396608.0,
+          "total": 5270163230720.0,
+          "count": 151.0,
+          "samples": 19
+        },
+        "IOPS": {
+          "unit": "Count",
+          "avg": 92.402,
+          "max": 144.0,
+          "min": 0.0,
+          "total": 14043.0,
+          "count": 151.0,
+          "samples": 19
+        },
+        "NetworkBytesIngress": {
+          "unit": "Bytes",
+          "avg": 59511401.944,
+          "max": 2368029554.0,
+          "min": 134872.0,
+          "total": 18090651714.0,
+          "count": 302.0,
+          "samples": 19
+        },
+        "NetworkBytesEgress": {
+          "unit": "Bytes",
+          "avg": 156323372.275,
+          "max": 2993933487.0,
+          "min": 246827.0,
+          "total": 47518927334.0,
+          "count": 302.0,
+          "samples": 19
+        },
+        "MongoRequestDurationMs": {
+          "unit": "MilliSeconds",
+          "avg": 0.786,
+          "max": 6725.0,
+          "min": 0.0,
+          "total": 803505.0,
+          "count": 1023265.0,
+          "samples": 19
+        }
+      },
+      "requestByOperation": {
+        "Find": {
+          "requestCount": 330743.0,
+          "avgMs": 0.49,
+          "maxMs": 6725.0
+        },
+        "IsMaster": {
+          "requestCount": 230770.0,
+          "avgMs": 0.0,
+          "maxMs": 4.0
+        },
+        "SaslStart": {
+          "requestCount": 115374.0,
+          "avgMs": 0.02,
+          "maxMs": 8.0
+        },
+        "SaslContinue": {
+          "requestCount": 115374.0,
+          "avgMs": 0.06,
+          "maxMs": 9.0
+        },
+        "Delete": {
+          "requestCount": 115370.0,
+          "avgMs": 2.68,
+          "maxMs": 57.0
+        },
+        "Insert": {
+          "requestCount": 115368.0,
+          "avgMs": 2.85,
+          "maxMs": 54.0
+        },
+        "GetMore": {
+          "requestCount": 287.0,
+          "avgMs": 31.74,
+          "maxMs": 481.0
+        },
+        "ListIndexes": {
+          "requestCount": 22.0,
+          "avgMs": 0.0,
+          "maxMs": 0.0
+        },
+        "Aggregate": {
+          "requestCount": 21.0,
+          "avgMs": 47.67,
+          "maxMs": 90.0
+        },
+        "Ping": {
+          "requestCount": 20.0,
+          "avgMs": 0.0,
+          "maxMs": 0.0
+        },
+        "BuildInfo": {
+          "requestCount": 20.0,
+          "avgMs": 0.0,
+          "maxMs": 0.0
+        },
+        "ListShards": {
+          "requestCount": 19.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "CollStats": {
+          "requestCount": 19.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "CreateIndexes": {
+          "requestCount": 19.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "ShardCollection": {
+          "requestCount": 19.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "Distinct": {
+          "requestCount": 19.0,
+          "avgMs": null,
+          "maxMs": null
+        },
+        "Count": {
+          "requestCount": 19.0,
+          "avgMs": null,
+          "maxMs": null
+        }
+      },
+      "requestByStatus": {
+        "2xx": {
+          "requestCount": 1023265.0,
+          "avgMs": 0.79,
+          "maxMs": 6725.0
+        },
+        "4xx": {
+          "requestCount": 19.0,
+          "avgMs": null,
+          "maxMs": null
+        }
+      }
+    }
+  }
+}

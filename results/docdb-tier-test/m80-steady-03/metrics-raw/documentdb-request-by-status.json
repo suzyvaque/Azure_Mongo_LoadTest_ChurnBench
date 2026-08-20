@@ -1,0 +1,215 @@
+{
+  "cost": 54,
+  "interval": "PT1M",
+  "namespace": "Microsoft.DocumentDB/mongoClusters",
+  "resourceregion": "koreacentral",
+  "timespan": "2026-08-19T14:10:00Z/2026-08-19T14:29:30Z",
+  "value": [
+    {
+      "displayDescription": "The end-to-end duration in milliseconds of client Mongo DB requests handled by the Mongo cluster. Updated every 60 seconds.",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/MongoRequestDurationMs",
+      "name": {
+        "localizedValue": "Mongo request duration",
+        "value": "MongoRequestDurationMs"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-19T14:10:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:11:00Z"
+            },
+            {
+              "average": 1.012672811059908,
+              "count": 18228.0,
+              "maximum": 6725.0,
+              "timeStamp": "2026-08-19T14:12:00Z"
+            },
+            {
+              "average": 0.39347158541202204,
+              "count": 47546.0,
+              "maximum": 30.0,
+              "timeStamp": "2026-08-19T14:13:00Z"
+            },
+            {
+              "average": 0.5908761056739953,
+              "count": 50987.0,
+              "maximum": 55.0,
+              "timeStamp": "2026-08-19T14:14:00Z"
+            },
+            {
+              "average": 0.8702314814814814,
+              "count": 64800.0,
+              "maximum": 54.0,
+              "timeStamp": "2026-08-19T14:15:00Z"
+            },
+            {
+              "average": 0.7094360003086182,
+              "count": 64805.0,
+              "maximum": 36.0,
+              "timeStamp": "2026-08-19T14:16:00Z"
+            },
+            {
+              "average": 0.6566044724292791,
+              "count": 64797.0,
+              "maximum": 34.0,
+              "timeStamp": "2026-08-19T14:17:00Z"
+            },
+            {
+              "average": 0.7127710471486998,
+              "count": 64795.0,
+              "maximum": 58.0,
+              "timeStamp": "2026-08-19T14:18:00Z"
+            },
+            {
+              "average": 0.7189560737947834,
+              "count": 64449.0,
+              "maximum": 40.0,
+              "timeStamp": "2026-08-19T14:19:00Z"
+            },
+            {
+              "average": 0.8578594027316923,
+              "count": 64795.0,
+              "maximum": 51.0,
+              "timeStamp": "2026-08-19T14:20:00Z"
+            },
+            {
+              "average": 0.8560649312574259,
+              "count": 64807.0,
+              "maximum": 37.0,
+              "timeStamp": "2026-08-19T14:21:00Z"
+            },
+            {
+              "average": 0.8370786516853933,
+              "count": 64792.0,
+              "maximum": 38.0,
+              "timeStamp": "2026-08-19T14:22:00Z"
+            },
+            {
+              "average": 0.8835429365018131,
+              "count": 64805.0,
+              "maximum": 35.0,
+              "timeStamp": "2026-08-19T14:23:00Z"
+            },
+            {
+              "average": 0.8313191330923533,
+              "count": 64459.0,
+              "maximum": 35.0,
+              "timeStamp": "2026-08-19T14:24:00Z"
+            },
+            {
+              "average": 0.8562940786123243,
+              "count": 64799.0,
+              "maximum": 40.0,
+              "timeStamp": "2026-08-19T14:25:00Z"
+            },
+            {
+              "average": 0.8737519482724032,
+              "count": 64801.0,
+              "maximum": 57.0,
+              "timeStamp": "2026-08-19T14:26:00Z"
+            },
+            {
+              "average": 0.8568937312880027,
+              "count": 64798.0,
+              "maximum": 44.0,
+              "timeStamp": "2026-08-19T14:27:00Z"
+            },
+            {
+              "average": 0.8488117283950617,
+              "count": 64800.0,
+              "maximum": 51.0,
+              "timeStamp": "2026-08-19T14:28:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "statuscodeclass",
+                "value": "statuscodeclass"
+              },
+              "value": "2xx"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-19T14:10:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:11:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:12:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:13:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:14:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:15:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:16:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:17:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:18:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:19:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:20:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:21:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:22:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:23:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:24:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:25:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:26:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:27:00Z"
+            },
+            {
+              "timeStamp": "2026-08-19T14:28:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "statuscodeclass",
+                "value": "statuscodeclass"
+              },
+              "value": "4xx"
+            }
+          ]
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "MilliSeconds"
+    }
+  ]
+}
+
