@@ -2,17 +2,17 @@
 
 A database supporting high-performance computing (HPC) can face relatively modest query volume and still experience severe connection pressure. When short-lived tasks repeatedly establish clients, negotiate TLS, authenticate, and disconnect, the connection lifecycle becomes a capacity requirement of its own.
 
-Caldova Securities selected **Azure DocumentDB M80 with two shards and high availability (HA) enabled**, citing stability and performance. According to the client, its previous MongoDB deployment consisted of five components: two primaries, two standbys, and one `mongos` router.
+Caldova Securities selected **Azure DocumentDB M80 with two shards and high availability (HA) enabled**, citing stability and performance. According to the client, its previous MongoDB deployment used four VMs: two primaries and two standbys.
 
-This article describes the workload, the validation method, the configuration details that affected the tests, and the lessons another team can apply. Caldova Securities is a pseudonym. The final test campaign ran on 2026-08-03; some results come from earlier campaigns on 2026-08-02 and 2026-07-15, identified in Section 5. The measurements describe the tested database access pattern, not the performance of the HPC calculation engine or a quantified post-migration availability improvement.
+This article describes the workload, the validation method, the configuration details that affected the tests, and the lessons another team can apply. Caldova Securities is a pseudonym. The final test campaign ran on 2026-08-03 (earlier campaigns are identified in Section 5). The measurements describe the database access pattern, not the HPC calculation engine or a quantified post-migration availability improvement.
 
 ## Key Takeaways
 
-- At the production task rate (about 135 tasks/s, four operations per task, a new client per task), DocumentDB M80 with two shards and MongoDB with four routers both sustained the load. DocumentDB had the lower median latency; MongoDB had the tighter tail.
-- Task rate and connection pressure are separate requirements. About 11,000 mostly idle connections is not 11,000 active workloads.
-- Both targets reached 12,000 held connections, but that was the configured ceiling. M80 averaged 4,476 Ready connections versus 10,570 for MongoDB with four routers, and exceeded 10,000 in 2 of 3 iterations versus 3 of 3.
-- The selected two-shard M80 was not tested at the production burst rate of about 1,210 connections/s. The overload results show saturation, not acceptable production behavior.
-- No cost saving, availability improvement, or failover behavior was measured.
+- **Normal vs worst case:** Normal behavior is about 135 tasks/s (four operations per task); in production on DocumentDB the maximum observed was about 200 IOPS with very low CPU utilization. The worst case is a burst of about 1,210 new connections/s that accumulates about 11,000 mostly idle connections. The burst is a connection-lifecycle requirement, not 11,000 active queries.
+- **Normal behavior:** With a new client per task at 135 tasks/s, DocumentDB M80 with two shards matched MongoDB with four routers on throughput (134.9 tasks/s) with near-zero errors, and had the lower median read latency (27.5 vs 45.6 ms).
+- **Resource use:** DocumentDB server CPU stayed at about 0.8-1.5% in the retained telemetry. In the two-router MongoDB benchmark, VM1 averaged 65.2% and peaked at 99.7% CPU, while VM2 averaged 44.5% and peaked at 99.6%; the configuration capped at 4,714 held connections. Adding two dedicated router VMs removed that bottleneck.
+- **Worst case:** At the 12,000-connection test ceiling, DocumentDB had far fewer connection failures (88 of 49,885 attempts, 0.2%, against 2,377 of 38,991, 6.1%) but a higher keepalive p99 (23.3 vs 14.8 s). That is consistent with a managed (PaaS) front end, where each new connection passes through the gateway and authentication. Under overload its connection-open tail was lower (22.3 vs 159.7 s).
+- **Limit:** Both targets saturated under overload. DocumentDB's constraint was connection admission, not CPU, so reuse clients and bound load rather than rely on capacity.
 
 ## 1. Translate the Existing Workload into Requirements
 
@@ -30,9 +30,8 @@ The architecture change can be summarized as follows:
 ```mermaid
 flowchart LR
     subgraph Existing["As-is: self-managed MongoDB"]
-        TasksA[HPC tasks] --> Router[One mongos]
-        Router --> PrimaryA[Primary 1]
-        Router --> PrimaryB[Primary 2]
+        TasksA[HPC tasks] --> PrimaryA[Primary 1]
+        TasksA --> PrimaryB[Primary 2]
         PrimaryA --> StandbyA[Standby 1]
         PrimaryB --> StandbyB[Standby 2]
     end
@@ -42,14 +41,14 @@ flowchart LR
     end
 ```
 
-This is a logical diagram, not a complete replica-set or config-server deployment specification. The original one-router architecture must also be distinguished from the **two-router and four-router MongoDB configurations used in the benchmark**.
+This is a logical diagram, not a complete replica-set deployment specification. The original four-VM architecture must also be distinguished from the **two-router and four-router MongoDB configurations used in the benchmark**.
 
 Production telemetry exposed two separate dimensions:
 
-| Dimension | Requirement Used for Testing | What It Means |
-|---|---|---|
-| Task processing | Approximately 135 tasks/s, four database operations per task | Sustained processing of the calculation input/output cycle |
-| Connection pressure | Bursts near 1,210 new connections/s; approximately 11,000 mostly idle live connections | Establishment and accumulation of connections, not 11,000 simultaneous active queries |
+| Dimension | Behavior | Requirement Used for Testing | What It Means |
+|---|---|---|---|
+| Task processing | **Normal** | Approximately 135 tasks/s, four database operations per task | Sustained processing of the calculation input/output cycle |
+| Connection pressure | **Worst case** | Bursts near 1,210 new connections/s; approximately 11,000 mostly idle live connections | Establishment and accumulation of connections, not 11,000 simultaneous active queries |
 
 These peaks did not occur simultaneously. At the recorded connection peak, operation volume was only about five operations/s. Production also had multiple physical connections per logical task, including driver topology-monitoring connections. Task arrival rate and socket creation rate are therefore not interchangeable.
 
@@ -76,7 +75,7 @@ Use the service-provided global endpoint with SRV discovery, without pinning to 
 mongodb+srv://<user>:<encoded-password>@<cluster>.global.mongocluster.cosmos.azure.com/<database>?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=true
 ```
 
-Start with the connection string supplied by the service and retain its required options. The example above illustrates the endpoint and authentication choices; it is not a replacement for a cluster-specific connection string.
+Start from the connection string supplied by the service and retain its required options.
 
 The reference environment used private connectivity. Each generator VNet needed connectivity to the private endpoint and the appropriate link to `privatelink.mongocluster.cosmos.azure.com`. Verify both the seed hostname and the SRV target hostnames resolve privately, then verify TCP reachability. Do not hard-code a resolved backend IP into the application.
 
@@ -95,7 +94,7 @@ The `.global` hostname is an access-path detail, not evidence that cross-region 
 | Timeouts | Server selection and connect: 5,000 ms each; no socket timeout |
 | Retryable writes | Forced on for DocumentDB by the benchmark factory |
 
-Provisioned shards were not sufficient evidence of distribution. Earlier runs described as single-shard had data concentrated on one shard, even where two physical shards were provisioned. For the distributed tests, the collection was sharded while empty and then reseeded; distribution was checked using chunk metadata and query explain output. Treat that as the procedure used in this case, not a claim that every existing dataset must be rebuilt.
+Provisioned shards were not sufficient evidence of distribution. Earlier runs described as single-shard had data concentrated on one shard, even where two physical shards were provisioned. For the distributed tests, the collection was sharded while empty and then reseeded; distribution was checked using chunk metadata and query explain output.
 
 Configuration files inherit through `Extends`, and code can override URI settings; the final DocumentDB client forces retryable writes on regardless of the URI. Reproduction requires the **effective configuration**, not just the connection string.
 
@@ -111,9 +110,7 @@ Dividing 55,535 ports by 30 seconds gives a TIME_WAIT-only budget of about **1,8
 
 The three-host overload configuration used four Poisson job arrivals/s per host and 150-500 tasks/job, an expected offered rate of about 1,300 tasks/s per host (3,900 combined), below that budget. The inherited multi-host base (six jobs/s, about 1,950 tasks/s per host) would have exceeded it.
 
-Configured offered rate is not measured connection rate. Inspect arrival counters, connection attempts, Ready events, and completions separately.
-
-Use [the committed TCP tuning script](../scripts/setup/tune-vm1.ps1) on dedicated test hosts with appropriate privileges. OS networking changes require review and should not be applied indiscriminately to production machines.
+Configured offered rate is not measured connection rate; inspect arrival counters, connection attempts, Ready events, and completions separately. Apply the [TCP tuning script](../scripts/setup/tune-vm1.ps1) only to dedicated test hosts.
 
 ### Client Runtime and Lifecycle Controls
 
@@ -124,7 +121,7 @@ Use [the committed TCP tuning script](../scripts/setup/tune-vm1.ps1) on dedicate
 | Topology-monitor growth | Round-robin pinned self-managed tasks to one router with `directConnection=true` | A benchmark access-path optimization for MongoDB, not a general-purpose HA discovery pattern; DocumentDB used its global endpoint unpinned |
 | Cluster resources outliving tasks | Explicitly unregistered and disposed each cluster | Uses a driver-internal API; pin the driver and retest cleanup on upgrades |
 
-The driver still created an internal pool object; the constraint was **no reuse between tasks**. The benchmark's teardown and lifecycle events were part of the test contract.
+The driver still created an internal pool object; the constraint was **no reuse between tasks**.
 
 ### TLS Settings Must Be Disclosed
 
@@ -132,15 +129,13 @@ The implementation records concurrent certificate-revocation checks causing hand
 
 Separately, the self-managed MongoDB normal-load and hold configurations enabled `MongoAllowInsecureTls`, relaxing certificate validation for private-CA routers. These are different security changes: disabling revocation checks is not the same as bypassing chain/hostname validation.
 
-Both affect comparison conditions. Neither should be silently copied into production. Use trusted certificates, plan certificate and revocation-path connectivity, and obtain security review. Managed-target chain/hostname validation was retained, but revocation checking was still disabled in the benchmark.
+Both affect comparison conditions and should not be copied into production. Use trusted certificates, plan certificate and revocation-path connectivity, and obtain security review. For DocumentDB, chain and hostname validation were retained.
 
 ### Server Limits, Backpressure, and Recovery
 
-On self-managed MongoDB, raising a connection limit only removes a configured ceiling; it does not create TLS/authentication CPU capacity. The two-router configuration saturated VM CPU while four routers did not (Section 5).
-
 Open-loop tests intentionally bypassed `MaxConcurrentTasks`. They exposed accumulation when the backend slowed, but were not overload-safe application designs. For production, use bounded queues/concurrency, rate limits, backpressure, and retries that cannot amplify a failing dependency. Enable only one arrival scenario unless combined traffic is explicitly intended.
 
-Between tests, verify Ready connections and outstanding work drain, CPU recovers, and TIME_WAIT pressure falls. The benchmark used a TIME_WAIT count below roughly 200 as the readiness check. A recorded M200 throttling episode recovered after approximately eight minutes; that was an observation, not a documented cooldown guarantee.
+Between tests, verify that Ready connections and outstanding work drain, CPU recovers, and TIME_WAIT falls (the benchmark used a count below roughly 200).
 
 ## 4. Run Separate Tests for Separate Questions
 
@@ -154,6 +149,8 @@ The benchmark used the same deterministic dataset and operation semantics across
 | Connection holding | Three hosts, 4,000 gated tasks/host, 12,000 combined ceiling | How many established connections can be held? |
 | Operation baseline | One indexed find or insert per fresh client | What is the isolated operation latency at non-saturating load? |
 
+Normal processing represents everyday behavior; the production-rate, overload, and hold scenarios represent the worst case.
+
 The normal-load final comparison used a single generator, three 300-second iterations, and no calculation sleep, so each connection lived for milliseconds rather than production's roughly nine seconds. The overload configuration used a 2,900 ms task wait. The three-host hold test used a 300-second window and a keepalive input read every 10 seconds per held connection. The production-rate campaign was earlier, with different timing and code history. Record these differences rather than describing all tests as one identical experiment.
 
 Two fidelity limits apply:
@@ -163,15 +160,13 @@ Two fidelity limits apply:
 
 The benchmark defined no pass/fail thresholds. Before sizing production, agree acceptance criteria: an error-rate limit, a p99 within the task deadline, a connection population sustained for the full window, and recovery to baseline after overload.
 
-Targets ran sequentially. Later multi-host campaigns used the same generator pool for both targets, with a shared start time for each iteration. The coordinator waited for all hosts, including drain, and the merge required the complete host set. Missing hosts or incompatible iterations were not valid combined results.
-
 ### A Minimal Reproduction Workflow
 
 1. Provision private connectivity and record target/generator topology, VM sizes, software revision, and effective settings.
 2. Set connection secrets outside the repository, tune each generator, and verify DNS/TCP connectivity.
 3. Seed data, create indexes, and verify physical distribution.
 4. Run preflight and untimed warm-up before each measured iteration.
-5. Execute one scenario against one target at a time; synchronize multi-host iterations.
+5. Execute one scenario against one target at a time; synchronize multi-host iterations on a shared start time, and accept a combined result only when every host reported.
 6. Drain and clean output, merge matching host artifacts, and retain raw metrics plus resource telemetry.
 
 For example, these repository commands prepare and run the single-host normal-load scenario against DocumentDB:
@@ -209,7 +204,7 @@ The final-code, single-host comparison used three 300-second iterations:
 | Insert p99 | 41.1 ms | 7.4 ms |
 | Connection-open p99 | 75.6 ms | 37.0 ms |
 
-Both configurations sustained the processing target. DocumentDB had the lower median input-read latency; MongoDB had tighter tails. This is a latency-distribution tradeoff, not a throughput victory. The MongoDB comparison used the disclosed TLS relaxation, so it is not a security-identical engine comparison.
+Both sustained the processing target. DocumentDB had the lower median input-read latency; MongoDB had the tighter tail. The MongoDB runs used the disclosed TLS relaxation, so this is not a security-identical comparison.
 
 ### Connection Holding
 
@@ -221,25 +216,39 @@ Both configurations sustained the processing target. DocumentDB had the lower me
 | Keepalive find p99 | 23.271 s | 14.803 s |
 | Connection attempts / failures | 49,885 / 88 | 38,991 / 2,377 |
 
-Reaching 12,000 once is not the same as holding 12,000 continuously or doing so reliably in every iteration. Because 12,000 equals the configured gate (3 x 4,000), it shows the ceiling was reached, not where capacity ends. M80's best peak provides evidence of achievable connection population, while its average and iteration results qualify the headroom claim. Establishment latency was not captured in the two-shard hold compacts, so a common cross-target establishment comparison cannot be made from that table.
+12,000 equals the configured gate (3 x 4,000), so it shows the ceiling was reached, not where capacity ends. With M80 above 10,000 in 2 of 3 iterations, headroom beyond the ceiling is unproven. Establishment latency was not captured in the two-shard hold results, so establishment cannot be compared across targets here.
 
-The two-router MongoDB configuration peaked near 4,714 held connections and showed about 99.7% VM CPU. Four routers reduced reported per-router CPU to approximately 17-21%. Router placement and handshake CPU mattered independently of shard count.
+### Resource Utilization and Tail Latency
+
+| Configuration | Server-side CPU in retained telemetry | Outcome |
+|---|---|---|
+| DocumentDB (all tiers, churn and hold) | About 0.8-1.5% | Constrained by connection admission |
+| MongoDB, two co-hosted router/shard VMs | VM1: 65.2% average / 99.7% peak; VM2: 44.5% average / 99.6% peak | Capped at 4,714 held connections |
+| MongoDB, four routers | Two dedicated router VMs added | Held 12,000 |
+
+These compare managed cluster CPU with self-managed VM or router CPU, so they are indicative rather than identical measurements.
+
+| Metric | DocumentDB M80, Two Shards | MongoDB, Four Routers |
+|---|---|---|
+| Input find p99 (normal load) | 107.8 ms | 67.9 ms |
+| Connection-open p99 (normal load) | 75.6 ms | 37.0 ms |
+| Keepalive find p99 (hold) | 23.3 s | 14.8 s |
+| Connection failure rate (hold) | 0.18% | 6.1% |
+| Connection-open p99 (overload) | 22.3 s | 159.7 s |
+
+DocumentDB's tail was higher at normal load and in hold, and lower under overload. The higher tails are consistent with a managed service in which each new connection goes through the gateway and authentication; authentication time was not measured separately in this report. The MongoDB runs used direct router pinning and relaxed certificate validation, both of which reduce handshake cost, so the tail comparison is not like-for-like. Validate tail latency against your own SLO.
 
 ### Deliberate Overload and Production-Rate Pressure
 
 Under the three-host overload scenario, M80 two-shard DocumentDB reported 72.9 tasks/s, connection-open p99 of 22.340 seconds, and an 89.1% error rate. MongoDB four-router reported 71.2 tasks/s, connection-open p99 of 159.686 seconds, and a 94.9% error rate. These are **saturation results**, not acceptable production error rates.
 
-DocumentDB server CPU remained near idle in the retained churn/hold telemetry. Establishment failures and queueing were consistent with an admission-layer constraint rather than shard compute saturation. That is an interpretation of observed metrics, not direct measurement of internal gateway capacity; client ThreadPool, DNS, TLS, and cleanup issues must first be excluded.
+DocumentDB server CPU remained near idle in the retained churn/hold telemetry. Establishment failures and queueing were consistent with an admission-layer constraint rather than shard compute saturation. This is an interpretation, not a direct measurement of gateway capacity; exclude client ThreadPool, DNS, TLS, and cleanup issues first.
 
-The earlier production-rate run (2026-07-15) used M80 with data on one shard and reached 9,979 connections with a 38.8% error rate. It did not prove clean admission of 11,000 connections, and the selected two-shard M80 was not tested at that rate. Its older MongoDB counterpart also predates TLS/lifecycle changes and is not a current like-for-like comparison. Database CPU telemetry was not retained for that campaign.
+The earlier production-rate run (2026-07-15) used M80 with data on one shard and reached 9,979 connections with a 38.8% error rate. It predates the TLS and lifecycle changes, so its MongoDB counterpart is not a current comparison, and the selected two-shard M80 was not tested at that rate.
 
-Single-operation tests provided a useful non-saturating reference, but used different historical durations and reported iterations 2-3 rather than all three. They must not substitute for full-workload results or be mixed into a single performance score.
+### Production Observation
 
-### Business Value and the Selection Decision
-
-Caldova chose M80 two-shard DocumentDB with HA for stability and performance. The tests showed normal processing capacity, characterized connection-pressure behavior, and identified client and server settings that mattered for replication. The managed operating model also offers a path to reducing responsibility for a self-managed router/database fleet.
-
-That expected operational benefit is separate from measured performance. The records do not quantify cost savings, post-migration incident reduction, long-term availability, or zero-downtime failover. Nor do they establish that M80 two-shard is universally optimal: other tiers differed under churn, and the M200 two-shard overload runs included intermittent admission throttling.
+In production on the selected configuration, the maximum observed was about 200 IOPS with very low CPU utilization, consistent with the benchmark's idle server CPU. Low CPU does not by itself show connection headroom; connection counts and errors during bursts would. The benchmark did not measure cost, availability, or failover.
 
 ## 6. Lessons to Apply to Another Workload
 
@@ -247,23 +256,17 @@ That expected operational benefit is separate from measured performance. The rec
 
 **Shard for distribution, not simply for more connections.** Add shards when data/storage growth or sustained operation load requires distribution, using a shard key that matches the workload, and verify actual placement. In these tests, data on two shards raised the hold ceiling (one shard plateaued near 11,000 held connections, with keepalive p99 of 114-139 s versus 23-34 s on two shards), but sharding did not fix churn throughput, where compute tier mattered more.
 
-**Use HA for availability, not throughput.** HA addresses availability and failover; the standby is not an additional readable scale-out shard. A zero-downtime objective requires failover tests covering driver reconnection, retryable operations, application error handling, and interrupted work. HA enabled is not proof of uninterrupted requests, and these churn tests did not validate failover.
+**Use HA for availability, not throughput.** The standby is not an additional readable scale-out shard. A zero-downtime objective requires failover tests covering driver reconnection, retryable operations, and interrupted work; these churn tests did not validate failover.
 
-**Use the service endpoint and validate discovery.** Preserve the service-provided global endpoint and private DNS reachability, without pinning to a backend host. This keeps failover and endpoint changes transparent to the application; validate them with a failover test rather than assuming them.
+**Use the service endpoint and validate discovery.** Preserve the service-provided global endpoint and private DNS reachability, without pinning to a backend host, and validate failover behavior rather than assuming it.
 
-**Scale the layer that is under pressure.** More shard compute will not automatically fix a generator thread queue, a router performing TLS/authentication, or an admission bottleneck. Observe those layers before changing tier or shard count. At normal load, higher DocumentDB tiers did not consistently lower indexed-operation latency.
+**Scale the layer that is under pressure.** More shard compute will not automatically fix a generator thread queue, a router performing TLS/authentication, or an admission bottleneck. At normal load, M60, M80, and M200 were within noise of each other; under churn higher tiers helped, and M200 showed intermittent admission throttling.
 
-**Bound overload and test recovery.** Select latency, error, sustained-capacity, and recovery acceptance criteria before sizing production. Apply deadlines, bounded work queues, backpressure, and retry budgets. Measure how the system recovers after overload, not only its highest connection peak.
+**Bound overload and test recovery.** Apply deadlines, bounded work queues, backpressure, and retry budgets, and measure recovery after overload, not only the highest connection peak.
 
-## 7. Production Readiness and Open Gaps
+## 7. Monitoring and Open Gaps
 
-Checklist before adopting a configuration:
-
-- Reuse clients or pools; set whole-task deadlines, retry budgets, and backoff.
-- Run a failover test and an overload-recovery test.
-- Monitor client `ActiveReady` and TIME_WAIT, plus DocumentDB CPU and throttling signals.
-- Review the error taxonomy for compatibility errors before drawing performance conclusions.
-- Check the [official DocumentDB limits](https://learn.microsoft.com/en-us/azure/documentdb/compute-storage) for your tier. M200 showed intermittent admission throttling under sustained churn, recovering after about eight minutes; that is an observation, not a guarantee.
+Monitor client `ActiveReady` and TIME_WAIT, plus DocumentDB CPU and throttling signals. Review the error taxonomy for compatibility errors before drawing performance conclusions, and check the [official DocumentDB limits](https://learn.microsoft.com/en-us/azure/documentdb/compute-storage) for your tier. M200 recovered from throttling after about eight minutes; that is an observation, not a guarantee.
 
 Gaps this benchmark leaves open:
 
@@ -273,7 +276,7 @@ Gaps this benchmark leaves open:
 
 ## Conclusion
 
-The transferable reference is the method: derive processing and connection requirements separately, reproduce the relevant lifecycle, validate generator headroom, and interpret latency, failures, and sustained capacity together. Caldova's selected architecture is one outcome of that process, not a substitute for running it against another application's requirements.
+The transferable reference is the method: derive processing and connection requirements separately, reproduce the relevant lifecycle, validate generator headroom, and interpret latency, failures, and sustained capacity together.
 
 ## Reference Material
 
