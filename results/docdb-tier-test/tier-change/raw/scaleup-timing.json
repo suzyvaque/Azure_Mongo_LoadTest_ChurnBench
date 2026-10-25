@@ -1,0 +1,8 @@
+{
+  "transition": "M80->M200",
+  "command": "az cosmosdb mongocluster update -g rg-db-test-hpc -c docdb-dbtest-hpc-1 --shard-node-tier M200 --shard-node-ha true --shard-node-disk-size-gb 512",
+  "startUtc": "2026-08-20T04:08:40.9695658Z",
+  "endUtc": "2026-08-20T04:34:27.1277448Z",
+  "durationSeconds": 1546.2,
+  "azExitCode": 0
+}

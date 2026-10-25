@@ -295,6 +295,12 @@ public sealed class TaskConnectionFactory
     /// refreshed cached, ALREADY-SRV-RESOLVED settings object via <see cref="MongoClientSettings.Clone"/>
     /// — see the class-level SRV-storm/meltdown comment on <see cref="SrvCacheRefreshInterval"/>.
     /// </summary>
+    // NOTE: the code used for these benchmark runs resolved SRV once and cached the FIRST target host
+    // (below). In real deployments use the global mongodb+srv endpoint unpinned: it is recommended, and
+    // essential for zero-downtime failover. Unpinned alternative (driver resolves SRV and tracks topology):
+    //
+    // private MongoClientSettings ResolveBaseSettings() =>
+    //     MongoClientSettings.FromConnectionString(_connectionString);
     private MongoClientSettings ResolveBaseSettings()
     {
         if (Target != TargetKey.DocumentDb)

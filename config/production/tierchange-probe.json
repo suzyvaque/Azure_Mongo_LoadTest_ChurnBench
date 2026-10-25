@@ -1,0 +1,24 @@
+{
+  // TIER-CHANGE PROBE config. A lightweight, single-host STEADY connection-churn probe meant to run
+  // ACROSS an Azure DocumentDB tier change (scale-up/scale-down) so the customer-visible connection/query
+  // interruption window can be measured directly. Low rate (~30 new conn/s) keeps it lightweight while
+  // still exercising fresh connection establishment + the full 4-op workload every second.
+  //
+  // Inherits Steady-on/Burst-off from full-workload-steady.json. Duration is set on the CLI
+  // (--duration-sec) so the probe can be sized to span the scaling operation.
+  "Extends": "full-workload-steady.json",
+
+  // Near-instant warm-up so the probe starts immediately (we do not need a full 100k cache warm here).
+  "Preflight": {
+    "WarmupSampleSize": 100
+  },
+
+  "Scenario": {
+    "Iterations": 1,
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 30
+    },
+    "Burst": { "Enabled": false }
+  }
+}

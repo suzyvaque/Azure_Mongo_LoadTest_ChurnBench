@@ -9,11 +9,11 @@ each, warm-up = all 100k docs. Concurrency = combined per-second SUM of driver A
 
 | Tier | vCore/RAM per shard | Open-loop (4-op churn) | Hold (>=10k concurrency) |
 |---|---|---|---|
-| M60 | 8 / 32 GiB | ✅ | ✅ |
-| M80 | 16 / 64 GiB (approx) | ✅ | ✅ |
+| M60 | 16 / 64 GiB | ✅ | ✅ |
+| M80 | 32 / 128 GiB | ✅ | ✅ |
 | M200 | 64 / 256 GiB (max tier) | ✅ (see throttle note) | ✅ |
 
-> **Fairness vs mongo prod.** Target mongo prod = 2 shards × 24-core + HA (4 data VMs) + 1 config VM. DocumentDB 2-shard matches at the data tier (2 nodes; +HA would make 4). M200's 64-vCore/shard **exceeds** mongo's 24-core node; M80 (~16) is below, M60 (8) well below — so this sweep brackets mongo's per-node size. Config server + routers are managed (hidden) on DocumentDB.
+> **Fairness vs mongo prod.** Target mongo prod = 2 shards × 24-core + HA (4 data VMs) + 1 config VM. DocumentDB 2-shard matches at the data tier (2 nodes; +HA would make 4). M200's 64-vCore/shard and M80's 32 **exceed** mongo's 24-core node; M60 (16) is below — so this sweep brackets mongo's per-node size. Config server + routers are managed (hidden) on DocumentDB.
 
 ## Concurrency — max concurrent connections (combined, best of 3 iters)
 

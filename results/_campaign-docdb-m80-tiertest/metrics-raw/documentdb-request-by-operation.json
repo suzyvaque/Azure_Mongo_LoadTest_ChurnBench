@@ -1,0 +1,1547 @@
+{
+  "cost": 81,
+  "interval": "PT1M",
+  "namespace": "Microsoft.DocumentDB/mongoClusters",
+  "resourceregion": "koreacentral",
+  "timespan": "2026-08-20T02:34:35Z/2026-08-20T03:02:36Z",
+  "value": [
+    {
+      "displayDescription": "The end-to-end duration in milliseconds of client Mongo DB requests handled by the Mongo cluster. Updated every 60 seconds.",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/MongoRequestDurationMs",
+      "name": {
+        "localizedValue": "Mongo request duration",
+        "value": "MongoRequestDurationMs"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 0.0,
+              "count": 3.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "average": 2.6466229091679018e-05,
+              "count": 37784.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "average": 3.1043688818063285e-05,
+              "count": 96638.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "average": 2.8456788366864917e-05,
+              "count": 105423.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "average": 5.221295925648746e-05,
+              "count": 114914.0,
+              "maximum": 4.0,
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "average": 6.957489737702637e-05,
+              "count": 114984.0,
+              "maximum": 2.0,
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "average": 0.00012995692856081984,
+              "count": 107728.0,
+              "maximum": 6.0,
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "average": 4.3268502693464295e-05,
+              "count": 46223.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 28.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 25.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 32.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 7.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 9.094767477111502e-05,
+              "count": 65972.0,
+              "maximum": 4.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 3.0074283480196084e-05,
+              "count": 99753.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 4.582069445844521e-05,
+              "count": 109121.0,
+              "maximum": 2.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 125575.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 0.001052242938896068,
+              "count": 108340.0,
+              "maximum": 26.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "average": 0.00010933741526350318,
+              "count": 109752.0,
+              "maximum": 4.0,
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 24506.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 37.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 21.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 24.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 8397.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 6.260564702936204e-05,
+              "count": 95838.0,
+              "maximum": 2.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 1.9887634863023915e-05,
+              "count": 100565.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 8.375069094320028e-05,
+              "count": 119402.0,
+              "maximum": 6.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 111315.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 8.743475181645697e-05,
+              "count": 114371.0,
+              "maximum": 2.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "IsMaster"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "average": 0.27466691085573003,
+              "count": 21841.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "average": 1.7612680612464955,
+              "count": 23185.0,
+              "maximum": 611.0,
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "average": 0.653615189697664,
+              "count": 57618.0,
+              "maximum": 1042.0,
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "average": 0.6398832612952086,
+              "count": 54138.0,
+              "maximum": 227.0,
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "average": 0.6102731901876125,
+              "count": 51649.0,
+              "maximum": 66.0,
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "average": 0.6211328619886387,
+              "count": 48938.0,
+              "maximum": 210.0,
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "average": 1.0207474274675878,
+              "count": 53838.0,
+              "maximum": 753.0,
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "average": 0.48259571631452336,
+              "count": 34503.0,
+              "maximum": 24.0,
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 0.9733202583437595,
+              "count": 29573.0,
+              "maximum": 315.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "average": 0.5931486404140136,
+              "count": 113233.0,
+              "maximum": 42.0,
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "average": 0.587117677096723,
+              "count": 113582.0,
+              "maximum": 40.0,
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "average": 0.4859500343800138,
+              "count": 43630.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 0.600417656801325,
+              "count": 41661.0,
+              "maximum": 122.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 0.5451855548821789,
+              "count": 56102.0,
+              "maximum": 131.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 0.5378354435052232,
+              "count": 54182.0,
+              "maximum": 67.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 0.5751105337049222,
+              "count": 47723.0,
+              "maximum": 329.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 0.7981426252406659,
+              "count": 52978.0,
+              "maximum": 302.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "average": 0.5702108406479052,
+              "count": 55255.0,
+              "maximum": 211.0,
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "average": 0.46043298873487554,
+              "count": 21571.0,
+              "maximum": 18.0,
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 0.5752300228628785,
+              "count": 89665.0,
+              "maximum": 307.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "average": 0.533022184199158,
+              "count": 118057.0,
+              "maximum": 40.0,
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "average": 0.5480085810869377,
+              "count": 92296.0,
+              "maximum": 73.0,
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.8192712154561017,
+              "count": 4089.0,
+              "maximum": 55.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 0.5606643780991019,
+              "count": 57678.0,
+              "maximum": 158.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 0.5432017663911243,
+              "count": 54801.0,
+              "maximum": 120.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 0.6048266071790712,
+              "count": 49310.0,
+              "maximum": 125.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.9589698905992836,
+              "count": 51645.0,
+              "maximum": 1037.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 0.6775456919060052,
+              "count": 49790.0,
+              "maximum": 1045.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Find"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "average": 0.1903323262839879,
+              "count": 15226.0,
+              "maximum": 50.0,
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "average": 0.015458776595744681,
+              "count": 30080.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "average": 0.014588859416445624,
+              "count": 28652.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "average": 0.019463852844716953,
+              "count": 28052.0,
+              "maximum": 11.0,
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "average": 0.017546507678955513,
+              "count": 26501.0,
+              "maximum": 7.0,
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "average": 0.6226169996138047,
+              "count": 28483.0,
+              "maximum": 125.0,
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "average": 0.01240248049609922,
+              "count": 14997.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 12.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 0.014626543579906486,
+              "count": 25023.0,
+              "maximum": 11.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 0.011701380762930026,
+              "count": 29911.0,
+              "maximum": 9.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 0.014688052101015,
+              "count": 28867.0,
+              "maximum": 7.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 0.012760163392336122,
+              "count": 25705.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 0.32553028188668715,
+              "count": 28664.0,
+              "maximum": 87.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "average": 0.010739937660929665,
+              "count": 29516.0,
+              "maximum": 7.0,
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "average": 0.009193688656976022,
+              "count": 8049.0,
+              "maximum": 5.0,
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 12.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.00505293551491819,
+              "count": 4156.0,
+              "maximum": 4.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 0.016345629947758084,
+              "count": 31201.0,
+              "maximum": 24.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 0.016569637259292433,
+              "count": 29029.0,
+              "maximum": 9.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 0.013485087521598677,
+              "count": 26622.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.07922328627124418,
+              "count": 26419.0,
+              "maximum": 80.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 0.014892668795959296,
+              "count": 26926.0,
+              "maximum": 9.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "SaslStart"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "average": 0.26336229594523436,
+              "count": 15192.0,
+              "maximum": 67.0,
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "average": 0.042081874495017504,
+              "count": 29704.0,
+              "maximum": 10.0,
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "average": 0.03766160764474424,
+              "count": 28464.0,
+              "maximum": 9.0,
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "average": 0.05768883430264061,
+              "count": 27683.0,
+              "maximum": 14.0,
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "average": 0.03699727792048461,
+              "count": 26083.0,
+              "maximum": 13.0,
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "average": 0.9987363100252739,
+              "count": 28488.0,
+              "maximum": 159.0,
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "average": 0.027314941272876262,
+              "count": 14644.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 12.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 0.03292970467170203,
+              "count": 25023.0,
+              "maximum": 16.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 0.026920574031578586,
+              "count": 29197.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 0.03787851893925947,
+              "count": 28169.0,
+              "maximum": 11.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 0.03323132454488387,
+              "count": 25488.0,
+              "maximum": 9.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 0.2907629950935078,
+              "count": 28126.0,
+              "maximum": 149.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "average": 0.02966087281880336,
+              "count": 29399.0,
+              "maximum": 10.0,
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "average": 0.018870282429392652,
+              "count": 8002.0,
+              "maximum": 7.0,
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 0.08333333333333333,
+              "count": 12.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "average": 0.022821073075989316,
+              "count": 4119.0,
+              "maximum": 6.0,
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 0.033893936464978416,
+              "count": 31038.0,
+              "maximum": 25.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 0.03874938798349304,
+              "count": 28594.0,
+              "maximum": 11.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 0.03269370159844352,
+              "count": 26213.0,
+              "maximum": 8.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 0.09734005961935335,
+              "count": 26166.0,
+              "maximum": 94.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 0.03646738719673494,
+              "count": 26462.0,
+              "maximum": 11.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "SaslContinue"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "average": 7.863347330533893,
+              "count": 8335.0,
+              "maximum": 646.0,
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "average": 3.645785433836794,
+              "count": 28271.0,
+              "maximum": 74.0,
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "average": 3.716883424912045,
+              "count": 25297.0,
+              "maximum": 238.0,
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "average": 3.743675333801827,
+              "count": 22768.0,
+              "maximum": 65.0,
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "average": 3.753971562225001,
+              "count": 21591.0,
+              "maximum": 214.0,
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "average": 5.904353208170002,
+              "count": 24235.0,
+              "maximum": 820.0,
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "average": 3.466702868144345,
+              "count": 20257.0,
+              "maximum": 33.0,
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 13.5,
+              "count": 6.0,
+              "maximum": 34.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 3.821584492694569,
+              "count": 17179.0,
+              "maximum": 228.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 3.628754979722212,
+              "count": 27863.0,
+              "maximum": 222.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 3.563521225861934,
+              "count": 25582.0,
+              "maximum": 59.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 3.8764044943820224,
+              "count": 21093.0,
+              "maximum": 130.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 4.486104726482511,
+              "count": 23929.0,
+              "maximum": 367.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "average": 3.6724116955269883,
+              "count": 24659.0,
+              "maximum": 99.0,
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "average": 3.4991741472172353,
+              "count": 13925.0,
+              "maximum": 242.0,
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 7.333333333333333,
+              "count": 6.0,
+              "maximum": 35.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 3.68293758729692,
+              "count": 27206.0,
+              "maximum": 217.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 3.5573398758410466,
+              "count": 26901.0,
+              "maximum": 61.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 3.7782618771726537,
+              "count": 21575.0,
+              "maximum": 131.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 4.601807900276551,
+              "count": 24227.0,
+              "maximum": 1043.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 3.923243292991579,
+              "count": 21731.0,
+              "maximum": 428.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Delete"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "average": 5.727261290728394,
+              "count": 7949.0,
+              "maximum": 1064.0,
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "average": 3.464422038170688,
+              "count": 27770.0,
+              "maximum": 66.0,
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "average": 3.4915226672087822,
+              "count": 24595.0,
+              "maximum": 226.0,
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "average": 3.5425,
+              "count": 22800.0,
+              "maximum": 231.0,
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "average": 3.567931341743657,
+              "count": 21323.0,
+              "maximum": 220.0,
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "average": 4.352093427755,
+              "count": 24147.0,
+              "maximum": 763.0,
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "average": 3.2601742696053306,
+              "count": 19510.0,
+              "maximum": 34.0,
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 4.333333333333333,
+              "count": 3.0,
+              "maximum": 5.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "average": 3.5477749484661087,
+              "count": 16494.0,
+              "maximum": 208.0,
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "average": 3.4269138892048687,
+              "count": 26373.0,
+              "maximum": 215.0,
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "average": 3.373743621462811,
+              "count": 25868.0,
+              "maximum": 63.0,
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "average": 3.49405756731662,
+              "count": 21540.0,
+              "maximum": 212.0,
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "average": 3.6801943899735696,
+              "count": 23458.0,
+              "maximum": 256.0,
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "average": 3.565680187081687,
+              "count": 24802.0,
+              "maximum": 95.0,
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "average": 3.2394831510168123,
+              "count": 13621.0,
+              "maximum": 251.0,
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 13.333333333333334,
+              "count": 3.0,
+              "maximum": 34.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "average": 3.4346142162818953,
+              "count": 26336.0,
+              "maximum": 212.0,
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "average": 3.3756415166602833,
+              "count": 26110.0,
+              "maximum": 59.0,
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "average": 3.5813653546808983,
+              "count": 22485.0,
+              "maximum": 218.0,
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "average": 3.7622285948381813,
+              "count": 24410.0,
+              "maximum": 368.0,
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "average": 3.7013015957921014,
+              "count": 22434.0,
+              "maximum": 249.0,
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Insert"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 0.16666666666666666,
+              "count": 6.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 0.5,
+              "count": 6.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "ListIndexes"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 37.666666666666664,
+              "count": 6.0,
+              "maximum": 79.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 41.666666666666664,
+              "count": 6.0,
+              "maximum": 69.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Aggregate"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 3.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 3.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "Ping"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 3.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 0.0,
+              "count": 3.0,
+              "maximum": 0.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "BuildInfo"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-08-20T02:34:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:35:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:36:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:37:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:38:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:39:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:40:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:41:00Z"
+            },
+            {
+              "average": 1.0,
+              "count": 3.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:42:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:43:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:44:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:45:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:46:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:47:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:48:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:49:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:50:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:51:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:52:00Z"
+            },
+            {
+              "average": 1.0,
+              "count": 3.0,
+              "maximum": 1.0,
+              "timeStamp": "2026-08-20T02:53:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:54:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:55:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:56:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:57:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:58:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T02:59:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:00:00Z"
+            },
+            {
+              "timeStamp": "2026-08-20T03:01:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "operation",
+                "value": "operation"
+              },
+              "value": "GetMore"
+            }
+          ]
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "MilliSeconds"
+    }
+  ]
+}
+

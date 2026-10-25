@@ -79,7 +79,7 @@ Production telemetry (`prod_log`, 2026-03-26) shows the workload has **two separ
 |---|---|---|
 | **DocDB 1-shard M80** | Azure Cosmos DB for MongoDB **vCore**, managed | Tier M80, 2 physical shards provisioned but **data on ONE shard** (never distributed); TLS + SCRAM-SHA-256; single SRV/gateway endpoint; private endpoint. |
 | **DocDB 1-shard M200** | Same, managed | Tier M200 (64 vCore / 256 GiB per shard — max tier); still single-shard data. |
-| **DocDB 2-shard M60** | Same, managed | Tier M60 (8 vCore); data **genuinely distributed 33/32 chunks** across both physical shards (`{ReqId:hashed}`, sharded-while-empty + reseeded). |
+| **DocDB 2-shard M60** | Same, managed | Tier M60 (16 vCore / 64 GiB per shard); data **genuinely distributed 33/32 chunks** across both physical shards (`{ReqId:hashed}`, sharded-while-empty + reseeded). |
 | **DocDB 2-shard M80** | Same, managed | Tier M80; 2-shard distributed. |
 | **DocDB 2-shard M200** | Same, managed | Tier M200; 2-shard distributed. |
 | **Mongo 2-router** | Self-managed MongoDB 7.0 sharded cluster | 2 shards on 2 VMs (FX24ms_v2, 24 vCore), each co-hosting `mongos` + shard `mongod` (+ config server); Tasks pinned round-robin to **1 router** (`directConnection=true`). TLS (self-signed CA) + SCRAM. |
@@ -274,8 +274,8 @@ Source runs: MongoDB = `run-20260624-shard` (mongo-shard single-op steady, TLS o
 
 | Tier | vCore/shard | Hold max concurrent | Hold keepalive p99 | OL warm-insert p99 | Interpretation |
 |---|---|---|---|---|---|
-| M60 | 8 | 12,000 (2/3) | 34,212 ms | 11,127 ms | Clears full gate; highest op latency of the three. |
-| M80 | ~16 | 12,000 (2/3) | 23,271 ms | 8,408 ms | Best hold keepalive latency of the 2-shard set. |
+| M60 | 16 | 12,000 (2/3) | 34,212 ms | 11,127 ms | Clears full gate; highest op latency of the three. |
+| M80 | 32 | 12,000 (2/3) | 23,271 ms | 8,408 ms | Best hold keepalive latency of the 2-shard set. |
 | M200 | 64 | 12,000 (3/3) | 28,273 ms | **5,318 ms** | Only tier to clear 10k on all 3 hold iters; best warm-op latency; **throttle-prone under sustained churn**. |
 
 > **Note:** "Hold max concurrent" is **connection-holding capacity** (idle-capable, established/held connections), **not** active-operation throughput. It answers Dimension B (how many connections can be held), not how much 4-op work is served concurrently.
