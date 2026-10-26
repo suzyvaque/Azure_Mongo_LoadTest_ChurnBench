@@ -1,0 +1,231 @@
+{
+  "runWindowStartUtc": "2026-10-26T02:31:46Z",
+  "runWindowEndUtc": "2026-10-26T03:06:13Z",
+  "capturedUtc": "2026-10-26T03:11:25.2951581Z",
+  "subscription": "01c04f52-ad2b-4cc0-b77b-61508ec58f51",
+  "resourceGroup": "rg-db-test-hpc",
+  "targets": [
+    "documentdb"
+  ],
+  "captured": true,
+  "perTarget": {
+    "documentdb": {
+      "captured": true,
+      "kind": "vcore-cluster",
+      "cluster": "docdb-dbtest-hpc-1",
+      "tier": "M80",
+      "note": "vCore has no active-connection counter, but MongoRequestDurationMs Count = server-side RPS and its StatusCodeClass dimension surfaces 4xx/5xx (throttles). Concurrent/created connection counts still come from the client-side merge.",
+      "metrics": {
+        "CpuPercent": {
+          "unit": "Percent",
+          "avg": 2.148,
+          "max": 7.941,
+          "min": 0.25,
+          "total": 601.351,
+          "count": 280.0,
+          "samples": 35
+        },
+        "MemoryPercent": {
+          "unit": "Percent",
+          "avg": 28.835,
+          "max": 29.26,
+          "min": 28.622,
+          "total": 8073.832,
+          "count": 280.0,
+          "samples": 35
+        },
+        "CommittedMemoryPercent": {
+          "unit": "Percent",
+          "avg": 3.088,
+          "max": 3.557,
+          "min": 2.78,
+          "total": 864.775,
+          "count": 280.0,
+          "samples": 35
+        },
+        "AutoscaleUtilizationPercent": {
+          "unit": "Percent",
+          "avg": null,
+          "max": null,
+          "min": null,
+          "total": null,
+          "count": 35.0,
+          "samples": 35
+        },
+        "StoragePercent": {
+          "unit": "Percent",
+          "avg": 6.154,
+          "max": 6.206,
+          "min": 6.11,
+          "total": 1723.046,
+          "count": 280.0,
+          "samples": 35
+        },
+        "StorageUsed": {
+          "unit": "Bytes",
+          "avg": 33228842335.086,
+          "max": 33511157760.0,
+          "min": 32990990336.0,
+          "total": 9304075853824.0,
+          "count": 280.0,
+          "samples": 35
+        },
+        "IOPS": {
+          "unit": "Count",
+          "avg": 215.411,
+          "max": 588.0,
+          "min": 0.0,
+          "total": 60315.0,
+          "count": 280.0,
+          "samples": 35
+        },
+        "NetworkBytesIngress": {
+          "unit": "Bytes",
+          "avg": 64269680.021,
+          "max": 266522351.0,
+          "min": 188679.0,
+          "total": 17995510406.0,
+          "count": 280.0,
+          "samples": 35
+        },
+        "NetworkBytesEgress": {
+          "unit": "Bytes",
+          "avg": 134160930.518,
+          "max": 429477706.0,
+          "min": 272043.0,
+          "total": 37565060545.0,
+          "count": 280.0,
+          "samples": 35
+        },
+        "MongoRequestDurationMs": {
+          "unit": "MilliSeconds",
+          "avg": 1.443,
+          "max": 368.517,
+          "min": 0.005,
+          "total": 4251768.125,
+          "count": 3033429.0,
+          "samples": 35
+        }
+      },
+      "metricsByServer": {
+        "CpuPercent": {
+          "fc-c4936dd54086-000": {
+            "unit": "Percent",
+            "avg": 3.405,
+            "max": 7.941,
+            "min": 0.252,
+            "samples": 35
+          },
+          "fc-c4936dd54086-001": {
+            "unit": "Percent",
+            "avg": 0.89,
+            "max": 1.672,
+            "min": 0.25,
+            "samples": 35
+          }
+        },
+        "MemoryPercent": {
+          "fc-c4936dd54086-000": {
+            "unit": "Percent",
+            "avg": 28.88,
+            "max": 29.26,
+            "min": 28.622,
+            "samples": 35
+          },
+          "fc-c4936dd54086-001": {
+            "unit": "Percent",
+            "avg": 28.79,
+            "max": 28.99,
+            "min": 28.625,
+            "samples": 35
+          }
+        },
+        "CommittedMemoryPercent": {
+          "fc-c4936dd54086-000": {
+            "unit": "Percent",
+            "avg": 3.101,
+            "max": 3.557,
+            "min": 2.78,
+            "samples": 35
+          },
+          "fc-c4936dd54086-001": {
+            "unit": "Percent",
+            "avg": 3.076,
+            "max": 3.466,
+            "min": 2.78,
+            "samples": 35
+          }
+        }
+      },
+      "requestByOperation": {
+        "Find": {
+          "requestCount": 873100.0,
+          "avgMs": 1.13,
+          "maxMs": 368.52
+        },
+        "IsMaster": {
+          "requestCount": 864130.0,
+          "avgMs": 0.02,
+          "maxMs": 3.72
+        },
+        "SaslStart": {
+          "requestCount": 432065.0,
+          "avgMs": 1.0,
+          "maxMs": 19.72
+        },
+        "Delete": {
+          "requestCount": 432044.0,
+          "avgMs": 4.16,
+          "maxMs": 76.22
+        },
+        "Insert": {
+          "requestCount": 432035.0,
+          "avgMs": 4.14,
+          "maxMs": 74.15
+        },
+        "Aggregate": {
+          "requestCount": 50.0,
+          "avgMs": 50.86,
+          "maxMs": 112.83
+        },
+        "ListIndexes": {
+          "requestCount": 50.0,
+          "avgMs": 0.84,
+          "maxMs": 1.35
+        },
+        "GetMore": {
+          "requestCount": 41.0,
+          "avgMs": 1.29,
+          "maxMs": 2.02
+        },
+        "Ping": {
+          "requestCount": 41.0,
+          "avgMs": 0.02,
+          "maxMs": 0.02
+        },
+        "BuildInfo": {
+          "requestCount": 41.0,
+          "avgMs": 0.01,
+          "maxMs": 0.02
+        },
+        "SaslContinue": {
+          "requestCount": 35.0,
+          "avgMs": null,
+          "maxMs": null
+        }
+      },
+      "requestByStatus": {
+        "2xx": {
+          "requestCount": 3033422.0,
+          "avgMs": 1.44,
+          "maxMs": 368.52
+        },
+        "4xx": {
+          "requestCount": 35.0,
+          "avgMs": 3.41,
+          "maxMs": 16.22
+        }
+      }
+    }
+  }
+}
