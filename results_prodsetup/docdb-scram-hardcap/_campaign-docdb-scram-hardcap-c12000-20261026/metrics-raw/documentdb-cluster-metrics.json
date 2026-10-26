@@ -1,0 +1,875 @@
+{
+  "cost": 400,
+  "interval": "PT1M",
+  "namespace": "Microsoft.DocumentDB/mongoClusters",
+  "resourceregion": "koreacentral",
+  "timespan": "2026-10-26T10:22:23Z/2026-10-26T10:31:01Z",
+  "value": [
+    {
+      "displayDescription": "Percent CPU utilization on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/CpuPercent",
+      "name": {
+        "localizedValue": "CPU percent",
+        "value": "CpuPercent"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 0.3508823201461163,
+              "count": 8.0,
+              "maximum": 0.6424870466321244,
+              "minimum": 0.2332294433869517,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 2.8070585611689305
+            },
+            {
+              "average": 1.1119808690214847,
+              "count": 8.0,
+              "maximum": 6.3885795281968205,
+              "minimum": 0.2680098444082927,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 8.895846952171878
+            },
+            {
+              "average": 1.029208422738534,
+              "count": 8.0,
+              "maximum": 5.226192719127468,
+              "minimum": 0.2440016266775112,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 8.233667381908273
+            },
+            {
+              "average": 1.0324475894228597,
+              "count": 8.0,
+              "maximum": 5.172900272752924,
+              "minimum": 0.2602015529489509,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 8.259580715382878
+            },
+            {
+              "average": 1.0632242216234462,
+              "count": 8.0,
+              "maximum": 5.272554526566366,
+              "minimum": 0.25102764441934167,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 8.50579377298757
+            },
+            {
+              "average": 1.0560958756609478,
+              "count": 8.0,
+              "maximum": 5.265083031132756,
+              "minimum": 0.2824976545397685,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 8.448767005287582
+            },
+            {
+              "average": 1.0605075562199815,
+              "count": 8.0,
+              "maximum": 5.149581089790233,
+              "minimum": 0.2836241090958566,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 8.484060449759852
+            },
+            {
+              "average": 1.0811223795565557,
+              "count": 8.0,
+              "maximum": 5.259604633009135,
+              "minimum": 0.256445005055928,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 8.648979036452445
+            },
+            {
+              "average": 1.0585974837917314,
+              "count": 8.0,
+              "maximum": 5.1412299732977305,
+              "minimum": 0.2408482864322132,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 8.46877987033385
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Percent"
+    },
+    {
+      "displayDescription": "Percent memory utilization on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/MemoryPercent",
+      "name": {
+        "localizedValue": "Memory percent",
+        "value": "MemoryPercent"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 29.11625800448061,
+              "count": 8.0,
+              "maximum": 30.265050055543146,
+              "minimum": 28.712172587356026,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 232.93006403584488
+            },
+            {
+              "average": 29.20029434101837,
+              "count": 8.0,
+              "maximum": 30.75813555135994,
+              "minimum": 28.711259852232736,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 233.60235472814696
+            },
+            {
+              "average": 29.269576216993336,
+              "count": 8.0,
+              "maximum": 30.812388479712688,
+              "minimum": 28.71683329793579,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 234.1566097359467
+            },
+            {
+              "average": 29.27163990060024,
+              "count": 8.0,
+              "maximum": 30.824065655382622,
+              "minimum": 28.70888552797512,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 234.1731192048019
+            },
+            {
+              "average": 29.284395491557728,
+              "count": 8.0,
+              "maximum": 30.85272643555198,
+              "minimum": 28.710607898573233,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 234.27516393246182
+            },
+            {
+              "average": 29.287368957246883,
+              "count": 8.0,
+              "maximum": 30.869088429817097,
+              "minimum": 28.710686739480895,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 234.29895165797507
+            },
+            {
+              "average": 29.295389481187037,
+              "count": 8.0,
+              "maximum": 30.881538827973614,
+              "minimum": 28.717366990233796,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 234.3631158494963
+            },
+            {
+              "average": 29.294008199621558,
+              "count": 8.0,
+              "maximum": 30.887360738460828,
+              "minimum": 28.717576221873355,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 234.35206559697247
+            },
+            {
+              "average": 29.29753503544675,
+              "count": 8.0,
+              "maximum": 30.90839845458599,
+              "minimum": 28.701316800839738,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 234.380280283574
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Percent"
+    },
+    {
+      "displayDescription": "Percentage of Commit Memory Limit allocated by applications on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/CommittedMemoryPercent",
+      "name": {
+        "localizedValue": "Committed Memory percent",
+        "value": "CommittedMemoryPercent"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 3.574018055237657,
+              "count": 8.0,
+              "maximum": 5.229008302177369,
+              "minimum": 2.8901638378226773,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 28.592144441901254
+            },
+            {
+              "average": 3.627075541570137,
+              "count": 8.0,
+              "maximum": 5.403429332168901,
+              "minimum": 2.890385969743357,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 29.016604332561094
+            },
+            {
+              "average": 3.6553129543298906,
+              "count": 8.0,
+              "maximum": 5.418407310351329,
+              "minimum": 2.8914875995938853,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 29.242503634639124
+            },
+            {
+              "average": 3.6526270017416893,
+              "count": 8.0,
+              "maximum": 5.42413917709247,
+              "minimum": 2.891476763890437,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 29.221016013933514
+            },
+            {
+              "average": 3.6617853193306127,
+              "count": 8.0,
+              "maximum": 5.430459761085537,
+              "minimum": 2.8906369968732313,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 29.2942825546449
+            },
+            {
+              "average": 3.6626702309808756,
+              "count": 8.0,
+              "maximum": 5.430743284424654,
+              "minimum": 2.8907002051433435,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 29.301361847847005
+            },
+            {
+              "average": 3.6951771967485736,
+              "count": 8.0,
+              "maximum": 5.419694903604774,
+              "minimum": 2.8908988597065535,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 29.56141757398859
+            },
+            {
+              "average": 3.6806136701980128,
+              "count": 8.0,
+              "maximum": 5.443147881981333,
+              "minimum": 2.8918126706973197,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 29.444909361584102
+            },
+            {
+              "average": 3.6966292861018752,
+              "count": 8.0,
+              "maximum": 5.467901094779324,
+              "minimum": 2.8904564018157677,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 29.573034288815002
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Percent"
+    },
+    {
+      "displayDescription": "Percent Autoscale utilization",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/AutoscaleUtilizationPercent",
+      "name": {
+        "localizedValue": "Autoscale Utilization percent",
+        "value": "AutoscaleUtilizationPercent"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "timeStamp": "2026-10-26T10:22:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:23:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:24:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:25:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:26:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:27:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:28:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:29:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T10:30:00Z"
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Percent"
+    },
+    {
+      "displayDescription": "Percent of available storage used on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/StoragePercent",
+      "name": {
+        "localizedValue": "Storage percent",
+        "value": "StoragePercent"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 6.14470780305258,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 49.15766242442064
+            },
+            {
+              "average": 6.1447078030525795,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 49.157662424420636
+            },
+            {
+              "average": 6.1447078030525795,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 49.157662424420636
+            },
+            {
+              "average": 6.14470780305258,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 49.15766242442064
+            },
+            {
+              "average": 6.144707803052581,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 49.15766242442065
+            },
+            {
+              "average": 6.1447078030525795,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 49.157662424420636
+            },
+            {
+              "average": 6.144707803052581,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 49.15766242442065
+            },
+            {
+              "average": 6.144707803052581,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 49.15766242442065
+            },
+            {
+              "average": 6.14470780305258,
+              "count": 8.0,
+              "maximum": 6.1689036201129515,
+              "minimum": 6.1220654943655815,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 49.15766242442064
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Percent"
+    },
+    {
+      "displayDescription": "Quantity of available storage used on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/StorageUsed",
+      "name": {
+        "localizedValue": "Storage used",
+        "value": "StorageUsed"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 265440706560.0
+            },
+            {
+              "average": 33180088320.0,
+              "count": 8.0,
+              "maximum": 33310740480.0,
+              "minimum": 33057824768.0,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 265440706560.0
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Bytes"
+    },
+    {
+      "displayDescription": "Disk IO operations per second on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/IOPS",
+      "name": {
+        "localizedValue": "IOPS",
+        "value": "IOPS"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 1.0,
+              "count": 8.0,
+              "maximum": 1.0,
+              "minimum": 1.0,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 8.0
+            },
+            {
+              "average": 0.625,
+              "count": 8.0,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 5.0
+            },
+            {
+              "average": 0.75,
+              "count": 8.0,
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 6.0
+            },
+            {
+              "average": 0.875,
+              "count": 8.0,
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 7.0
+            },
+            {
+              "average": 1.0,
+              "count": 8.0,
+              "maximum": 1.0,
+              "minimum": 1.0,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 8.0
+            },
+            {
+              "average": 0.75,
+              "count": 8.0,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 6.0
+            },
+            {
+              "average": 0.625,
+              "count": 8.0,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 5.0
+            },
+            {
+              "average": 0.375,
+              "count": 8.0,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 3.0
+            },
+            {
+              "average": 0.75,
+              "count": 8.0,
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 6.0
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Count"
+    },
+    {
+      "displayDescription": "Network bytes received on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/NetworkBytesIngress",
+      "name": {
+        "localizedValue": "Network bytes ingress",
+        "value": "NetworkBytesIngress"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 9279935.5,
+              "count": 8.0,
+              "maximum": 47593163.0,
+              "minimum": 166120.0,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 74239484.0
+            },
+            {
+              "average": 41976042.375,
+              "count": 8.0,
+              "maximum": 330173260.0,
+              "minimum": 199181.0,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 335808339.0
+            },
+            {
+              "average": 44193781.625,
+              "count": 8.0,
+              "maximum": 327792413.0,
+              "minimum": 191579.0,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 353550253.0
+            },
+            {
+              "average": 44221811.0,
+              "count": 8.0,
+              "maximum": 328034460.0,
+              "minimum": 173054.0,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 353774488.0
+            },
+            {
+              "average": 48432896.375,
+              "count": 8.0,
+              "maximum": 327997431.0,
+              "minimum": 183009.0,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 387463171.0
+            },
+            {
+              "average": 44216430.875,
+              "count": 8.0,
+              "maximum": 327885339.0,
+              "minimum": 181597.0,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 353731447.0
+            },
+            {
+              "average": 44276674.25,
+              "count": 8.0,
+              "maximum": 328112755.0,
+              "minimum": 166308.0,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 354213394.0
+            },
+            {
+              "average": 44227113.875,
+              "count": 8.0,
+              "maximum": 328010866.0,
+              "minimum": 182146.0,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 353816911.0
+            },
+            {
+              "average": 44257190.0,
+              "count": 8.0,
+              "maximum": 328118424.0,
+              "minimum": 177136.0,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 354057520.0
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Bytes"
+    },
+    {
+      "displayDescription": "Network bytes sent on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/NetworkBytesEgress",
+      "name": {
+        "localizedValue": "Network bytes egress",
+        "value": "NetworkBytesEgress"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 26118063.5,
+              "count": 8.0,
+              "maximum": 91073372.0,
+              "minimum": 283072.0,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 208944508.0
+            },
+            {
+              "average": 109636201.625,
+              "count": 8.0,
+              "maximum": 602200151.0,
+              "minimum": 271842.0,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 877089613.0
+            },
+            {
+              "average": 116550389.5,
+              "count": 8.0,
+              "maximum": 614482308.0,
+              "minimum": 324061.0,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 932403116.0
+            },
+            {
+              "average": 120654730.75,
+              "count": 8.0,
+              "maximum": 614472737.0,
+              "minimum": 282082.0,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 965237846.0
+            },
+            {
+              "average": 120872098.0,
+              "count": 8.0,
+              "maximum": 648570553.0,
+              "minimum": 285374.0,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 966976784.0
+            },
+            {
+              "average": 116493057.0,
+              "count": 8.0,
+              "maximum": 614742752.0,
+              "minimum": 266929.0,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 931944456.0
+            },
+            {
+              "average": 116579747.0,
+              "count": 8.0,
+              "maximum": 614850648.0,
+              "minimum": 275251.0,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 932637976.0
+            },
+            {
+              "average": 116513000.125,
+              "count": 8.0,
+              "maximum": 614470363.0,
+              "minimum": 317397.0,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 932104001.0
+            },
+            {
+              "average": 120831422.125,
+              "count": 8.0,
+              "maximum": 614790951.0,
+              "minimum": 293048.0,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 966651377.0
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Bytes"
+    },
+    {
+      "displayDescription": "The end-to-end duration in milliseconds of client Mongo DB requests handled by the Mongo cluster. Updated every 60 seconds.",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/MongoRequestDurationMs",
+      "name": {
+        "localizedValue": "Mongo request duration",
+        "value": "MongoRequestDurationMs"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 1.1844823672480613,
+              "count": 1032.0,
+              "maximum": 313.177481,
+              "minimum": 0.01055,
+              "timeStamp": "2026-10-26T10:22:00Z",
+              "total": 1222.3858029999992
+            },
+            {
+              "average": 1.0511535658914715,
+              "count": 2064.0,
+              "maximum": 314.731786,
+              "minimum": 0.011247,
+              "timeStamp": "2026-10-26T10:23:00Z",
+              "total": 2169.580959999997
+            },
+            {
+              "average": 0.13078513527050661,
+              "count": 147741.0,
+              "maximum": 72.488314,
+              "minimum": 0.003923,
+              "timeStamp": "2026-10-26T10:24:00Z",
+              "total": 19322.32666999992
+            },
+            {
+              "average": 0.09375425499616531,
+              "count": 202105.0,
+              "maximum": 65.761455,
+              "minimum": 0.0036780000000000003,
+              "timeStamp": "2026-10-26T10:25:00Z",
+              "total": 18948.20370599999
+            },
+            {
+              "average": 0.0940667233108523,
+              "count": 203875.0,
+              "maximum": 71.68687299999999,
+              "minimum": 0.004208,
+              "timeStamp": "2026-10-26T10:26:00Z",
+              "total": 19177.85321500001
+            },
+            {
+              "average": 0.09392832841406563,
+              "count": 203079.0,
+              "maximum": 78.522006,
+              "minimum": 0.004405,
+              "timeStamp": "2026-10-26T10:27:00Z",
+              "total": 19074.871006000034
+            },
+            {
+              "average": 0.09454524498019662,
+              "count": 202996.0,
+              "maximum": 44.892398,
+              "minimum": 0.0045379999999999995,
+              "timeStamp": "2026-10-26T10:28:00Z",
+              "total": 19192.306549999994
+            },
+            {
+              "average": 0.09680255271535526,
+              "count": 202920.0,
+              "maximum": 44.739861,
+              "minimum": 0.004396,
+              "timeStamp": "2026-10-26T10:29:00Z",
+              "total": 19643.17399699989
+            },
+            {
+              "average": 0.09649204716360452,
+              "count": 203674.0,
+              "maximum": 58.050537,
+              "minimum": 0.004471999999999999,
+              "timeStamp": "2026-10-26T10:30:00Z",
+              "total": 19652.921213999987
+            }
+          ],
+          "metadatavalues": []
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "MilliSeconds"
+    }
+  ]
+}
+
