@@ -11,8 +11,8 @@
 | Stage | Combined gate | Per-host gate | Iteration | Status | Safety verdict |
 |---|---:|---:|---:|---|---|
 | A | 6,000 | 2,000 | 1 × 8 min | Complete | PASS — no client saturation |
-| B | 9,000 | 3,000 | 1 × 8 min | Starting | Pending |
-| C | 12,000 | 4,000 | 1 × 8 min | Pending | Pending |
+| B | 9,000 | 3,000 | 1 × 8 min | Complete | PASS — no client saturation |
+| C | 12,000 | 4,000 | 1 × 8 min | Starting | Pending |
 | D | 15,000 | 5,000 | 1 × 8 min | Pending | Pending |
 | E | 18,000 | 6,000 | 1 × 8 min | Pending | Pending |
 
@@ -41,3 +41,25 @@ OIDC creates approximately two target TCP sockets for every held driver-ready cl
 (workload plus topology/monitoring path). Therefore Stage A's 6,000 authoritative `ActiveReady` clients
 corresponded to approximately 12,000 established target TCP sockets across the three generators. Both
 values are retained; the staged gate and pass/fail definition use driver `ActiveReady`.
+
+## Stage B — 9,000 combined driver-ready connections
+
+- Cross-host start skew: 0 seconds
+- Combined peak `ActiveReady`: 9,000 / 9,000
+- Per-host peak `ActiveReady`: 3,000 on all three generators
+- Connection, task, and keepalive failures: 0
+- Drain: 0.57–0.61 seconds; lifecycle fully reconciled
+- Per-host peak working set: 1,184–1,230 MiB
+- Per-host peak handles: 67,067–69,901
+- Per-host peak threads: 9,585–9,606
+- Per-host peak ephemeral utilization: 10.8%
+- Per-host peak CPU: 43.6–46.5%
+- TCP/resource dropped samples: 6–7 of 481 per host (1.25–1.46%)
+- Last-five-minute target TCP average: 5,982–6,000 established sockets per host
+- DocumentDB CPU average/maximum: 1.004% / 5.998%
+- DocumentDB memory average/maximum: 29.339% / 31.081%
+- DocumentDB committed-memory maximum: 5.757%
+
+The 9,000-ready stage remains below the client stop thresholds. Thread count is approximately 80% of
+the 12,000 safety threshold, so Stage C is allowed but must be treated as the likely client-safety boundary;
+no higher stage may proceed if Stage C crosses that threshold or materially drops samples.
