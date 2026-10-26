@@ -1,0 +1,17 @@
+{
+  // Final-config baseline: M80 / 2 shards / HA, full workload at the historical ~135 tasks/s.
+  "Extends": "documentdb-ha-full-workload.json",
+
+  "TaskSleepMs": 0,
+
+  "Scenario": {
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 135
+    },
+    "Burst": {
+      "Enabled": false,
+      "OpenLoop": false
+    }
+  }
+}

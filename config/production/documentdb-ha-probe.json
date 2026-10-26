@@ -1,0 +1,20 @@
+{
+  // Long-running HA/failover probe. Keep one iteration running across the planned event.
+  // Duration is supplied with --duration-sec so the baseline, event, and recovery windows are included.
+  "Extends": "documentdb-ha-full-workload.json",
+
+  "TaskSleepMs": 0,
+
+  "Preflight": {
+    "WarmupSampleSize": 100
+  },
+
+  "Scenario": {
+    "Iterations": 1,
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 50
+    },
+    "Burst": { "Enabled": false }
+  }
+}

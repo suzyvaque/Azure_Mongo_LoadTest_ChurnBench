@@ -1,0 +1,25 @@
+{
+  // DocumentDB HA-resilient connection profile for the TARGET M80 / 2-shard / HA cluster.
+  // Unlike the historical saturation benchmark, this profile preserves the service-provided global
+  // mongodb+srv endpoint so the driver can rediscover topology during failover or maintenance.
+  // The no-reuse workload remains unchanged: one MongoClient per Task, pool 0/1.
+  "Extends": "full-workload.json",
+
+  "Client": {
+    "ServerSelectionTimeoutMs": 30000,
+    "ConnectTimeoutMs": 10000,
+    "SocketTimeoutMs": 60000,
+    "PreserveDocumentDbSrvEndpoint": true,
+    "RetryReads": true,
+    "HeartbeatIntervalMs": 5000,
+    "MaxConnectionIdleTimeMs": 60000,
+    "ReadPreferenceMode": "PrimaryPreferred",
+    "UseMajorityReadConcern": true,
+    "UseMajorityWriteConcern": true,
+    "DirectConnectionForSingleNode": false
+  },
+
+  "Preflight": {
+    "DocumentDbExpectedTier": "M80"
+  }
+}

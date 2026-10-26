@@ -1,0 +1,22 @@
+{
+  // PROVISIONAL load shape based on the historical log value, not a confirmed production requirement.
+  // Three hosts offer ~1,212 new Task/client lifecycles per second combined:
+  //   3 * JobsPerSecondLambda(2.02) * mean(100..300 tasks/job = 200) = ~1,212/s.
+  // Replace this rate after the customer supplies current production telemetry; test above the confirmed
+  // peak with an agreed safety margin rather than treating 1,210/s as a production SLO.
+  "Extends": "documentdb-ha-full-workload.json",
+
+  "TaskSleepMs": 3500,
+
+  "Scenario": {
+    "MaxConcurrentTasks": 30000,
+    "Steady": { "Enabled": false },
+    "Burst": {
+      "Enabled": true,
+      "OpenLoop": true,
+      "JobsPerSecondLambda": 2.02,
+      "MinTasksPerJob": 100,
+      "MaxTasksPerJob": 300
+    }
+  }
+}

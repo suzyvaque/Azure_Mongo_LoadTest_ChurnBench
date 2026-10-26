@@ -23,6 +23,31 @@ public sealed class ClientConfig
     public int SocketTimeoutMs { get; set; }
 
     /// <summary>
+    /// When true for DocumentDB, pass the service-provided <c>mongodb+srv</c> endpoint to the driver
+    /// unchanged instead of resolving and pinning one SRV target in the benchmark-side DNS cache.
+    /// Required for HA/failover tests so the driver can rediscover the service topology.
+    /// </summary>
+    public bool PreserveDocumentDbSrvEndpoint { get; set; }
+
+    /// <summary>Explicit retryable-read setting; null leaves the connection string/driver default unchanged.</summary>
+    public bool? RetryReads { get; set; }
+
+    /// <summary>Driver heartbeat interval in ms; 0 leaves the driver default unchanged.</summary>
+    public int HeartbeatIntervalMs { get; set; }
+
+    /// <summary>Maximum idle connection time in ms; 0 leaves the driver default unchanged.</summary>
+    public int MaxConnectionIdleTimeMs { get; set; }
+
+    /// <summary>Optional read preference: Primary or PrimaryPreferred.</summary>
+    public string? ReadPreferenceMode { get; set; }
+
+    /// <summary>When true, apply majority read concern.</summary>
+    public bool UseMajorityReadConcern { get; set; }
+
+    /// <summary>When true, apply majority write concern.</summary>
+    public bool UseMajorityWriteConcern { get; set; }
+
+    /// <summary>
     /// When true, force <c>directConnection=true</c> (and drop any replicaSet name) for the single-node
     /// <c>mongo-vm</c> target. A brand-new client per Task against a <c>replicaSet=rs0</c> URI otherwise
     /// pays full topology discovery + a background heartbeat monitor PER client; at thousands of
@@ -63,6 +88,24 @@ public sealed class ClientConfig
         if (SocketTimeoutMs < 0)
         {
             throw new InvalidOperationException("Client.SocketTimeoutMs must be >= 0 (0 = driver default).");
+        }
+
+        if (HeartbeatIntervalMs < 0)
+        {
+            throw new InvalidOperationException("Client.HeartbeatIntervalMs must be >= 0 (0 = driver default).");
+        }
+
+        if (MaxConnectionIdleTimeMs < 0)
+        {
+            throw new InvalidOperationException("Client.MaxConnectionIdleTimeMs must be >= 0 (0 = driver default).");
+        }
+
+        if (ReadPreferenceMode is not null
+            && !ReadPreferenceMode.Equals("Primary", StringComparison.OrdinalIgnoreCase)
+            && !ReadPreferenceMode.Equals("PrimaryPreferred", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Client.ReadPreferenceMode must be Primary, PrimaryPreferred, or null.");
         }
     }
 }

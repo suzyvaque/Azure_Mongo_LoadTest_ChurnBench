@@ -201,6 +201,53 @@ function Get-MetricByDimension {
     return $byDim
 }
 
+# Pull a gauge metric split by a dimension. DocumentDB CPU and memory have a ServerName dimension;
+# preserving it is required for a fair per-node comparison instead of flattening primary/standby and
+# both shards into one opaque cluster rollup.
+function Get-GaugeByDimension {
+    param([string]$ResourceId, [string]$MetricName, [string]$Dimension, [string]$RawFile)
+
+    $args = @(
+        'monitor','metrics','list',
+        '--resource', $ResourceId,
+        '--start-time', $startIso,
+        '--end-time',   $endIso,
+        '--interval',   'PT1M',
+        '--metrics',    $MetricName,
+        '--filter',     "$Dimension eq '*'",
+        '--aggregation','Average','Maximum','Minimum',
+        '--top',        '50',
+        '--output',     'json'
+    )
+
+    $rawText = & az @args 2>&1 | Out-String
+    Set-Content -Path $RawFile -Value $rawText -Encoding utf8
+    $byDim = [ordered]@{}
+    try {
+        $j = $rawText | ConvertFrom-Json
+        foreach ($m in $j.value) {
+            foreach ($ts in $m.timeseries) {
+                $dimVal = ($ts.metadatavalues | Where-Object { $_.name.value -ieq $Dimension }).value
+                if (-not $dimVal) { $dimVal = '(none)' }
+                $pts  = @($ts.data)
+                $avgs = @($pts | Where-Object { $_.average -ne $null } | ForEach-Object { [double]$_.average })
+                $maxs = @($pts | Where-Object { $_.maximum -ne $null } | ForEach-Object { [double]$_.maximum })
+                $mins = @($pts | Where-Object { $_.minimum -ne $null } | ForEach-Object { [double]$_.minimum })
+                $byDim[$dimVal] = [ordered]@{
+                    unit    = $m.unit
+                    avg     = if ($avgs.Count) { [math]::Round(($avgs | Measure-Object -Average).Average, 3) } else { $null }
+                    max     = if ($maxs.Count) { [math]::Round(($maxs | Measure-Object -Maximum).Maximum, 3) } else { $null }
+                    min     = if ($mins.Count) { [math]::Round(($mins | Measure-Object -Minimum).Minimum, 3) } else { $null }
+                    samples = $pts.Count
+                }
+            }
+        }
+    } catch {
+        $byDim['_error'] = "dimension gauge parse failed: $($_.Exception.Message.Split([char]10)[0])"
+    }
+    return $byDim
+}
+
 # Load the MongoDB .NET driver (already built in the repo) and run a command doc against `admin`.
 $script:DriverBin = $null
 $script:DriverLoaded = $false
@@ -340,11 +387,39 @@ ConvertTo-Json @{
 # VM host metrics for a compute VM by name.
 function Get-VmHostMetrics {
     param([string]$VmName, [string]$RawFile)
-    $vmId = & az vm show -g $ResourceGroup -n $VmName --query id -o tsv 2>$null
-    if ([string]::IsNullOrWhiteSpace($vmId)) { return @{ _error = "vm '$VmName' not found" } }
-    return Get-Metrics -ResourceId $vmId `
+    $vmRaw = & az vm show -g $ResourceGroup -n $VmName -o json 2>$null | Out-String
+    if ([string]::IsNullOrWhiteSpace($vmRaw)) { return @{ _error = "vm '$VmName' not found" } }
+    $vm = $vmRaw | ConvertFrom-Json
+    $roll = Get-Metrics -ResourceId $vm.id `
         -MetricNames @('Percentage CPU','Available Memory Bytes','Network In','Network Out') `
         -RawFile $RawFile
+
+    # Azure exposes free bytes for VM memory but percentage-used for DocumentDB. Add VM capacity and
+    # derived used percentages so the report can compare like-for-like while retaining the raw values.
+    $skuRaw = & az vm list-skus --location $vm.location --size $vm.hardwareProfile.vmSize --all -o json 2>$null | Out-String
+    try {
+        $sku = @($skuRaw | ConvertFrom-Json)[0]
+        $vcpus = [double](($sku.capabilities | Where-Object { $_.name -eq 'vCPUs' }).value)
+        $memoryGb = [double](($sku.capabilities | Where-Object { $_.name -eq 'MemoryGB' }).value)
+        $totalBytes = $memoryGb * 1GB
+        $available = $roll['Available Memory Bytes']
+        $roll['_vmCapacity'] = [ordered]@{
+            vmSize = $vm.hardwareProfile.vmSize
+            vcpus = $vcpus
+            memoryGB = $memoryGb
+        }
+        $roll['_derivedMemory'] = [ordered]@{
+            avgUsedPercent = if ($available.avg -ne $null -and $totalBytes -gt 0) {
+                [math]::Round(100 * (1 - ([double]$available.avg / $totalBytes)), 3)
+            } else { $null }
+            peakUsedPercent = if ($available.min -ne $null -and $totalBytes -gt 0) {
+                [math]::Round(100 * (1 - ([double]$available.min / $totalBytes)), 3)
+            } else { $null }
+        }
+    } catch {
+        $roll['_capacityError'] = $_.Exception.Message.Split([char]10)[0]
+    }
+    return $roll
 }
 
 # ---- Azure Monitor ingestion lag -----------------------------------------------------------------
@@ -387,6 +462,13 @@ foreach ($t in $Targets) {
             $byStatus = Get-MetricByDimension -ResourceId $rid -MetricName 'MongoRequestDurationMs' `
                 -Dimension 'StatusCodeClass' -RawFile (Join-Path $rawDir 'documentdb-request-by-status.json')
 
+            $byServer = [ordered]@{}
+            foreach ($metricName in @('CpuPercent','MemoryPercent','CommittedMemoryPercent')) {
+                $safeName = $metricName.ToLowerInvariant()
+                $byServer[$metricName] = Get-GaugeByDimension -ResourceId $rid -MetricName $metricName `
+                    -Dimension 'ServerName' -RawFile (Join-Path $rawDir "documentdb-$safeName-by-server.json")
+            }
+
             $perTarget[$t] = [ordered]@{
                 captured           = $true
                 kind               = 'vcore-cluster'
@@ -394,6 +476,7 @@ foreach ($t in $Targets) {
                 tier               = $res.DocumentDb.Tier
                 note               = 'vCore has no active-connection counter, but MongoRequestDurationMs Count = server-side RPS and its StatusCodeClass dimension surfaces 4xx/5xx (throttles). Concurrent/created connection counts still come from the client-side merge.'
                 metrics            = $roll
+                metricsByServer    = $byServer
                 requestByOperation = $byOp
                 requestByStatus    = $byStatus
             }

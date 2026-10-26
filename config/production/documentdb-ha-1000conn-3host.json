@@ -1,0 +1,26 @@
+{
+  // Three synchronized generators, each offering 333.333333 single-use clients/s:
+  //   3 * 333.333333 = 1,000 new connection lifecycles/s combined.
+  // One indexed FindInput is executed per connection to isolate connection establishment from the
+  // 4-operation business workload. This is a steady connection-rate test, not a concurrent-hold test.
+  "Extends": "documentdb-ha-full-workload.json",
+
+  "TaskSleepMs": 0,
+
+  "Workload": {
+    "Mode": "SingleOp",
+    "SingleOpType": "FindInput"
+  },
+
+  "Scenario": {
+    "MaxConcurrentTasks": 30000,
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 333.3333333333
+    },
+    "Burst": {
+      "Enabled": false,
+      "OpenLoop": false
+    }
+  }
+}

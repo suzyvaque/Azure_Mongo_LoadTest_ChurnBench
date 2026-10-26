@@ -134,6 +134,34 @@ public sealed class TaskConnectionFactory
         {
             settings.SocketTimeout = TimeSpan.FromMilliseconds(_tuning.SocketTimeoutMs);
         }
+        if (_tuning.HeartbeatIntervalMs > 0)
+        {
+            settings.HeartbeatInterval = TimeSpan.FromMilliseconds(_tuning.HeartbeatIntervalMs);
+        }
+        if (_tuning.MaxConnectionIdleTimeMs > 0)
+        {
+            settings.MaxConnectionIdleTime = TimeSpan.FromMilliseconds(_tuning.MaxConnectionIdleTimeMs);
+        }
+        if (_tuning.RetryReads.HasValue)
+        {
+            settings.RetryReads = _tuning.RetryReads.Value;
+        }
+        if (_tuning.ReadPreferenceMode?.Equals("PrimaryPreferred", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            settings.ReadPreference = ReadPreference.PrimaryPreferred;
+        }
+        else if (_tuning.ReadPreferenceMode?.Equals("Primary", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            settings.ReadPreference = ReadPreference.Primary;
+        }
+        if (_tuning.UseMajorityReadConcern)
+        {
+            settings.ReadConcern = ReadConcern.Majority;
+        }
+        if (_tuning.UseMajorityWriteConcern)
+        {
+            settings.WriteConcern = WriteConcern.WMajority;
+        }
 
         // Direct, single-server per-Task connections so each fresh client skips topology discovery +
         // its background heartbeat (SDAM) monitor. At thousands of concurrent clients that per-client
@@ -306,6 +334,18 @@ public sealed class TaskConnectionFactory
         if (Target != TargetKey.DocumentDb)
         {
             return MongoClientSettings.FromConnectionString(_connectionString);
+        }
+
+        if (_tuning.PreserveDocumentDbSrvEndpoint)
+        {
+            var settings = MongoClientSettings.FromConnectionString(_connectionString);
+            if (settings.Scheme != ConnectionStringScheme.MongoDBPlusSrv)
+            {
+                throw new InvalidOperationException(
+                    "Client.PreserveDocumentDbSrvEndpoint requires the service-provided mongodb+srv DocumentDB connection string.");
+            }
+
+            return settings;
         }
 
         var cached = _cachedResolvedSettings;

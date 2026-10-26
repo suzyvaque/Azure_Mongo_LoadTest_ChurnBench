@@ -1,0 +1,20 @@
+{
+  // Three synchronized generators, each offering 83.333333 Tasks/s:
+  //   3 * 83.333333 = 250 Tasks/s combined.
+  // FullWorkload performs 4 ordered DB operations per Task, so the nominal offered operation rate is
+  // 250 * 4 = 1,000 ops/s. Every Task still creates and disposes one client/connection lifecycle.
+  "Extends": "documentdb-ha-full-workload.json",
+
+  "TaskSleepMs": 0,
+
+  "Scenario": {
+    "Steady": {
+      "Enabled": true,
+      "TasksPerSecond": 83.3333333333
+    },
+    "Burst": {
+      "Enabled": false,
+      "OpenLoop": false
+    }
+  }
+}
