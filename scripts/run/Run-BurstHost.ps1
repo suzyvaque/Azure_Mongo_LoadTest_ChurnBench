@@ -143,7 +143,7 @@ if ($PushResults) {
     Write-Host "[host $HostId/$HostCount] pushing results to shared repo..." -ForegroundColor Cyan
     git config user.name  "host$HostId-$Target" | Out-Null
     git config user.email "host$HostId-$Target@benchmarks.local" | Out-Null
-    git add results/
+    git add -- $ResultsDir/
     git commit -m "results: $RunTag $Target host $HostId/$HostCount$(if ($IterationNumber -gt 0) { " iter $IterationNumber/$IterationCount" }) $(Get-Date -Format 'yyyy-MM-dd HH:mm')" | Out-Null
     # Never block on an interactive credential prompt. Under az vm run-command this script runs as
     # SYSTEM, which has no cached git credential, so GCM's `credential get` would hang forever. Force
