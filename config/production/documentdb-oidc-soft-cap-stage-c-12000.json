@@ -1,0 +1,4 @@
+{
+  "Extends": "documentdb-oidc-soft-cap-hold-3host.json",
+  "Scenario": { "MaxConcurrentTasks": 4000 }
+}

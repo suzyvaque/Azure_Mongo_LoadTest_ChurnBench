@@ -1,0 +1,32 @@
+{
+  // OIDC bounded concurrent-connection soft-cap probe. The per-host MaxConcurrentTasks gate below is the only
+  // value changed between stages: combined gate = 3 * MaxConcurrentTasks. Closed-loop Hold mode prevents
+  // unbounded scheduler queues. Keepalive is deliberately sparse so this measures connection capacity,
+  // not read throughput.
+  "Extends": "documentdb-ha-full-workload.json",
+
+  "TaskSleepMs": 60000,
+
+  "Workload": {
+    "Mode": "Hold",
+    "SingleOpType": "FindInput"
+  },
+
+  "Preflight": {
+    "WarmupSampleSize": 1000
+  },
+
+  "Scenario": {
+    "Iterations": 1,
+    "IterationDurationSeconds": 480,
+    "MaxConcurrentTasks": 2000,
+    "Steady": { "Enabled": false },
+    "Burst": {
+      "Enabled": true,
+      "OpenLoop": false,
+      "JobsPerSecondLambda": 4.0,
+      "MinTasksPerJob": 150,
+      "MaxTasksPerJob": 500
+    }
+  }
+}

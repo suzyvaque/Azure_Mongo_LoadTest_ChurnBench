@@ -17,7 +17,7 @@
 
 The real production maximum was clarified as approximately 140 tasks/s. The already completed 250 tasks/s OIDC and SCRAM campaigns provide sufficient production-rate headroom. The offered 1,000 connections/s workload did not represent a production requirement and drove both the generators and the connection/admission path into a runaway saturation state.
 
-The cancelled run must not be interpreted as a measured product hard cap. It is retained only as overload evidence and as input to the revised hard-cap test design.
+The cancelled run must not be interpreted as a measured product cap. It is retained only as overload evidence and as input to the revised soft-cap characterization design.
 
 ## Observed overload evidence before cancellation
 
