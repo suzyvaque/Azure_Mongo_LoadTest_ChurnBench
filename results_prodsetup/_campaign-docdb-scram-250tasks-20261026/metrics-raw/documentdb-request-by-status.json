@@ -1,0 +1,368 @@
+{
+  "cost": 96,
+  "interval": "PT1M",
+  "namespace": "Microsoft.DocumentDB/mongoClusters",
+  "resourceregion": "koreacentral",
+  "timespan": "2026-10-26T03:46:19Z/2026-10-26T04:19:19Z",
+  "value": [
+    {
+      "displayDescription": "The end-to-end duration in milliseconds of client Mongo DB requests handled by the Mongo cluster. Updated every 60 seconds.",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/MongoRequestDurationMs",
+      "name": {
+        "localizedValue": "Mongo request duration",
+        "value": "MongoRequestDurationMs"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 79.56693492592595,
+              "count": 27.0,
+              "maximum": 1442.938398,
+              "timeStamp": "2026-10-26T03:46:00Z"
+            },
+            {
+              "average": 1.0784816579457375,
+              "count": 3096.0,
+              "maximum": 358.204674,
+              "timeStamp": "2026-10-26T03:47:00Z"
+            },
+            {
+              "average": 1.1066364473868702,
+              "count": 94140.0,
+              "maximum": 65.98186,
+              "timeStamp": "2026-10-26T03:48:00Z"
+            },
+            {
+              "average": 1.0958359330072978,
+              "count": 120028.0,
+              "maximum": 65.536473,
+              "timeStamp": "2026-10-26T03:49:00Z"
+            },
+            {
+              "average": 1.1075323466833307,
+              "count": 120000.0,
+              "maximum": 47.660156,
+              "timeStamp": "2026-10-26T03:50:00Z"
+            },
+            {
+              "average": 1.1114341986550804,
+              "count": 120007.0,
+              "maximum": 56.136732,
+              "timeStamp": "2026-10-26T03:51:00Z"
+            },
+            {
+              "average": 1.101372606261148,
+              "count": 119978.0,
+              "maximum": 50.624458,
+              "timeStamp": "2026-10-26T03:52:00Z"
+            },
+            {
+              "average": 1.0938618115397425,
+              "count": 120020.0,
+              "maximum": 45.554292000000004,
+              "timeStamp": "2026-10-26T03:53:00Z"
+            },
+            {
+              "average": 1.0930655200623476,
+              "count": 119976.0,
+              "maximum": 52.530680000000004,
+              "timeStamp": "2026-10-26T03:54:00Z"
+            },
+            {
+              "average": 1.111535378842295,
+              "count": 120013.0,
+              "maximum": 43.473653,
+              "timeStamp": "2026-10-26T03:55:00Z"
+            },
+            {
+              "average": 1.0990601318663944,
+              "count": 120023.0,
+              "maximum": 62.3067,
+              "timeStamp": "2026-10-26T03:56:00Z"
+            },
+            {
+              "average": 1.1049115836417287,
+              "count": 119976.0,
+              "maximum": 52.145521,
+              "timeStamp": "2026-10-26T03:57:00Z"
+            },
+            {
+              "average": 1.1041926013008638,
+              "count": 25829.0,
+              "maximum": 12.392733,
+              "timeStamp": "2026-10-26T03:58:00Z"
+            },
+            {
+              "average": 1.1288376903482262,
+              "count": 49307.0,
+              "maximum": 323.469898,
+              "timeStamp": "2026-10-26T03:59:00Z"
+            },
+            {
+              "average": 1.0967269031456812,
+              "count": 119974.0,
+              "maximum": 51.237204,
+              "timeStamp": "2026-10-26T04:00:00Z"
+            },
+            {
+              "average": 1.1092596061472053,
+              "count": 120022.0,
+              "maximum": 49.203735,
+              "timeStamp": "2026-10-26T04:01:00Z"
+            },
+            {
+              "average": 1.1107757162764713,
+              "count": 119983.0,
+              "maximum": 61.489601,
+              "timeStamp": "2026-10-26T04:02:00Z"
+            },
+            {
+              "average": 1.1148487949839572,
+              "count": 120015.0,
+              "maximum": 47.076691,
+              "timeStamp": "2026-10-26T04:03:00Z"
+            },
+            {
+              "average": 1.1172950543007183,
+              "count": 119980.0,
+              "maximum": 65.284377,
+              "timeStamp": "2026-10-26T04:04:00Z"
+            },
+            {
+              "average": 1.0975901371490435,
+              "count": 120030.0,
+              "maximum": 67.25277799999999,
+              "timeStamp": "2026-10-26T04:05:00Z"
+            },
+            {
+              "average": 1.1031547984014118,
+              "count": 119981.0,
+              "maximum": 66.411059,
+              "timeStamp": "2026-10-26T04:06:00Z"
+            },
+            {
+              "average": 1.1016089817072692,
+              "count": 119993.0,
+              "maximum": 53.034245,
+              "timeStamp": "2026-10-26T04:07:00Z"
+            },
+            {
+              "average": 1.1013747048674796,
+              "count": 119980.0,
+              "maximum": 60.878609,
+              "timeStamp": "2026-10-26T04:08:00Z"
+            },
+            {
+              "average": 1.1026506624900108,
+              "count": 73823.0,
+              "maximum": 56.052182,
+              "timeStamp": "2026-10-26T04:09:00Z"
+            },
+            {
+              "average": 1.153861208067939,
+              "count": 27318.0,
+              "maximum": 360.353385,
+              "timeStamp": "2026-10-26T04:10:00Z"
+            },
+            {
+              "average": 1.0989695317361836,
+              "count": 120005.0,
+              "maximum": 69.064061,
+              "timeStamp": "2026-10-26T04:11:00Z"
+            },
+            {
+              "average": 1.1113505431813857,
+              "count": 120017.0,
+              "maximum": 58.888022,
+              "timeStamp": "2026-10-26T04:12:00Z"
+            },
+            {
+              "average": 1.1058178670362675,
+              "count": 119950.0,
+              "maximum": 64.328117,
+              "timeStamp": "2026-10-26T04:13:00Z"
+            },
+            {
+              "average": 1.1217865809528533,
+              "count": 120039.0,
+              "maximum": 60.545276,
+              "timeStamp": "2026-10-26T04:14:00Z"
+            },
+            {
+              "average": 1.104494242376768,
+              "count": 119995.0,
+              "maximum": 72.774862,
+              "timeStamp": "2026-10-26T04:15:00Z"
+            },
+            {
+              "average": 1.1006650283010975,
+              "count": 119960.0,
+              "maximum": 47.814712,
+              "timeStamp": "2026-10-26T04:16:00Z"
+            },
+            {
+              "average": 1.0961095265170784,
+              "count": 120017.0,
+              "maximum": 59.389883999999995,
+              "timeStamp": "2026-10-26T04:17:00Z"
+            },
+            {
+              "average": 1.1065074410906879,
+              "count": 119998.0,
+              "maximum": 68.875302,
+              "timeStamp": "2026-10-26T04:18:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "statuscodeclass",
+                "value": "statuscodeclass"
+              },
+              "value": "2xx"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "timeStamp": "2026-10-26T03:46:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:47:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:48:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:49:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:50:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:51:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:52:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:53:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:54:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:55:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:56:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:57:00Z"
+            },
+            {
+              "average": 2.6429489999999998,
+              "count": 1.0,
+              "maximum": 2.6429489999999998,
+              "timeStamp": "2026-10-26T03:58:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T03:59:00Z"
+            },
+            {
+              "average": 0.412031,
+              "count": 1.0,
+              "maximum": 0.412031,
+              "timeStamp": "2026-10-26T04:00:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:01:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:02:00Z"
+            },
+            {
+              "average": 2.983351,
+              "count": 1.0,
+              "maximum": 2.983351,
+              "timeStamp": "2026-10-26T04:03:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:04:00Z"
+            },
+            {
+              "average": 2.590376,
+              "count": 1.0,
+              "maximum": 2.590376,
+              "timeStamp": "2026-10-26T04:05:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:06:00Z"
+            },
+            {
+              "average": 2.1077410000000003,
+              "count": 1.0,
+              "maximum": 2.1077410000000003,
+              "timeStamp": "2026-10-26T04:07:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:08:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:09:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:10:00Z"
+            },
+            {
+              "average": 2.7028149999999997,
+              "count": 1.0,
+              "maximum": 2.7028149999999997,
+              "timeStamp": "2026-10-26T04:11:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:12:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:13:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:14:00Z"
+            },
+            {
+              "average": 3.223084,
+              "count": 1.0,
+              "maximum": 3.223084,
+              "timeStamp": "2026-10-26T04:15:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:16:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:17:00Z"
+            },
+            {
+              "timeStamp": "2026-10-26T04:18:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "statuscodeclass",
+                "value": "statuscodeclass"
+              },
+              "value": "4xx"
+            }
+          ]
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "MilliSeconds"
+    }
+  ]
+}
+
