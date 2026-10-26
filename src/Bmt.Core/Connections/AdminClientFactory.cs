@@ -19,6 +19,7 @@ public sealed class AdminClientFactory
         }
 
         var settings = MongoClientSettings.FromConnectionString(connectionString);
+        AzureOidcCredential.ApplyIfNeeded(settings);
         if (TargetConnection.RequiresRetryWritesDisabled(target))
         {
             settings.RetryWrites = false;
