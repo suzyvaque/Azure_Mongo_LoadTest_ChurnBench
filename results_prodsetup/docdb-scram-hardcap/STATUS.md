@@ -12,8 +12,8 @@
 | Stage | Combined gate | Per-host gate | Iteration | Status | Safety verdict |
 |---|---:|---:|---:|---|---|
 | A | 6,000 | 2,000 | 1 × 8 min | Complete | PASS — no client saturation |
-| B | 9,000 | 3,000 | 1 × 8 min | Starting | Pending |
-| C | 12,000 | 4,000 | 1 × 8 min | Pending | Pending |
+| B | 9,000 | 3,000 | 1 × 8 min | Complete | PASS — no client saturation |
+| C | 12,000 | 4,000 | 1 × 8 min | Starting | Pending |
 
 The same client-safety criteria as the OIDC campaign apply. The comparison ends after Stage C even if
 SCRAM remains healthy, because OIDC reached the generator thread boundary at that stage.
@@ -28,3 +28,14 @@ SCRAM remains healthy, because OIDC reached the generator thread boundary at tha
 - DocumentDB CPU average/maximum: 0.649% / 3.513%
 - DocumentDB memory average/maximum: 29.191% / 30.596%
 - DocumentDB committed-memory maximum: 5.481%
+
+## Stage B — 9,000 combined Ready
+
+- Combined/per-host peak `ActiveReady`: 9,000 / 3,000
+- Start skew: 0 seconds; task/connection/keepalive failures: 0
+- Drain: 0.54–1.10 seconds; lifecycle reconciled
+- Working set: 1,172–1,220 MiB; handles: 65,237–68,829; threads: 9,578–9,596
+- CPU peak: 46.9–49.0%; ephemeral utilization: 10.8%; dropped samples: 4–6/481
+- DocumentDB CPU average/maximum: 0.929% / 3.191%
+- DocumentDB memory average/maximum: 29.237% / 30.760%
+- DocumentDB committed-memory maximum: 5.623%

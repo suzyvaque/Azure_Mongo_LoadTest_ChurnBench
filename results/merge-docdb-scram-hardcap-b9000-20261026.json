@@ -1,0 +1,925 @@
+{
+  "GeneratedUtc": "2026-10-26T10:17:55.1589581Z",
+  "InputDirectory": "C:\\Users\\suzyvaque\\Desktop\\Azure_Mongo_LoadTest_ChurnBench\\results_prodsetup\\docdb-scram-hardcap\\stage-b-9000",
+  "RunTagFilter": "docdb-scram-hardcap-b9000-20261026",
+  "ConcurrentTarget": 11000,
+  "ChurnTarget": 1200,
+  "Groups": [
+    {
+      "Target": "documentdb",
+      "Scenario": "Burst",
+      "WorkloadMode": "hold",
+      "RunTag": "docdb-scram-hardcap-b9000-20261026",
+      "IterationNumber": 1,
+      "IterationCount": 1,
+      "HostsFound": 3,
+      "DeclaredHostCount": 3,
+      "HostIds": [
+        1,
+        2,
+        3
+      ],
+      "RequiredHostIds": [
+        1,
+        2,
+        3
+      ],
+      "MissingHostIds": [],
+      "UnexpectedHostIds": [],
+      "RetriedHostIds": [],
+      "SupersededRuns": 0,
+      "HostCountConsistent": true,
+      "StartSkewSeconds": 0,
+      "Valid": true,
+      "PeakCombinedConnPerSec": 1021,
+      "PeakCombinedReadyPerSec": 1011,
+      "PeakCombinedActiveReady": 9000,
+      "PeakCombinedInFlight": 9000,
+      "TotalConnectionsCreated": 69702,
+      "CombinedWindowSeconds": 98,
+      "CombinedOfferedTasksPerSec": 20.36,
+      "CombinedStartedTasksPerSec": 20.36,
+      "FailureRatePct": 0,
+      "TrueE2eP99Ms": 480395.7472,
+      "DrainDurationSeconds": 1.101,
+      "AllHostsReconciled": true,
+      "Hosts": [
+        {
+          "HostId": 1,
+          "StartedUnixSeconds": 1793008808,
+          "TasksScheduled": 3193,
+          "TasksStarted": 3193,
+          "ScheduledTasksPerSec": 6.65,
+          "StartedTasksPerSec": 6.65,
+          "FailedTasks": 0,
+          "SchedulerLatencyP99Ms": 476936.085,
+          "TrueE2eP99Ms": 480395.7472,
+          "DemandToReadyP99Ms": 289.2948,
+          "PeakActiveReady": 3000,
+          "DrainDurationSeconds": 0.537,
+          "MaximumDrainBacklog": 2989,
+          "LifecycleReconciled": true
+        },
+        {
+          "HostId": 2,
+          "StartedUnixSeconds": 1793008808,
+          "TasksScheduled": 3257,
+          "TasksStarted": 3257,
+          "ScheduledTasksPerSec": 6.79,
+          "StartedTasksPerSec": 6.79,
+          "FailedTasks": 0,
+          "SchedulerLatencyP99Ms": 477179.5854,
+          "TrueE2eP99Ms": 480128.6921,
+          "DemandToReadyP99Ms": 232.4311,
+          "PeakActiveReady": 3000,
+          "DrainDurationSeconds": 0.561,
+          "MaximumDrainBacklog": 2988,
+          "LifecycleReconciled": true
+        },
+        {
+          "HostId": 3,
+          "StartedUnixSeconds": 1793008808,
+          "TasksScheduled": 3322,
+          "TasksStarted": 3322,
+          "ScheduledTasksPerSec": 6.92,
+          "StartedTasksPerSec": 6.92,
+          "FailedTasks": 0,
+          "SchedulerLatencyP99Ms": 477929.9306,
+          "TrueE2eP99Ms": 480381.5466,
+          "DemandToReadyP99Ms": 188.1085,
+          "PeakActiveReady": 3000,
+          "DrainDurationSeconds": 1.101,
+          "MaximumDrainBacklog": 2992,
+          "LifecycleReconciled": true
+        }
+      ],
+      "ReachedChurnTarget": false,
+      "ReachedReadyChurnTarget": false,
+      "ReachedConcurrentTarget": false,
+      "ReachedActiveReadyTarget": false,
+      "Series": [
+        {
+          "WallClockUnixSecond": 1793008808,
+          "RelativeSecond": 0,
+          "CombinedConnPerSec": 704,
+          "CombinedInFlight": 1902,
+          "CombinedOps": 659,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008809,
+          "RelativeSecond": 1,
+          "CombinedConnPerSec": 988,
+          "CombinedInFlight": 3289,
+          "CombinedOps": 966,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008810,
+          "RelativeSecond": 2,
+          "CombinedConnPerSec": 980,
+          "CombinedInFlight": 4228,
+          "CombinedOps": 999,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008811,
+          "RelativeSecond": 3,
+          "CombinedConnPerSec": 961,
+          "CombinedInFlight": 5187,
+          "CombinedOps": 937,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008812,
+          "RelativeSecond": 4,
+          "CombinedConnPerSec": 879,
+          "CombinedInFlight": 6100,
+          "CombinedOps": 904,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008813,
+          "RelativeSecond": 5,
+          "CombinedConnPerSec": 821,
+          "CombinedInFlight": 6888,
+          "CombinedOps": 822,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008814,
+          "RelativeSecond": 6,
+          "CombinedConnPerSec": 832,
+          "CombinedInFlight": 7731,
+          "CombinedOps": 836,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008815,
+          "RelativeSecond": 7,
+          "CombinedConnPerSec": 748,
+          "CombinedInFlight": 8607,
+          "CombinedOps": 750,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008816,
+          "RelativeSecond": 8,
+          "CombinedConnPerSec": 849,
+          "CombinedInFlight": 9000,
+          "CombinedOps": 796,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008817,
+          "RelativeSecond": 9,
+          "CombinedConnPerSec": 811,
+          "CombinedInFlight": 0,
+          "CombinedOps": 882,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008818,
+          "RelativeSecond": 10,
+          "CombinedConnPerSec": 426,
+          "CombinedInFlight": 0,
+          "CombinedOps": 448,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008819,
+          "RelativeSecond": 11,
+          "CombinedConnPerSec": 1,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008868,
+          "RelativeSecond": 60,
+          "CombinedConnPerSec": 622,
+          "CombinedInFlight": 0,
+          "CombinedOps": 609,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008869,
+          "RelativeSecond": 61,
+          "CombinedConnPerSec": 928,
+          "CombinedInFlight": 0,
+          "CombinedOps": 971,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008870,
+          "RelativeSecond": 62,
+          "CombinedConnPerSec": 987,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1034,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008871,
+          "RelativeSecond": 63,
+          "CombinedConnPerSec": 878,
+          "CombinedInFlight": 0,
+          "CombinedOps": 865,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008872,
+          "RelativeSecond": 64,
+          "CombinedConnPerSec": 886,
+          "CombinedInFlight": 0,
+          "CombinedOps": 901,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008873,
+          "RelativeSecond": 65,
+          "CombinedConnPerSec": 770,
+          "CombinedInFlight": 0,
+          "CombinedOps": 830,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008874,
+          "RelativeSecond": 66,
+          "CombinedConnPerSec": 834,
+          "CombinedInFlight": 0,
+          "CombinedOps": 894,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008875,
+          "RelativeSecond": 67,
+          "CombinedConnPerSec": 687,
+          "CombinedInFlight": 0,
+          "CombinedOps": 709,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008876,
+          "RelativeSecond": 68,
+          "CombinedConnPerSec": 815,
+          "CombinedInFlight": 0,
+          "CombinedOps": 848,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008877,
+          "RelativeSecond": 69,
+          "CombinedConnPerSec": 835,
+          "CombinedInFlight": 0,
+          "CombinedOps": 830,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008878,
+          "RelativeSecond": 70,
+          "CombinedConnPerSec": 440,
+          "CombinedInFlight": 0,
+          "CombinedOps": 508,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008879,
+          "RelativeSecond": 71,
+          "CombinedConnPerSec": 1,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008928,
+          "RelativeSecond": 120,
+          "CombinedConnPerSec": 582,
+          "CombinedInFlight": 0,
+          "CombinedOps": 544,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008929,
+          "RelativeSecond": 121,
+          "CombinedConnPerSec": 944,
+          "CombinedInFlight": 0,
+          "CombinedOps": 976,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008930,
+          "RelativeSecond": 122,
+          "CombinedConnPerSec": 966,
+          "CombinedInFlight": 0,
+          "CombinedOps": 985,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008931,
+          "RelativeSecond": 123,
+          "CombinedConnPerSec": 854,
+          "CombinedInFlight": 0,
+          "CombinedOps": 943,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008932,
+          "RelativeSecond": 124,
+          "CombinedConnPerSec": 877,
+          "CombinedInFlight": 0,
+          "CombinedOps": 921,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008933,
+          "RelativeSecond": 125,
+          "CombinedConnPerSec": 786,
+          "CombinedInFlight": 0,
+          "CombinedOps": 814,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008934,
+          "RelativeSecond": 126,
+          "CombinedConnPerSec": 859,
+          "CombinedInFlight": 0,
+          "CombinedOps": 862,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008935,
+          "RelativeSecond": 127,
+          "CombinedConnPerSec": 691,
+          "CombinedInFlight": 0,
+          "CombinedOps": 765,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008936,
+          "RelativeSecond": 128,
+          "CombinedConnPerSec": 814,
+          "CombinedInFlight": 0,
+          "CombinedOps": 790,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008937,
+          "RelativeSecond": 129,
+          "CombinedConnPerSec": 773,
+          "CombinedInFlight": 0,
+          "CombinedOps": 817,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008938,
+          "RelativeSecond": 130,
+          "CombinedConnPerSec": 508,
+          "CombinedInFlight": 0,
+          "CombinedOps": 582,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008939,
+          "RelativeSecond": 131,
+          "CombinedConnPerSec": 1,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008988,
+          "RelativeSecond": 180,
+          "CombinedConnPerSec": 510,
+          "CombinedInFlight": 0,
+          "CombinedOps": 510,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008989,
+          "RelativeSecond": 181,
+          "CombinedConnPerSec": 962,
+          "CombinedInFlight": 0,
+          "CombinedOps": 946,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008990,
+          "RelativeSecond": 182,
+          "CombinedConnPerSec": 944,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1040,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008991,
+          "RelativeSecond": 183,
+          "CombinedConnPerSec": 884,
+          "CombinedInFlight": 0,
+          "CombinedOps": 854,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008992,
+          "RelativeSecond": 184,
+          "CombinedConnPerSec": 904,
+          "CombinedInFlight": 0,
+          "CombinedOps": 946,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008993,
+          "RelativeSecond": 185,
+          "CombinedConnPerSec": 782,
+          "CombinedInFlight": 0,
+          "CombinedOps": 879,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008994,
+          "RelativeSecond": 186,
+          "CombinedConnPerSec": 837,
+          "CombinedInFlight": 0,
+          "CombinedOps": 815,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008995,
+          "RelativeSecond": 187,
+          "CombinedConnPerSec": 728,
+          "CombinedInFlight": 0,
+          "CombinedOps": 770,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008996,
+          "RelativeSecond": 188,
+          "CombinedConnPerSec": 755,
+          "CombinedInFlight": 0,
+          "CombinedOps": 799,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008997,
+          "RelativeSecond": 189,
+          "CombinedConnPerSec": 816,
+          "CombinedInFlight": 0,
+          "CombinedOps": 858,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008998,
+          "RelativeSecond": 190,
+          "CombinedConnPerSec": 566,
+          "CombinedInFlight": 0,
+          "CombinedOps": 582,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793008999,
+          "RelativeSecond": 191,
+          "CombinedConnPerSec": 1,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009048,
+          "RelativeSecond": 240,
+          "CombinedConnPerSec": 484,
+          "CombinedInFlight": 0,
+          "CombinedOps": 492,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009049,
+          "RelativeSecond": 241,
+          "CombinedConnPerSec": 853,
+          "CombinedInFlight": 0,
+          "CombinedOps": 845,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009050,
+          "RelativeSecond": 242,
+          "CombinedConnPerSec": 1021,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1035,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009051,
+          "RelativeSecond": 243,
+          "CombinedConnPerSec": 883,
+          "CombinedInFlight": 0,
+          "CombinedOps": 941,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009052,
+          "RelativeSecond": 244,
+          "CombinedConnPerSec": 843,
+          "CombinedInFlight": 0,
+          "CombinedOps": 902,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009053,
+          "RelativeSecond": 245,
+          "CombinedConnPerSec": 889,
+          "CombinedInFlight": 0,
+          "CombinedOps": 927,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009054,
+          "RelativeSecond": 246,
+          "CombinedConnPerSec": 780,
+          "CombinedInFlight": 0,
+          "CombinedOps": 835,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009055,
+          "RelativeSecond": 247,
+          "CombinedConnPerSec": 731,
+          "CombinedInFlight": 0,
+          "CombinedOps": 749,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009056,
+          "RelativeSecond": 248,
+          "CombinedConnPerSec": 781,
+          "CombinedInFlight": 0,
+          "CombinedOps": 715,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009057,
+          "RelativeSecond": 249,
+          "CombinedConnPerSec": 867,
+          "CombinedInFlight": 0,
+          "CombinedOps": 974,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009058,
+          "RelativeSecond": 250,
+          "CombinedConnPerSec": 550,
+          "CombinedInFlight": 0,
+          "CombinedOps": 584,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009059,
+          "RelativeSecond": 251,
+          "CombinedConnPerSec": 1,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009108,
+          "RelativeSecond": 300,
+          "CombinedConnPerSec": 411,
+          "CombinedInFlight": 0,
+          "CombinedOps": 392,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009109,
+          "RelativeSecond": 301,
+          "CombinedConnPerSec": 864,
+          "CombinedInFlight": 0,
+          "CombinedOps": 921,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009110,
+          "RelativeSecond": 302,
+          "CombinedConnPerSec": 1000,
+          "CombinedInFlight": 0,
+          "CombinedOps": 974,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009111,
+          "RelativeSecond": 303,
+          "CombinedConnPerSec": 910,
+          "CombinedInFlight": 0,
+          "CombinedOps": 973,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009112,
+          "RelativeSecond": 304,
+          "CombinedConnPerSec": 852,
+          "CombinedInFlight": 0,
+          "CombinedOps": 899,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009113,
+          "RelativeSecond": 305,
+          "CombinedConnPerSec": 926,
+          "CombinedInFlight": 0,
+          "CombinedOps": 957,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009114,
+          "RelativeSecond": 306,
+          "CombinedConnPerSec": 790,
+          "CombinedInFlight": 0,
+          "CombinedOps": 769,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009115,
+          "RelativeSecond": 307,
+          "CombinedConnPerSec": 758,
+          "CombinedInFlight": 0,
+          "CombinedOps": 775,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009116,
+          "RelativeSecond": 308,
+          "CombinedConnPerSec": 651,
+          "CombinedInFlight": 0,
+          "CombinedOps": 693,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009117,
+          "RelativeSecond": 309,
+          "CombinedConnPerSec": 942,
+          "CombinedInFlight": 0,
+          "CombinedOps": 998,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009118,
+          "RelativeSecond": 310,
+          "CombinedConnPerSec": 564,
+          "CombinedInFlight": 0,
+          "CombinedOps": 601,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009119,
+          "RelativeSecond": 311,
+          "CombinedConnPerSec": 2,
+          "CombinedInFlight": 0,
+          "CombinedOps": 48,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009168,
+          "RelativeSecond": 360,
+          "CombinedConnPerSec": 373,
+          "CombinedInFlight": 0,
+          "CombinedOps": 303,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009169,
+          "RelativeSecond": 361,
+          "CombinedConnPerSec": 849,
+          "CombinedInFlight": 0,
+          "CombinedOps": 922,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009170,
+          "RelativeSecond": 362,
+          "CombinedConnPerSec": 968,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1020,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009171,
+          "RelativeSecond": 363,
+          "CombinedConnPerSec": 963,
+          "CombinedInFlight": 0,
+          "CombinedOps": 976,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009172,
+          "RelativeSecond": 364,
+          "CombinedConnPerSec": 805,
+          "CombinedInFlight": 0,
+          "CombinedOps": 810,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009173,
+          "RelativeSecond": 365,
+          "CombinedConnPerSec": 949,
+          "CombinedInFlight": 0,
+          "CombinedOps": 1023,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009174,
+          "RelativeSecond": 366,
+          "CombinedConnPerSec": 743,
+          "CombinedInFlight": 0,
+          "CombinedOps": 755,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009175,
+          "RelativeSecond": 367,
+          "CombinedConnPerSec": 737,
+          "CombinedInFlight": 0,
+          "CombinedOps": 776,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009176,
+          "RelativeSecond": 368,
+          "CombinedConnPerSec": 681,
+          "CombinedInFlight": 0,
+          "CombinedOps": 756,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009177,
+          "RelativeSecond": 369,
+          "CombinedConnPerSec": 967,
+          "CombinedInFlight": 0,
+          "CombinedOps": 935,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009178,
+          "RelativeSecond": 370,
+          "CombinedConnPerSec": 552,
+          "CombinedInFlight": 0,
+          "CombinedOps": 651,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009179,
+          "RelativeSecond": 371,
+          "CombinedConnPerSec": 72,
+          "CombinedInFlight": 0,
+          "CombinedOps": 73,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009228,
+          "RelativeSecond": 420,
+          "CombinedConnPerSec": 274,
+          "CombinedInFlight": 0,
+          "CombinedOps": 227,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009229,
+          "RelativeSecond": 421,
+          "CombinedConnPerSec": 887,
+          "CombinedInFlight": 0,
+          "CombinedOps": 965,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009230,
+          "RelativeSecond": 422,
+          "CombinedConnPerSec": 977,
+          "CombinedInFlight": 0,
+          "CombinedOps": 942,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009231,
+          "RelativeSecond": 423,
+          "CombinedConnPerSec": 910,
+          "CombinedInFlight": 0,
+          "CombinedOps": 991,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009232,
+          "RelativeSecond": 424,
+          "CombinedConnPerSec": 836,
+          "CombinedInFlight": 0,
+          "CombinedOps": 855,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009233,
+          "RelativeSecond": 425,
+          "CombinedConnPerSec": 977,
+          "CombinedInFlight": 0,
+          "CombinedOps": 968,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009234,
+          "RelativeSecond": 426,
+          "CombinedConnPerSec": 722,
+          "CombinedInFlight": 0,
+          "CombinedOps": 839,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009235,
+          "RelativeSecond": 427,
+          "CombinedConnPerSec": 735,
+          "CombinedInFlight": 0,
+          "CombinedOps": 777,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009236,
+          "RelativeSecond": 428,
+          "CombinedConnPerSec": 739,
+          "CombinedInFlight": 0,
+          "CombinedOps": 707,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009237,
+          "RelativeSecond": 429,
+          "CombinedConnPerSec": 892,
+          "CombinedInFlight": 0,
+          "CombinedOps": 963,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009238,
+          "RelativeSecond": 430,
+          "CombinedConnPerSec": 644,
+          "CombinedInFlight": 0,
+          "CombinedOps": 642,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009239,
+          "RelativeSecond": 431,
+          "CombinedConnPerSec": 70,
+          "CombinedInFlight": 0,
+          "CombinedOps": 124,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009288,
+          "RelativeSecond": 480,
+          "CombinedConnPerSec": 0,
+          "CombinedInFlight": 8979,
+          "CombinedOps": 157,
+          "CombinedFailedOps": 0
+        },
+        {
+          "WallClockUnixSecond": 1793009289,
+          "RelativeSecond": 481,
+          "CombinedConnPerSec": 0,
+          "CombinedInFlight": 0,
+          "CombinedOps": 5,
+          "CombinedFailedOps": 0
+        }
+      ]
+    }
+  ],
+  "CrossIteration": {
+    "Stats": [
+      {
+        "Target": "documentdb",
+        "Scenario": "Burst",
+        "ExpectedIterations": 1,
+        "IterationsFound": 1,
+        "ValidIterations": 1,
+        "InvalidIterationNumbers": [],
+        "MissingIterationNumbers": [],
+        "MaxStartSkewSeconds": 0,
+        "MeanPeakConnPerSec": 1021,
+        "MinPeakConnPerSec": 1021,
+        "MaxPeakConnPerSec": 1021,
+        "MeanPeakReadyPerSec": 1011,
+        "MinPeakReadyPerSec": 1011,
+        "MaxPeakReadyPerSec": 1011,
+        "MeanPeakActiveReady": 9000,
+        "MinPeakActiveReady": 9000,
+        "MaxPeakActiveReady": 9000,
+        "MeanPeakInFlight": 9000,
+        "MinPeakInFlight": 9000,
+        "MaxPeakInFlight": 9000,
+        "MeanTrueE2eP99Ms": 480395.75,
+        "MinTrueE2eP99Ms": 480395.75,
+        "MaxTrueE2eP99Ms": 480395.75,
+        "MeanDrainDurationSeconds": 1.1,
+        "MinDrainDurationSeconds": 1.1,
+        "MaxDrainDurationSeconds": 1.1,
+        "MeanFailureRatePct": 0,
+        "MinFailureRatePct": 0,
+        "MaxFailureRatePct": 0,
+        "AllIterationsReachedChurn": false,
+        "AllIterationsReachedActiveReady": false
+      }
+    ]
+  }
+}
