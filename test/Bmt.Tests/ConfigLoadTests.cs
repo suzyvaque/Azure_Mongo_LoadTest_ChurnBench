@@ -102,4 +102,22 @@ public sealed class ConfigLoadTests
         var error = Assert.Throws<InvalidOperationException>(() => factory.BuildSettings());
         Assert.Contains("mongodb+srv", error.Message);
     }
+
+    [Fact]
+    public void DocumentDbHaProfile_Configures_EntraOidcCallback()
+    {
+        var path = Path.Combine(
+            RepoRoot(), "config", "production", "documentdb-ha-full-workload.json");
+        var config = BmtConfig.Load(path);
+        var factory = new TaskConnectionFactory(
+            TargetKey.DocumentDb,
+            "mongodb+srv://example.test/?tls=true&authMechanism=MONGODB-OIDC&retryWrites=false",
+            tuning: config.Client);
+
+        var settings = factory.BuildSettings();
+
+        Assert.Equal("MONGODB-OIDC", settings.Credential?.Mechanism);
+        Assert.True(settings.RetryReads);
+        Assert.True(settings.RetryWrites);
+    }
 }

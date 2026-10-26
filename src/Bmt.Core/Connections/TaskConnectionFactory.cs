@@ -3,6 +3,9 @@ using MongoDB.Driver;
 using MongoDB.Driver.Core.Configuration;
 using MongoDB.Driver.Core.Events;
 using Bmt.Core.Configuration;
+using Azure.Core;
+using Azure.Identity;
+using MongoDB.Driver.Core.Authentication.Oidc;
 
 namespace Bmt.Core.Connections;
 
@@ -23,6 +26,7 @@ namespace Bmt.Core.Connections;
 /// </summary>
 public sealed class TaskConnectionFactory
 {
+    private static readonly IOidcCallback AzureOidcCallback = new AzureIdentityOidcCallback();
     // The commands the MongoDB driver issues while establishing a NEW connection: wire negotiation
     // (hello/isMaster) and SCRAM authentication (saslStart/saslContinue). Everything else is workload.
     private static readonly HashSet<string> HandshakeCommands =
@@ -120,6 +124,15 @@ public sealed class TaskConnectionFactory
     public MongoClientSettings BuildSettings(IConnectionEventObserver? perTaskObserver = null)
     {
         var settings = ResolveBaseSettings();
+
+        // The service-generated Entra URI contains authMechanism=MONGODB-OIDC but no secret. The 2.30
+        // driver requires an explicit callback in application code; DefaultAzureCredential uses the
+        // load-generator VM's managed identity and caches tokens across the per-Task client churn.
+        // SCRAM URIs are left untouched so both authentication paths can be benchmarked independently.
+        if (settings.Credential?.Mechanism == "MONGODB-OIDC")
+        {
+            settings.Credential = MongoCredential.CreateOidcCredential(AzureOidcCallback);
+        }
 
         // Hard no-reuse constraints (§2.3): pool of exactly one, never pre-warmed.
         settings.MaxConnectionPoolSize = 1;
@@ -420,4 +433,27 @@ public sealed class TaskConnectionFactory
 
     /// <summary>True when the command is part of connection establishment (wire negotiation or SCRAM auth).</summary>
     private static bool IsHandshakeCommand(string commandName) => HandshakeCommands.Contains(commandName);
+
+    private sealed class AzureIdentityOidcCallback : IOidcCallback
+    {
+        private static readonly TokenRequestContext TokenRequest =
+            new(new[] { "https://ossrdbms-aad.database.windows.net/.default" });
+        private readonly DefaultAzureCredential _credential = new();
+
+        public OidcAccessToken GetOidcAccessToken(
+            OidcCallbackParameters parameters,
+            CancellationToken cancellationToken)
+        {
+            var token = _credential.GetToken(TokenRequest, cancellationToken);
+            return new OidcAccessToken(token.Token, token.ExpiresOn - DateTimeOffset.UtcNow);
+        }
+
+        public async Task<OidcAccessToken> GetOidcAccessTokenAsync(
+            OidcCallbackParameters parameters,
+            CancellationToken cancellationToken)
+        {
+            var token = await _credential.GetTokenAsync(TokenRequest, cancellationToken).ConfigureAwait(false);
+            return new OidcAccessToken(token.Token, token.ExpiresOn - DateTimeOffset.UtcNow);
+        }
+    }
 }
