@@ -12,9 +12,9 @@
 |---|---:|---:|---:|---|---|
 | A | 6,000 | 2,000 | 1 × 8 min | Complete | PASS — no client saturation |
 | B | 9,000 | 3,000 | 1 × 8 min | Complete | PASS — no client saturation |
-| C | 12,000 | 4,000 | 1 × 8 min | Starting | Pending |
-| D | 15,000 | 5,000 | 1 × 8 min | Pending | Pending |
-| E | 18,000 | 6,000 | 1 × 8 min | Pending | Pending |
+| C | 12,000 | 4,000 | 1 × 8 min | Complete | CONDITIONAL PASS — target reached; client thread safety threshold exceeded |
+| D | 15,000 | 5,000 | 1 × 8 min | Not run | Blocked by client-safety gate at Stage C |
+| E | 18,000 | 6,000 | 1 × 8 min | Not run | Blocked by client-safety gate at Stage C |
 
 Client safety is evaluated after every stage using process RAM, handles, threads, ephemeral ports,
 sample drops, errors, ActiveReady stability, and drain duration. A failed safety gate stops progression.
@@ -63,3 +63,39 @@ values are retained; the staged gate and pass/fail definition use driver `Active
 The 9,000-ready stage remains below the client stop thresholds. Thread count is approximately 80% of
 the 12,000 safety threshold, so Stage C is allowed but must be treated as the likely client-safety boundary;
 no higher stage may proceed if Stage C crosses that threshold or materially drops samples.
+
+## Stage C — 12,000 combined driver-ready connections
+
+- Cross-host start skew: 0 seconds
+- Combined peak `ActiveReady`: 12,000 / 12,000
+- Per-host peak `ActiveReady`: 4,000 on all three generators
+- Combined peak created/ready rate: 1,206 / 1,230 connections/s
+- Task and keepalive failures: 0
+- Driver connection-failure events: one on host 1, with no final task failure
+- Drain: 0.92–0.96 seconds; lifecycle fully reconciled
+- Per-host peak working set: 1,629–1,649 MiB
+- Per-host peak handles: 88,989–92,360
+- Per-host peak threads: 12,577–12,606
+- Per-host peak ephemeral utilization: 14.4%
+- Per-host peak CPU: 42.1–51.2%
+- TCP/resource dropped samples: 17–25 of 481–482 per host (3.5–5.2%)
+- Last-five-minute target TCP average: 7,970–7,977 established sockets per host
+- DocumentDB CPU average/maximum: 1.095% / 8.252%
+- DocumentDB memory average/maximum: 29.330% / 31.063%
+- DocumentDB committed-memory maximum: 5.654%
+
+The service accepted and held all 12,000 driver-ready connections with no task/keepalive failures and
+idle server resources. However, every generator exceeded the predefined 12,000-thread safety threshold,
+and one host marginally exceeded the 5% sampling-drop threshold. Stages D and E are therefore blocked.
+The result proves **at least 12,000 OIDC driver-ready connections** for this configuration, but does not
+measure the DocumentDB hard cap. The upper bound is generator-limited under this one-client-per-connection
+.NET design.
+
+## Campaign conclusion
+
+- Highest clean client-safe stage: 9,000 Ready connections
+- Highest observed and sustained stage: 12,000 Ready connections
+- DocumentDB hard cap: not reached
+- Limiting layer for further probing: load-generator thread/sampling overhead
+- Required next step for a higher cap: redesign the generator to reduce per-client thread/monitor overhead
+	or increase/distribute generator capacity, then repeat above 12,000.
