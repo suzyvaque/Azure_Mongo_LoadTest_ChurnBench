@@ -1,0 +1,146 @@
+{
+  "cost": 21,
+  "interval": "PT1M",
+  "namespace": "Microsoft.DocumentDB/mongoClusters",
+  "resourceregion": "koreacentral",
+  "timespan": "2026-10-26T10:00:08Z/2026-10-26T10:08:47Z",
+  "value": [
+    {
+      "displayDescription": "Percent CPU utilization on node",
+      "errorCode": "Success",
+      "id": "/subscriptions/01c04f52-ad2b-4cc0-b77b-61508ec58f51/resourceGroups/rg-db-test-hpc/providers/Microsoft.DocumentDB/mongoClusters/docdb-dbtest-hpc-1/providers/Microsoft.Insights/metrics/CpuPercent",
+      "name": {
+        "localizedValue": "CPU percent",
+        "value": "CpuPercent"
+      },
+      "resourceGroup": "rg-db-test-hpc",
+      "timeseries": [
+        {
+          "data": [
+            {
+              "average": 0.39228599648509827,
+              "maximum": 0.6555485630375498,
+              "minimum": 0.2700120466913139,
+              "timeStamp": "2026-10-26T10:00:00Z"
+            },
+            {
+              "average": 1.6828471755881722,
+              "maximum": 3.104084476633496,
+              "minimum": 0.2846210786409083,
+              "timeStamp": "2026-10-26T10:01:00Z"
+            },
+            {
+              "average": 1.4297845427531302,
+              "maximum": 2.9625512547584343,
+              "minimum": 0.29593560776988387,
+              "timeStamp": "2026-10-26T10:02:00Z"
+            },
+            {
+              "average": 1.4760240315637514,
+              "maximum": 3.1053516216720958,
+              "minimum": 0.4730546409369399,
+              "timeStamp": "2026-10-26T10:03:00Z"
+            },
+            {
+              "average": 1.4736290812724675,
+              "maximum": 3.063167480751718,
+              "minimum": 0.4499402504286382,
+              "timeStamp": "2026-10-26T10:04:00Z"
+            },
+            {
+              "average": 1.5616699080107557,
+              "maximum": 3.1682591227960617,
+              "minimum": 0.4907357891094403,
+              "timeStamp": "2026-10-26T10:05:00Z"
+            },
+            {
+              "average": 1.5408987226330135,
+              "maximum": 3.1906039989180868,
+              "minimum": 0.4371754932502596,
+              "timeStamp": "2026-10-26T10:06:00Z"
+            },
+            {
+              "average": 1.4690359798038268,
+              "maximum": 3.01047932039437,
+              "minimum": 0.4392724222886198,
+              "timeStamp": "2026-10-26T10:07:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "servername",
+                "value": "servername"
+              },
+              "value": "fc-c4936dd54086-000"
+            }
+          ]
+        },
+        {
+          "data": [
+            {
+              "average": 0.2971492553442673,
+              "maximum": 0.381185195927119,
+              "minimum": 0.26166821304588056,
+              "timeStamp": "2026-10-26T10:00:00Z"
+            },
+            {
+              "average": 0.38842231495396673,
+              "maximum": 0.6885149840950946,
+              "minimum": 0.22964379234382143,
+              "timeStamp": "2026-10-26T10:01:00Z"
+            },
+            {
+              "average": 0.39437412093456514,
+              "maximum": 0.5869920060268697,
+              "minimum": 0.2283319258077633,
+              "timeStamp": "2026-10-26T10:02:00Z"
+            },
+            {
+              "average": 0.5415899139170055,
+              "maximum": 0.681664675014288,
+              "minimum": 0.449065922043823,
+              "timeStamp": "2026-10-26T10:03:00Z"
+            },
+            {
+              "average": 0.5540725642797597,
+              "maximum": 0.7967920008332465,
+              "minimum": 0.43982869829645294,
+              "timeStamp": "2026-10-26T10:04:00Z"
+            },
+            {
+              "average": 0.5697474672503302,
+              "maximum": 0.8058298568939115,
+              "minimum": 0.4698748736755468,
+              "timeStamp": "2026-10-26T10:05:00Z"
+            },
+            {
+              "average": 0.5302153313018486,
+              "maximum": 0.7791537667698659,
+              "minimum": 0.411214953271028,
+              "timeStamp": "2026-10-26T10:06:00Z"
+            },
+            {
+              "average": 0.5616629648108501,
+              "maximum": 0.8263343267407207,
+              "minimum": 0.4703678760838454,
+              "timeStamp": "2026-10-26T10:07:00Z"
+            }
+          ],
+          "metadatavalues": [
+            {
+              "name": {
+                "localizedValue": "servername",
+                "value": "servername"
+              },
+              "value": "fc-c4936dd54086-001"
+            }
+          ]
+        }
+      ],
+      "type": "Microsoft.Insights/metrics",
+      "unit": "Percent"
+    }
+  ]
+}
+
