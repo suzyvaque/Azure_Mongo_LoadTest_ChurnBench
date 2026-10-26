@@ -1,14 +1,16 @@
 {
   // Three synchronized generators, each offering 333.333333 single-use clients/s:
   //   3 * 333.333333 = 1,000 new connection lifecycles/s combined.
-  // One indexed FindInput is executed per connection to isolate connection establishment from the
-  // 4-operation business workload. This is a steady connection-rate test, not a concurrent-hold test.
+  // This follows the prior production-rate mostly-idle shape: a full four-operation Task keeps its
+  // fresh connection resident for 3.5 seconds. A healthy backend should therefore hold roughly
+  // 1,000/s * 3.5s = 3,500 mostly-idle live connections. This is a rate/residence test, not the
+  // separate fixed-population 12,000-connection hold test.
   "Extends": "documentdb-ha-full-workload.json",
 
-  "TaskSleepMs": 0,
+  "TaskSleepMs": 3500,
 
   "Workload": {
-    "Mode": "SingleOp",
+    "Mode": "FullWorkload",
     "SingleOpType": "FindInput"
   },
 
