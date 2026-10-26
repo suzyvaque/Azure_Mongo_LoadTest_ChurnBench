@@ -13,6 +13,7 @@
   },
 
   "Scenario": {
+    "IterationDurationSeconds": 600,
     "MaxConcurrentTasks": 30000,
     "Steady": {
       "Enabled": true,

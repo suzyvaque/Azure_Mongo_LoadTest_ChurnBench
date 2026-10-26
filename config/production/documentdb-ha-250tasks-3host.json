@@ -8,6 +8,7 @@
   "TaskSleepMs": 0,
 
   "Scenario": {
+    "IterationDurationSeconds": 600,
     "Steady": {
       "Enabled": true,
       "TasksPerSecond": 83.3333333333

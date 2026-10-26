@@ -197,7 +197,12 @@ function Invoke-CampaignIteration {
 # ---- Campaign-level server-side artifact dir on THIS operator box (az1-0). Holds the in-run
 #      serverStatus timeseries + the post-run azure-metrics.json. Committed separately by the operator
 #      (kept off the per-host push path to avoid git contention in C:\bmt during the run). ----
-$campaignRoot = Join-Path $RepoDir "results\_campaign-$RunTag"
+$resultsRootPath = if ([System.IO.Path]::IsPathRooted($ResultsDir)) {
+    $ResultsDir
+} else {
+    Join-Path $RepoDir $ResultsDir
+}
+$campaignRoot = Join-Path $resultsRootPath "_campaign-$RunTag"
 New-Item -ItemType Directory -Force -Path $campaignRoot | Out-Null
 $stopFile = Join-Path $campaignRoot '.sampler-stop'
 if (Test-Path $stopFile) { Remove-Item $stopFile -Force }
